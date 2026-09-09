@@ -590,106 +590,22 @@ async function loadOneSource(b){
   const cfg = BRON_URLS[b.id];
   try{
     let arts=[];
-    if(cfg.type==='gemeente'){
-      let html=null;
-      const cached=getCachedSource(cfg.url);
-      const stale=getStaleSource(cfg.url);
-      if(cached) html=cached;
-      else if(stale) html=stale;
-      else html=await fetchViaWorker(cfg.url);
-      let overview = parseGemeenteOverview(html);
-      if(overview.length){
-        const tempArts=overview.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date()}));
-        allArticles = allArticles.filter(x=>x.id!==b.id).concat(tempArts);
-        loadedSources.add(b.id); updateHeaderCount(); renderArticles(); updateSourceLeds();
-      }
-      // v291 FIX: altijd enrich voor echte tijd, ook bij cached overview (overzicht heeft nu alleen datum, geen tijd)
-      enrichGemeenteWithDetail(overview).then(enriched=>{
-        const enrichedArts=enriched.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
-        allArticles = allArticles.filter(x=>x.id!==b.id).concat(enrichedArts);
-        renderArticles(); updateSourceLeds();
-      }).catch(()=>{});
-      arts = overview;
+    const parser = BRON_PARSERS[b.id];
+    if(!parser) throw new Error('geen parser voor '+b.id+' in parsing/ map');
+    const rawData = await fetchViaWorker(cfg.url);
+    try{ arts = await parser(rawData, b.id); }catch(e){ try{ arts = await parser(rawData); }catch(e2){ throw e; } }
+    if(arts.length===0 && cfg.fallback){
+      try{ const raw2 = await fetchViaWorker(cfg.fallback); try{ arts = await parser(raw2, b.id); }catch{ arts = await parser(raw2); } }catch{}
     }
-    else if(b.id==='Nieuwsbrief'){ const json=await fetchViaWorker(cfg.url); arts=parseNieuwsbriefECHT(json); }
-    else if(cfg.type==='oost'){ 
-      const html=await fetchViaWorker(cfg.url); 
-      arts=parseOostFull(html); 
-    }
-    else if(b.id==='RTV Vechtdal'){ 
+    if(arts.length===0 && b.id==='Vechtdal Centraal'){
       try{
-        const html=await fetchViaWorker(cfg.homepage || 'https://www.rtvvechtdal.nl/');
-        let overview=parseRTVVechtdalFull(html); 
-        if(overview.length>0){
-          const tempArts=overview.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
-          allArticles = allArticles.filter(x=>x.id!==b.id).concat(tempArts);
-          loadedSources.add(b.id); updateHeaderCount(); renderArticles();
-          // v228: geen enrich meer, polling moment al gezet
-          arts = overview;
-        } else {
-          arts = overview;
-        }
-      }catch(e){ console.log('vd load fail', e.message); }
-      if(arts.length===0){ 
-        try{ const xml=await fetchViaWorker(cfg.url); arts=parseRSSFull(xml,b.id); }catch(e){}
-      }
+        const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.vechtdalcentraal.nl/feed/')}&t=${Date.now()}`;
+        const rRss = await fetch(rss2jsonUrl, {cache:'no-store'});
+        if(rRss.ok){ const j = await rRss.json(); if(j.status==='ok' && j.items && j.items.length>0){ arts = j.items.slice(0,10).map(it=>({title: it.title.replace(/<[^>]*>/g,'').trim(), link: it.link, pubDate: it.pubDate ? new Date(it.pubDate) : new Date(), description: (it.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]'})); } }
+      }catch(e){}
     }
-    else if(b.id==='Vechtdal Centraal'){
-      // ROBUUSTE FIX: probeer feed, daarna homepage, daarna direct rss2json als laatste redmiddel
-      try{
-        const xml=await fetchViaWorker(cfg.url);
-        if(xml.includes('<rss')||xml.includes('<feed')||xml.includes('<item')){
-          arts=parseRSSFull(xml,b.id);
-          console.log('[Vechtdal] RSS OK', arts.length);
-        } else {
-          arts=parseVechtdalCentraalFallback(xml);
-          console.log('[Vechtdal] HTML fallback parser', arts.length);
-        }
-      }catch(e){ console.log('vc feed fail', e.message); }
-      if(arts.length===0){
-        try{
-          const html=await fetchViaWorker(cfg.fallback || cfg.homepage);
-          arts=parseVechtdalCentraalFallback(html);
-          console.log('[Vechtdal] homepage parser', arts.length);
-        }catch(e){ console.log('vc html fail', e.message); }
-      }
-      if(arts.length===0){
-        // LAATSTE REDMIDDEL: rss2json direct (om Cloudflare te omzeilen)
-        try{
-          const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.vechtdalcentraal.nl/feed/')}&t=${Date.now()}`;
-          const rRss = await fetch(rss2jsonUrl, {cache:'no-store'});
-          if(rRss.ok){
-            const j = await rRss.json();
-            if(j.status==='ok' && j.items && j.items.length>0){
-              console.log('[Vechtdal] rss2json OK', j.items.length);
-              arts = j.items.slice(0,10).map(it=>({
-                title: it.title.replace(/<[^>]*>/g,'').trim(),
-                link: it.link,
-                pubDate: it.pubDate ? new Date(it.pubDate) : new Date(),
-                description: (it.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]'
-              }));
-            }
-          }
-        }catch(e){ console.log('[Vechtdal] rss2json fail', e.message); }
-      }
-    }
-    else {
-      try{
-        const xml=await fetchViaWorker(cfg.url);
-        arts=parseRSSFull(xml, b.id);
-        if(arts.length===0 && cfg.fallback){
-          const html2=await fetchViaWorker(cfg.fallback);
-          arts=parseVechtdalCentraalFallback(html2);
-        }
-      }catch(e){
-        if(cfg.fallback){
-          const html2=await fetchViaWorker(cfg.fallback);
-          arts=parseVechtdalCentraalFallback(html2);
-        } else throw e;
-      }
-    }
-    if(arts.length===0) throw new Error('empty');
-    return arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
+    if(arts.length===0) throw new Error('empty na parsing uit parsing/'+b.id+'.js');
+    return arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||(a.title+' [...]')}));
   }catch(e){
     console.log('load fail', b.id, e.message);
     return [{title:b.name, link:cfg.homepage, pubDate:new Date(0), description:'Bron tijdelijk offline - homepage [...]', source:b.name, id:b.id, isFallback:true}];
@@ -784,9 +700,10 @@ function renderArticles(){
   try{ const list=document.getElementById('source-list'); if(list && list.children.length>0){ /* counts will be updated on next renderFilters */ } }catch{}
 }
 function filterNews(){ renderArticles(); }
+
 async function refreshNews(){
   const c=document.getElementById('news-container');
-  // PERF v239: 1. Direct stale cache tonen (<200ms)
+  // PERF: direct stale cache tonen via BRON_PARSERS
   let hasStale=false;
   const initialArts=[];
   try{
@@ -795,14 +712,13 @@ async function refreshNews(){
       const cachedData=getCachedSource(cfg.url) || getStaleSource(cfg.url);
       if(cachedData){
         try{
-          let arts=[];
-          if(cfg.type==='gemeente') arts=parseGemeenteOverview(cachedData);
-          else if(b.id==='Nieuwsbrief'){ const json=await fetchViaWorker(cfg.url); arts=parseNieuwsbriefECHT(json); }
-    else if(cfg.type==='oost') arts=parseOostFull(cachedData);
-          else if(b.id==='RTV Vechtdal'){ try{ arts=parseRTVVechtdalFull(cachedData); }catch{} if(arts.length===0) arts=parseRSSFull(cachedData,b.id); }
-          else if(b.id==='Vechtdal Centraal'){ if(cachedData.includes('<rss')||cachedData.includes('<item')) arts=parseRSSFull(cachedData,b.id); else arts=parseVechtdalCentraalFallback(cachedData); }
-          else arts=parseRSSFull(cachedData,b.id);
-          if(arts.length>0){ initialArts.push(...arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false}))); hasStale=true; }
+          const parser = BRON_PARSERS[b.id];
+          if(!parser) continue;
+          let arts = await parser(cachedData, b.id);
+          if(arts && arts.length>0){
+            initialArts.push(...arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||a.title+' [...]'})));
+            hasStale=true;
+          }
         }catch(e){}
       }
     }
@@ -810,11 +726,10 @@ async function refreshNews(){
   if(hasStale && initialArts.length>0){
     allArticles=initialArts;
     loadedSources=new Set(BRONNEN.map(b=>b.id));
-    updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-    if(c) c.querySelector('.articles-count')?.insertAdjacentHTML('afterend', '<div style="font-size:11px;color:#16a34a;padding:0 2px 6px">⚡ Uit cache - wordt ververst...</div>');
-    console.log('[perf v239] stale cache getoond', initialArts.length);
+    updateHeaderCount(); renderArticles(); renderFilters(); if(typeof updateSourceLeds==='function') updateSourceLeds();
+    console.log('[perf] stale cache via BRON_PARSERS', initialArts.length);
   } else {
-    if(c) c.innerHTML='<div class="article">Bezig met laden... (9 bronnen) - eerste keer iets langer, daarna <1 sec</div>';
+    if(c) c.innerHTML='<div class="article">Bezig met laden... (10 bronnen)</div>';
     allArticles=[]; loadedSources=new Set(); updateHeaderCount();
   }
   const loadWithTimeout = async (b) => {
@@ -838,9 +753,10 @@ async function refreshNews(){
     }
   });
   if(freshArts.length>0) allArticles=freshArts;
-  updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-  console.log('refreshNews klaar v275 FIX 0/0', allArticles.length, 'artikelen');
+  updateHeaderCount(); renderArticles(); renderFilters(); if(typeof updateSourceLeds==='function') updateSourceLeds();
+  console.log('refreshNews klaar v604 MODULAIR', allArticles.length, 'artikelen');
 }
+
 document.addEventListener('DOMContentLoaded', ()=>{
   loadState(); renderFilters(); saveState(); restorePanelState(); setupFilterHeader();
   document.getElementById('search-input')?.addEventListener('input', filterNews);
