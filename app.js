@@ -1188,3 +1188,14 @@ window.closePanel = closePanel;
 window.loadState = loadState;
 window.saveState = saveState;
 window.openPanel = typeof openPanel !== 'undefined' ? openPanel : closePanel;
+// ===== v606 FOOTER - maakt bronselectie weer werkend =====
+window.closePanel = closePanel;
+window.openPanel = openPanel;
+window.togglePanel = typeof togglePanel !== 'undefined' ? togglePanel : openPanel;
+window.loadState = loadState;
+window.saveState = saveState;
+window.resetFilters = resetFilters;
+window.filterNews = filterNews;
+window.refreshNews = refreshNews;
+window.BRONNEN = BRONNEN;
+window.getAppState = () => state;
