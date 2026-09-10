@@ -89,10 +89,34 @@ function parseRTVVechtdalFull(html){
   return parseRTVVechtdalECHT(html);
 }
 
-export function parseRTVVechtdal(htmlOrXml){
-  if(htmlOrXml.includes('<rss')||htmlOrXml.includes('<item')||htmlOrXml.includes('<feed')){
-    const arts=parseRSSFull(htmlOrXml,'RTV Vechtdal');
-    if(arts.length>0) return arts;
+function parseRTVVechtdalFallback(html){
+  const items=[]; const seen=new Set(); let m;
+  const patterns=[
+    /<h[2-3][^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([^<]{8,150})<\/a>/gi,
+    /<article[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([^<]{8,150})<\/a>/gi,
+    /<div class="[^"]*title[^"]*"[^>]*>\s*<a href="([^"]+)">([^<]{8,150})<\/a>/gi
+  ];
+  for(const re of patterns){
+    while((m=re.exec(html))!==null && items.length<20){
+      let link=m[1]; if(link.startsWith('/')) link='https://www.rtvvechtdal.nl'+link;
+      if(seen.has(link)) continue; seen.add(link);
+      let title=m[2].replace(/<[^>]*>/g,'').trim();
+      if(title.length>8) items.push({title, link, pubDate:new Date(), description:title+' [...]'});
+    }
+    if(items.length>=5) break;
   }
-  return parseRTVVechtdalFull(htmlOrXml);
+  return items;
+}
+
+export function parseRTVVechtdal(htmlOrXml){
+  // Exact old logic first
+  if(htmlOrXml.includes('<rss')||htmlOrXml.includes('<item')||htmlOrXml.includes('<feed')||htmlOrXml.includes('<entry')){
+    const rss = parseRSSFull(htmlOrXml,'RTV Vechtdal');
+    if(rss.length>0) return rss;
+  }
+  let arts = parseRTVVechtdalFull(htmlOrXml);
+  if(arts.length>0) return arts;
+  // Nieuwe fallback als site structuur veranderd is
+  arts = parseRTVVechtdalFallback(htmlOrXml);
+  return arts;
 }
