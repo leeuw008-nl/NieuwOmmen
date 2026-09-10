@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nieuw(s)Ommen</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=606">
+<link rel="stylesheet" href="styles.css?v=404">
 <link rel="icon" href="icons/icon-192x192.png" type="image/png">
 <meta name="theme-color" content="#0b5bd3">
 </head>
@@ -14,33 +14,51 @@
   <h1>
     <span class="title-left">📰 Nieuw(s)Ommen</span>
     <span class="header-icons">
-      <a href="informatie.html" class="info-btn" title="Informatie">i</a>
-      <a href="profiel.html" class="info-btn" title="Profiel">👤</a>
+      <a href="informatie.html" class="info-icon-btn" title="Info">i</a>
+      <button id="user-icon-btn" class="user-icon-btn" title="Account" aria-label="Account">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </button>
     </span>
   </h1>
-  <div class="search-container">
-    <input type="text" id="search-input" placeholder="Zoek in nieuws...">
-  </div>
-  <div class="filter-bar">
-    <div class="filter-left">
-      <span id="bron-count">10 v/d 10 bronnen</span>
-    </div>
-    <div class="filter-right">
-      <button id="notif-btn">🔔</button>
-      <button id="filter-all">Alles aan</button>
-      <button id="filter-toggle">▼</button>
+  <div class="search-row"><input type="text" id="search-input" placeholder="Zoek in nieuws..."></div>
+  <div class="filter-header" id="filter-header">
+    <div class="filter-header-center"><span class="filter-header-count" id="header-count">10 v/d 10 bronnen</span></div>
+    <div class="filter-header-right">
+      <div class="bell-slot" id="bell-slot"></div>
+      <button class="btn-all-toets" id="btn-all">Alles aan</button>
+      <span class="filter-header-arrow">▼</span>
     </div>
   </div>
-  <div id="filter-panel" class="hidden"></div>
+  <div id="source-panel">
+    <div class="panel-hint">
+      <div><b>VANDAAG</b> <-> <b>MEER</b> = alleen vandaag of meerdere dagen</div>
+      <div><b>GEMEENTE</b> <-> <b>REGIO</b> = alleen gemeente Ommen of ook regio</div>
+      <div><b>AAN</b> <-> <b>UIT</b> = nieuwsbron wel of niet tonen in het overzicht</div>
+    </div>
+    <div class="source-list" id="source-list"></div>
+    <div class="panel-footer">
+      <button onclick="resetFilters()">Reset</button>
+      <button class="primary" onclick="closePanel()">Sluiten ▲</button>
+    </div>
+  </div>
+  <div id="news-container-anchor"></div>
+  <div id="compat-hidden" style="display:none">
+    <input type="checkbox" id="only-ommen" checked>
+    <div id="compat-sources"></div>
+  </div>
 </header>
-<main>
-  <div id="news-container">Bezig met laden...</div>
-</main>
-<footer>
-  <button id="refresh-btn">🔄 Vernieuwen</button>
-</footer>
+<main><div id="news-container">Bezig met laden...</div></main>
+<footer><button onclick="refreshNews()">🔄 Vernieuwen</button></footer>
+
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js?v=297', {scope: './'}).then(r=>{
+    console.log('SW registered v297 rollback', r.scope);
+  }).catch(e=>console.log('SW fail', e));
+}
+</script>
+<script type="module" src="app.js?v=404"></script>
 <script src="push.js?v=270-free-tier"></script>
-<script src="article-focus.js?v=10"></script>
-<script type="module" src="app.js?v=606"></script>
+<script src="article-focus.js?v=297"></script>
 </body>
 </html>
