@@ -1,4 +1,4 @@
-// app.js v409-RTVVechtdal-fix - ORIGINELE UI + parsing/ ZONDER SPATIES - 2e versie zoals bedoeld
+// app.js v410-RTVVechtdal-fix - ORIGINELE UI + parsing/ ZONDER SPATIES - 2e versie zoals bedoeld
 import { parseDeStentor } from './parsing/DeStentor.js';
 import { parseRondOmmen } from './parsing/RondOmmen.js';
 import { parseOmmenCity } from './parsing/OmmenCity.js';
@@ -39,7 +39,7 @@ const MAX_PER_BRON = {'De Stentor':25,'RondOmmen':20,'Ommen City':10,'OudOmmen':
 const BRON_URLS = {
   'De Stentor': {url:'https://www.destentor.nl/ommen/rss.xml', homepage:'https://www.destentor.nl/ommen/'},
   'Gemeente Ommen': {url:'https://www.ommen.nl/actueel/', homepage:'https://www.ommen.nl/actueel/', type:'gemeente'},
-  'Natuurlijk Ommen': {url:'https://www.natuurlijkommen.nl/feed/', homepage:'https://www.natuurlijkommen.nl/'},
+  'Natuurlijk Ommen': {url:'https://natuurlijkommen.nl/feed/', homepage:'https://www.natuurlijkommen.nl/', fallback:'https://www.natuurlijkommen.nl/'},
   'Ommen City': {url:'https://ommencity.nl/feed/', homepage:'https://ommencity.nl/'},
   'OudOmmen': {url:'https://weblog.oudommen.nl/feed/', homepage:'https://weblog.oudommen.nl/'},
   'RondOmmen': {url:'https://www.rondommen.nl/feed/', homepage:'https://www.rondommen.nl/'},
