@@ -1,5 +1,4 @@
-// app.js v404 - ORIGINEEL UI HERSTELD + parsing/ MODULAIR - bronselectie weer zoals screenshot
-// Origineel UI van 1 sept + 10 aparte parsers uit parsing/ map
+// app.js v406 - FIX dubbele declaratie + originele UI + parsing/ modulair
 import { parseDeStentor } from './parsing/De Stentor.js';
 import { parseRondOmmen } from './parsing/RondOmmen.js';
 import { parseOmmenCity } from './parsing/Ommen City.js';
@@ -24,7 +23,7 @@ const BRON_PARSERS = {
   'Nieuwsbrief': parseNieuwsbrief
 };
 
-// Compat aliases voor oude loadOneSource die nog ECHT namen gebruikt
+// Compat layer voor oude namen - gebruikt nieuwe modulaire parsers
 function parseVechtdalCentraalECHT(html){ try{ return BRON_PARSERS['Vechtdal Centraal'](html); }catch(e){ return []; } }
 function parseRTVVechtdalECHT(html){ try{ return BRON_PARSERS['RTV Vechtdal'](html); }catch(e){ return []; } }
 function parseRTVOostECHT(html){ try{ return BRON_PARSERS['RTV Oost'](html); }catch(e){ return []; } }
@@ -66,202 +65,6 @@ const BRON_URLS = {
   'Nieuwsbrief': {url:'https://ommen-push-v2.leeuw008.workers.dev/newsletter/feed', homepage:'https://nieuwommen.leeuw008.nl/', type:'nieuwsbrief'},
 };
 // PLAATSEN FILTER - HERSTELD: alle kernen en buurtschappen gemeente Ommen
-
-// ===== v238 DEFINITIEF - ECHTE HTML PARSERS =====
-function parseVechtdalCentraalECHT(html){
-  const items=[]; const seen=new Set();
-  // Originele parser - behouden
-  let re=/<h[2-3] class="entry-title[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/gi; let m;
-  while((m=re.exec(html))!==null && items.length<25){
-    let link=m[1]; if(link.startsWith('/')) link='https://www.vechtdalcentraal.nl'+link;
-    if(seen.has(link)) continue; seen.add(link);
-    const title=m[2].replace(/&#8217;/g,"'").replace(/&amp;/g,"&").trim();
-    if(title.length>4) items.push({title, link, pubDate:new Date(), description:title+' [...]'});
-  }
-  if(items.length>0) return items;
-  // FIX 25-08-2026: nieuwe thema varianten - vechtdalcentraal gebruikt nu ook <h2><a> en article
-  const patterns=[
-    /<h2[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]{8,200})<\/a>\s*<\/h2>/gi,
-    /<article[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]{0,300}?)<\/a>[\s\S]*?<h[23]/gi,
-    /<a[^>]+href="(https:\/\/www\.vechtdalcentraal\.nl\/[^"']{5,150})"[^>]*class="[^"]*entry-title[^"]*"[^>]*>([^<]+)</gi,
-    /<a href="(\/[^"']{5,150})"[^>]*>[^<]*<h[2-3][^>]*>([^<]{8,200})<\/h3>/gi
-  ];
-  for(const pat of patterns){
-    let mm;
-    while((mm=pat.exec(html))!==null && items.length<25){
-      let link=mm[1]; let title=mm[2].replace(/<[^>]*>/g,'').replace(/&#8217;/g,"'").replace(/&amp;/g,"&").trim();
-      if(link.startsWith('/')) link='https://www.vechtdalcentraal.nl'+link;
-      if(!link.includes('vechtdalcentraal.nl')) continue;
-      if(seen.has(link)) continue; seen.add(link);
-      if(title.length>8) items.push({title, link, pubDate:new Date(), description:title+' [...]'});
-    }
-    if(items.length>5) break;
-  }
-  return items;
-}
-function getVechtdalCache(){try{return JSON.parse(localStorage.getItem('ommen_vechtdal_poll')||'{}');}catch{return {};}}
-function setVechtdalCache(c){try{localStorage.setItem('ommen_vechtdal_poll',JSON.stringify(c));}catch{}}
-function parseRTVVechtdalECHT(html){
-  const items=[];
-  const now = new Date(); const pollCache=getVechtdalCache(); let dirty=false; const pollingMoment=now;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const reFull=/<div class="allmode_date">([^<]+)<\/div>[\s\S]{0,600}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\/a>[\s\S]{0,800}?<div class="allmode_(?:intro|text|introtext)[^>]*>([\s\S]*?)<\/div>/gi;
-  let m;
-  while((m=reFull.exec(html))!==null && items.length<20){
-    const dparts=m[1].split('-'); 
-    let pd=null;
-    let isToday=false;
-    if(dparts.length===3){
-      const d = new Date(parseInt(dparts[2]), parseInt(dparts[1])-1, parseInt(dparts[0]), 0,0,0);
-      const dMidnight = new Date(d); dMidnight.setHours(0,0,0,0);
-      isToday = dMidnight.getTime() === today.getTime();
-      if(isToday){
-        pd = new Date(pollingMoment);
-      }else{
-        // geen tijd op bron -> polling-tijd (zoals gevraagd)
-        pd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), pollingMoment.getHours(), pollingMoment.getMinutes(), pollingMoment.getSeconds());
-      }
-    }else{
-      pd = new Date(pollingMoment);
-    }
-    let link=m[2].replace(/&amp;/g,'&'); if(!link.startsWith('http')) link='https://www.rtvvechtdal.nl'+link;
-    let intro=m[4].replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-    if(intro.length>200) intro=intro.slice(0,200)+' [...]'; else if(intro) intro=intro+' [...]'; else intro=m[3].trim()+' [...]';
-    if(pollCache[link]==null){pollCache[link]=pd.toISOString(); dirty=true;} else if(pd.getHours()!=0 || pd.getMinutes()!=0){pd=new Date(pollCache[link]);} if(dirty) setVechtdalCache(pollCache); items.push({title:m[3].trim(), link, pubDate:pd, description:intro});
-  }
-  if(items.length===0){
-    const re=/<div class="allmode_date">([^<]+)<\/div>[\s\S]{0,500}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\/a>/gi;
-    while((m=re.exec(html))!==null && items.length<15){
-      const dparts=m[1].split('-'); 
-      let pd=null;
-      let isToday=false;
-      if(dparts.length===3){
-        const d = new Date(parseInt(dparts[2]), parseInt(dparts[1])-1, parseInt(dparts[0]), 0,0,0);
-        const dMidnight = new Date(d); dMidnight.setHours(0,0,0,0);
-        isToday = dMidnight.getTime() === today.getTime();
-        if(isToday){
-          pd = new Date(pollingMoment);
-        }else{
-          // geen tijd op bron -> polling-tijd
-          pd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), pollingMoment.getHours(), pollingMoment.getMinutes(), pollingMoment.getSeconds());
-        }
-      }else{
-        pd = new Date(pollingMoment);
-      }
-      let link=m[2].replace(/&amp;/g,'&'); if(!link.startsWith('http')) link='https://www.rtvvechtdal.nl'+link;
-      items.push({title:m[3].trim(), link, pubDate:pd, description:m[3].trim()+' [...]'});
-    }
-  }
-  return items;
-}
-
-async function enrichVechtdalWithDetail(arts){
-  console.log('[v228] RTV Vechtdal enrich DISABLED - polling moment gebruikt, geen extra fetches');
-  return arts;
-}
-
-
-function getOostPollCache(){try{return JSON.parse(localStorage.getItem('ommen_oost_poll')||'{}');}catch{return {};}}
-function setOostPollCache(c){try{localStorage.setItem('ommen_oost_poll', JSON.stringify(c));}catch{}}
-function parseNieuwsbriefECHT(json){
-  try{
-    const data = typeof json === 'string' ? JSON.parse(json) : json;
-    const items = data.items || data.articles || data || [];
-    return items.map(it=>{
-      const title = it.title || it.subject || 'Nieuwsbrief';
-      const link = it.link || it.url || 'https://nieuwommen.leeuw008.nl/';
-      let pubDate = new Date();
-      if(it.pubDate || it.date || it.updated){ const d=new Date(it.pubDate||it.date||it.updated); if(!isNaN(d.getTime())) pubDate=d; }
-      const desc = it.description || it.body || it.excerpt || title;
-      return {title: title.slice(0,120), link, pubDate, description: desc.slice(0,200)+' [...]', source:'Nieuwsbrief', id:'Nieuwsbrief'};
-    }).slice(0,10);
-  }catch(e){ console.log('parse nieuwsbrief fail', e.message); return []; }
-}
-function parseRTVOostECHT(html){
-  const items=[]; let m;
-  console.log('[RTV Oost vechtdal] HTML len', html.length);
-  const reReal = /<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\s\S]*?<a[^>]+href=["'](\/nieuws\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>[\s\S]*?<div[^>]*class="[^"]*name-label[^"]*"[^>]*>([^<]{2,20})<\/div>[\s\S]*?<h[2-3][^>]*>([^<]{12,200})<\/h3>/gi;
-  while((m=reReal.exec(html))!==null && items.length<25){
-    let dateStr=m[1]; let link=m[2]; if(link.startsWith('/')) link='https://www.oost.nl'+link;
-    let category=m[3].trim().toUpperCase(); let title=m[4].trim();
-    if(['ALLE NIEUWS','ZWOLLE','TWENTE'].includes(title.toUpperCase())) continue;
-    let pd=new Date(dateStr); if(isNaN(pd.getTime())) pd=new Date();
-    let finalTitle = ['NIEUWS','112','ECONOMIE','SPORT'].includes(category) ? category+': '+title : title;
-    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:pd, description:title+' [...]'});
-  }
-  if(items.length===0){
-    const re2 = /<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\s\S]*?<a[^>]+href=["'](\/nieuws\/[^"']{10,150})["'][^>]*>[\s\S]*?<h[2-3][^>]*>([^<]{12,200})<\/h3>/gi;
-    while((m=re2.exec(html))!==null && items.length<25){
-      let dateStr=m[1]; let link=m[2]; if(link.startsWith('/')) link='https://www.oost.nl'+link;
-      let title=m[3].trim(); if(title.toLowerCase().includes('alle nieuws')) continue;
-      let pd=new Date(dateStr); if(isNaN(pd.getTime())) continue;
-      if(!items.find(x=>x.link===link)) items.push({title, link, pubDate:pd, description:title+' [...]'});
-    }
-  }
-  if(items.length>0){ items.sort((a,b)=>b.pubDate-a.pubDate); console.log('[RTV Oost] gevonden', items.length, 'met echte publishedAt'); return items; }
-  const pollCache=getOostPollCache(); let dirty=false; const now=new Date();
-  function getPoll(link){ if(pollCache[link]){const d=new Date(pollCache[link]); if(!isNaN(d.getTime())) return d;} const d=new Date(now); pollCache[link]=d.toISOString(); dirty=true; return d; }
-  const reBlock = /<a[^>]+href=["'](\/nieuws\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let blockMatch; while((blockMatch=reBlock.exec(html))!==null && items.length<20){
-    let link=blockMatch[1]; if(link.startsWith('/')) link='https://www.oost.nl'+link;
-    let inner=blockMatch[2]; let catMatch=inner.match(/<(?:span|div)[^>]*>\s*(NIEUWS|112|ECONOMIE|SPORT)\s*<\/(?:span|div)>/i); let category=catMatch?catMatch[1].toUpperCase():''; let titleMatch=inner.match(/<h[23][^>]*>([^<]{12,180})<\/h[23]>/i); let title=titleMatch?titleMatch[1].trim():''; if(!title||title.length<12) continue;
-    if(['alle nieuws','zwolle','twente','enschede','vechtdal','salland','kop van overijssel'].includes(title.toLowerCase())) continue;
-    let finalTitle=category?category+': '+title:title;
-    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:getPoll(link), description:title+' [...]'});
-  }
-  if(dirty) setOostPollCache(pollCache);
-  items.sort((a,b)=>b.pubDate-a.pubDate);
-  console.log('[RTV Oost] gevonden', items.length, 'met fallback');
-  return items;
-}
-
-function parseOostFull_OLD(html){
-  const max = MAX_PER_BRON['RTV Oost'];
-  const patterns = [
-    /<a[^>]+href=["'](\/nieuws\/[^"']*ommen[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
-    /<a[^>]+href=["'](https:\/\/www\.oost\.nl\/nieuws\/[^"']*ommen[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
-  ];
-  const uniqMap=new Map();
-  for(const re of patterns){
-    let mm;
-    while((mm=re.exec(html))!==null && uniqMap.size<max){
-      const href=mm[1]; let text=mm[2].replace(/<[^>]*>/g,'').trim();
-      if(text.length<10 || text.length>200) continue;
-      const full=href.startsWith('http')?href:'https://www.rtvoost.nl'+href;
-      if(!uniqMap.has(full)) uniqMap.set(full, text);
-    }
-  }
-  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), description:'[...]'}));
-}
-function parseVechtdalCentraalFallback_OLD(html){
-  const max = MAX_PER_BRON['Vechtdal Centraal'];
-  const re = /<a[^>]+href=["']([^"']*\/[^"']+)["'][^>]*>\s*<h[23][^>]*>([^<]{8,120})<\/h[23]>/gi;
-  const map=new Map();
-  let m;
-  while((m=re.exec(html))!==null && map.size<max){
-    let href=m[1], title=m[2].trim();
-    if(href.startsWith('/')) href='https://www.vechtdalcentraal.nl'+href;
-    if(!href.includes('vechtdalcentraal.nl')) continue;
-    if(href.includes('/category/') || href.includes('/tag/') || href.includes('#')) continue;
-    if(!map.has(href)) map.set(href, title);
-  }
-  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), description:'[...]'}));
-}
-function parseOostFull(html){
-  const echt = parseRTVOostECHT(html);
-  if(echt.length>0) return echt;
-  return parseOostFull_OLD(html);
-}
-function parseVechtdalCentraalFallback(html){
-  const echt = parseVechtdalCentraalECHT(html);
-  if(echt.length>0) return echt;
-  return parseVechtdalCentraalFallback_OLD(html);
-}
-function parseRTVVechtdalFull(html){
-  return parseRTVVechtdalECHT(html);
-}
-
 
 const GEMEENTE_PLAATSEN = [
   'Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld',
@@ -540,35 +343,7 @@ async function fetchViaWorker(url){
     throw e1;
   }
 }
-function parseRSSFull(xml, bronId){
-  const max = MAX_PER_BRON[bronId] || 10;
-  let items = [...xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi)];
-  if(items.length===0) items = [...xml.matchAll(/<entry[^>]*>([\s\S]*?)<\/entry>/gi)];
-  items = items.slice(0,max);
-  return items.map(m=>{
-    const it=m[0];
-    let title=(it.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)||[])[1]||'';
-    title=title.replace(/<[^>]*>/g,'').trim();
-    let link=(it.match(/<link[^>]*>([\s\S]*?)<\/link>/i)||[])[1]||'';
-    if(!link || link.includes('<')) {
-      const hrefMatch = it.match(/<link[^>]+href=["']([^"']+)["']/i);
-      if(hrefMatch) link=hrefMatch[1];
-    }
-    link=link.replace(/<!\[CDATA\[/g,'').replace(/\]\]>/g,'').trim();
-    if(!link.startsWith('http')){ const mm=it.match(/https?:\/\/[^\s<"\]]+/); if(mm) link=mm[0]; }
-    let pub=(it.match(/<(pubDate|published|updated)[^>]*>([\s\S]*?)<\/(pubDate|published|updated)>/i)||[])[2]||'';
-    let desc=(it.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)||[])[1]||'';
-    let content=(it.match(/<content:encoded[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content:encoded>/i)||[])[1]||'';
-    if(!desc) {
-      const summ = (it.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)||[])[1]||'';
-      desc=summ;
-    }
-    let useDesc = (content || desc || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-    if(useDesc.length>180) useDesc=useDesc.slice(0,177)+' [...]';
-    else if(useDesc) useDesc=useDesc+' [...]';
-    return {title, link, pubDate:pub?new Date(pub):new Date(), description:useDesc};
-  }).filter(x=>x.link && x.title);
-}
+
 function extractGemeenteDate(html){
   // v291 debug
   // console.log('[v291] extractGemeenteDate html len', html.length);
@@ -668,25 +443,7 @@ function extractDescAfter(pos, clean){
   }
   return ' [...]';
 }
-function parseGemeenteOverview(html){
-  const max = MAX_PER_BRON['Gemeente Ommen'];
-  let clean = html.replace(/<!--[\s\S]*?-->/g,' ');
-  const results=[]; const seen=new Set();
-  const titleRe = /<h[23][^>]*>\s*<a[^>]+href=["']([^"']*\/actueel\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h[23]>/gi;
-  let m;
-  while((m=titleRe.exec(clean))!==null && results.length<max){
-    let href=m[1], title=m[2].replace(/<[^>]*>/g,'').trim();
-    if(title.length<8) continue;
-    const full = href.startsWith('http')?href:'https://www.ommen.nl'+href;
-    if(seen.has(full)) continue;
-    seen.add(full);
-    const desc = extractDescAfter(m.index, clean);
-    const block = clean.substring(Math.max(0,m.index-500), m.index+2500);
-    let tempDate = extractGemeenteDate(block);
-    results.push({title:title.slice(0,130), link:full, pubDate:tempDate, description:desc});
-  }
-  return results.slice(0,max);
-}
+
 function getGemeenteCache(){
   try{ 
     const raw = localStorage.getItem('ommen_gemeente_cache');
@@ -816,178 +573,31 @@ async function enrichGemeenteWithDetail(arts){
   return arts;
 }
 
-function parseOostFull_OLD(html){
-  const max = MAX_PER_BRON['RTV Oost'];
-  const patterns = [
-    /<a[^>]+href=["'](\/nieuws\/[^"']*ommen[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
-    /<a[^>]+href=["'](https:\/\/www\.oost\.nl\/nieuws\/[^"']*ommen[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
-  ];
-  const uniqMap=new Map();
-  for(const re of patterns){
-    let mm;
-    while((mm=re.exec(html))!==null && uniqMap.size<max){
-      const href=mm[1]; let text=mm[2].replace(/<[^>]*>/g,'').trim();
-      if(text.length<10 || text.length>200) continue;
-      const full=href.startsWith('http')?href:'https://www.rtvoost.nl'+href;
-      if(!uniqMap.has(full)) uniqMap.set(full, text);
-    }
-  }
-  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), description:'[...]'}));
-}
-function parseVechtdalCentraalFallback_OLD(html){
-  const max = MAX_PER_BRON['Vechtdal Centraal'];
-  const re = /<a[^>]+href=["']([^"']*\/[^"']+)["'][^>]*>\s*<h[23][^>]*>([^<]{8,120})<\/h[23]>/gi;
-  const map=new Map();
-  let m;
-  while((m=re.exec(html))!==null && map.size<max){
-    let href=m[1], title=m[2].trim();
-    if(href.startsWith('/')) href='https://www.vechtdalcentraal.nl'+href;
-    if(!href.includes('vechtdalcentraal.nl')) continue;
-    if(href.includes('/category/') || href.includes('/tag/') || href.includes('#')) continue;
-    if(!map.has(href)) map.set(href, title);
-  }
-  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), description:'[...]'}));
-}
-function parseOostFull(html){
-  const echt = parseRTVOostECHT(html);
-  if(echt.length>0) return echt;
-  return parseOostFull_OLD(html);
-}
-function parseVechtdalCentraalFallback(html){
-  const echt = parseVechtdalCentraalECHT(html);
-  if(echt.length>0) return echt;
-  return parseVechtdalCentraalFallback_OLD(html);
-}
-function parseRTVVechtdalFull(html){
-  return parseRTVVechtdalECHT(html);
-}
+
+
+
+
+
 async function loadOneSource(b){
   const cfg = BRON_URLS[b.id];
-  // V404: probeer eerst nieuwe modulaire parser uit parsing/ map
-  try{
-    const modParser = BRON_PARSERS[b.id];
-    if(modParser){
-      const rawData = await fetchViaWorker(cfg.url);
-      let arts = [];
-      try{ arts = await modParser(rawData, b.id); }catch(e){ try{ arts = await modParser(rawData); }catch(e2){} }
-      if(arts && arts.length>0){
-        console.log('[v404 modular] '+b.id+' via parsing/'+b.id+'.js OK', arts.length);
-        return arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||(a.title+' [...]')}));
-      }
-      if(cfg.fallback){
-        try{
-          const raw2 = await fetchViaWorker(cfg.fallback);
-          let arts2 = [];
-          try{ arts2 = await modParser(raw2, b.id); }catch{ try{ arts2 = await modParser(raw2); }catch{} }
-          if(arts2 && arts2.length>0) return arts2.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||''}));
-        }catch{}
-      }
-    }
-  }catch(e){ console.log('modular parser fail', b.id, e.message); }
-  // Fallback naar originele oude logica hieronder
-  const cfgOrig = BRON_URLS[b.id];
   try{
     let arts=[];
-    if(cfg.type==='gemeente'){
-      let html=null;
-      const cached=getCachedSource(cfg.url);
-      const stale=getStaleSource(cfg.url);
-      if(cached) html=cached;
-      else if(stale) html=stale;
-      else html=await fetchViaWorker(cfg.url);
-      let overview = parseGemeenteOverview(html);
-      if(overview.length){
-        const tempArts=overview.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date()}));
-        allArticles = allArticles.filter(x=>x.id!==b.id).concat(tempArts);
-        loadedSources.add(b.id); updateHeaderCount(); renderArticles(); updateSourceLeds();
-      }
-      // v291 FIX: altijd enrich voor echte tijd, ook bij cached overview (overzicht heeft nu alleen datum, geen tijd)
-      enrichGemeenteWithDetail(overview).then(enriched=>{
-        const enrichedArts=enriched.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
-        allArticles = allArticles.filter(x=>x.id!==b.id).concat(enrichedArts);
-        renderArticles(); updateSourceLeds();
-      }).catch(()=>{});
-      arts = overview;
+    const parser = BRON_PARSERS[b.id];
+    if(!parser) throw new Error('geen parser voor '+b.id+' in parsing/ map');
+    const rawData = await fetchViaWorker(cfg.url);
+    try{ arts = await parser(rawData, b.id); }catch(e){ try{ arts = await parser(rawData); }catch(e2){ throw e; } }
+    if(arts.length===0 && cfg.fallback){
+      try{ const raw2 = await fetchViaWorker(cfg.fallback); try{ arts = await parser(raw2, b.id); }catch{ arts = await parser(raw2); } }catch{}
     }
-    else if(b.id==='Nieuwsbrief'){ const json=await fetchViaWorker(cfg.url); arts=parseNieuwsbriefECHT(json); }
-    else if(cfg.type==='oost'){ 
-      const html=await fetchViaWorker(cfg.url); 
-      arts=parseOostFull(html); 
-    }
-    else if(b.id==='RTV Vechtdal'){ 
+    if(arts.length===0 && b.id==='Vechtdal Centraal'){
       try{
-        const html=await fetchViaWorker(cfg.homepage || 'https://www.rtvvechtdal.nl/');
-        let overview=parseRTVVechtdalFull(html); 
-        if(overview.length>0){
-          const tempArts=overview.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
-          allArticles = allArticles.filter(x=>x.id!==b.id).concat(tempArts);
-          loadedSources.add(b.id); updateHeaderCount(); renderArticles();
-          // v228: geen enrich meer, polling moment al gezet
-          arts = overview;
-        } else {
-          arts = overview;
-        }
-      }catch(e){ console.log('vd load fail', e.message); }
-      if(arts.length===0){ 
-        try{ const xml=await fetchViaWorker(cfg.url); arts=parseRSSFull(xml,b.id); }catch(e){}
-      }
+        const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.vechtdalcentraal.nl/feed/')}&t=${Date.now()}`;
+        const rRss = await fetch(rss2jsonUrl, {cache:'no-store'});
+        if(rRss.ok){ const j = await rRss.json(); if(j.status==='ok' && j.items && j.items.length>0){ arts = j.items.slice(0,10).map(it=>({title: it.title.replace(/<[^>]*>/g,'').trim(), link: it.link, pubDate: it.pubDate ? new Date(it.pubDate) : new Date(), description: (it.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]'})); } }
+      }catch(e){}
     }
-    else if(b.id==='Vechtdal Centraal'){
-      // ROBUUSTE FIX: probeer feed, daarna homepage, daarna direct rss2json als laatste redmiddel
-      try{
-        const xml=await fetchViaWorker(cfg.url);
-        if(xml.includes('<rss')||xml.includes('<feed')||xml.includes('<item')){
-          arts=parseRSSFull(xml,b.id);
-          console.log('[Vechtdal] RSS OK', arts.length);
-        } else {
-          arts=parseVechtdalCentraalFallback(xml);
-          console.log('[Vechtdal] HTML fallback parser', arts.length);
-        }
-      }catch(e){ console.log('vc feed fail', e.message); }
-      if(arts.length===0){
-        try{
-          const html=await fetchViaWorker(cfg.fallback || cfg.homepage);
-          arts=parseVechtdalCentraalFallback(html);
-          console.log('[Vechtdal] homepage parser', arts.length);
-        }catch(e){ console.log('vc html fail', e.message); }
-      }
-      if(arts.length===0){
-        // LAATSTE REDMIDDEL: rss2json direct (om Cloudflare te omzeilen)
-        try{
-          const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.vechtdalcentraal.nl/feed/')}&t=${Date.now()}`;
-          const rRss = await fetch(rss2jsonUrl, {cache:'no-store'});
-          if(rRss.ok){
-            const j = await rRss.json();
-            if(j.status==='ok' && j.items && j.items.length>0){
-              console.log('[Vechtdal] rss2json OK', j.items.length);
-              arts = j.items.slice(0,10).map(it=>({
-                title: it.title.replace(/<[^>]*>/g,'').trim(),
-                link: it.link,
-                pubDate: it.pubDate ? new Date(it.pubDate) : new Date(),
-                description: (it.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]'
-              }));
-            }
-          }
-        }catch(e){ console.log('[Vechtdal] rss2json fail', e.message); }
-      }
-    }
-    else {
-      try{
-        const xml=await fetchViaWorker(cfg.url);
-        arts=parseRSSFull(xml, b.id);
-        if(arts.length===0 && cfg.fallback){
-          const html2=await fetchViaWorker(cfg.fallback);
-          arts=parseVechtdalCentraalFallback(html2);
-        }
-      }catch(e){
-        if(cfg.fallback){
-          const html2=await fetchViaWorker(cfg.fallback);
-          arts=parseVechtdalCentraalFallback(html2);
-        } else throw e;
-      }
-    }
-    if(arts.length===0) throw new Error('empty');
-    return arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false}));
+    if(arts.length===0) throw new Error('empty na parsing uit parsing/'+b.id+'.js');
+    return arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||(a.title+' [...]')}));
   }catch(e){
     console.log('load fail', b.id, e.message);
     return [{title:b.name, link:cfg.homepage, pubDate:new Date(0), description:'Bron tijdelijk offline - homepage [...]', source:b.name, id:b.id, isFallback:true}];
@@ -1082,9 +692,10 @@ function renderArticles(){
   try{ const list=document.getElementById('source-list'); if(list && list.children.length>0){ /* counts will be updated on next renderFilters */ } }catch{}
 }
 function filterNews(){ renderArticles(); }
+
 async function refreshNews(){
   const c=document.getElementById('news-container');
-  // PERF v239: 1. Direct stale cache tonen (<200ms)
+  // PERF: direct stale cache tonen via BRON_PARSERS
   let hasStale=false;
   const initialArts=[];
   try{
@@ -1093,14 +704,13 @@ async function refreshNews(){
       const cachedData=getCachedSource(cfg.url) || getStaleSource(cfg.url);
       if(cachedData){
         try{
-          let arts=[];
-          if(cfg.type==='gemeente') arts=parseGemeenteOverview(cachedData);
-          else if(b.id==='Nieuwsbrief'){ const json=await fetchViaWorker(cfg.url); arts=parseNieuwsbriefECHT(json); }
-    else if(cfg.type==='oost') arts=parseOostFull(cachedData);
-          else if(b.id==='RTV Vechtdal'){ try{ arts=parseRTVVechtdalFull(cachedData); }catch{} if(arts.length===0) arts=parseRSSFull(cachedData,b.id); }
-          else if(b.id==='Vechtdal Centraal'){ if(cachedData.includes('<rss')||cachedData.includes('<item')) arts=parseRSSFull(cachedData,b.id); else arts=parseVechtdalCentraalFallback(cachedData); }
-          else arts=parseRSSFull(cachedData,b.id);
-          if(arts.length>0){ initialArts.push(...arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false}))); hasStale=true; }
+          const parser = BRON_PARSERS[b.id];
+          if(!parser) continue;
+          let arts = await parser(cachedData, b.id);
+          if(arts && arts.length>0){
+            initialArts.push(...arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false, pubDate:a.pubDate||new Date(), description:a.description||a.title+' [...]'})));
+            hasStale=true;
+          }
         }catch(e){}
       }
     }
@@ -1108,11 +718,10 @@ async function refreshNews(){
   if(hasStale && initialArts.length>0){
     allArticles=initialArts;
     loadedSources=new Set(BRONNEN.map(b=>b.id));
-    updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-    if(c) c.querySelector('.articles-count')?.insertAdjacentHTML('afterend', '<div style="font-size:11px;color:#16a34a;padding:0 2px 6px">⚡ Uit cache - wordt ververst...</div>');
-    console.log('[perf v239] stale cache getoond', initialArts.length);
+    updateHeaderCount(); renderArticles(); renderFilters(); if(typeof updateSourceLeds==='function') updateSourceLeds();
+    console.log('[perf] stale cache via BRON_PARSERS', initialArts.length);
   } else {
-    if(c) c.innerHTML='<div class="article">Bezig met laden... (9 bronnen) - eerste keer iets langer, daarna <1 sec</div>';
+    if(c) c.innerHTML='<div class="article">Bezig met laden... (10 bronnen)</div>';
     allArticles=[]; loadedSources=new Set(); updateHeaderCount();
   }
   const loadWithTimeout = async (b) => {
@@ -1136,9 +745,10 @@ async function refreshNews(){
     }
   });
   if(freshArts.length>0) allArticles=freshArts;
-  updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-  console.log('refreshNews klaar v275 FIX 0/0', allArticles.length, 'artikelen');
+  updateHeaderCount(); renderArticles(); renderFilters(); if(typeof updateSourceLeds==='function') updateSourceLeds();
+  console.log('refreshNews klaar v604 MODULAIR', allArticles.length, 'artikelen');
 }
+
 document.addEventListener('DOMContentLoaded', ()=>{
   loadState(); renderFilters(); saveState(); restorePanelState(); setupFilterHeader();
   document.getElementById('search-input')?.addEventListener('input', filterNews);
@@ -1563,3 +1173,21 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
     }
   });
 })();
+
+
+// expose for module
+window.closePanel = closePanel;
+window.loadState = loadState;
+window.saveState = saveState;
+window.openPanel = typeof openPanel !== 'undefined' ? openPanel : closePanel;
+// ===== v606 FOOTER - maakt bronselectie weer werkend =====
+window.closePanel = closePanel;
+window.openPanel = openPanel;
+window.togglePanel = typeof togglePanel !== 'undefined' ? togglePanel : openPanel;
+window.loadState = loadState;
+window.saveState = saveState;
+window.resetFilters = resetFilters;
+window.filterNews = filterNews;
+window.refreshNews = refreshNews;
+window.BRONNEN = BRONNEN;
+window.getAppState = () => state;
