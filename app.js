@@ -1,13 +1,13 @@
-// app.js v406 - FIX dubbele declaratie + originele UI + parsing/ modulair
-import { parseDeStentor } from './parsing/De Stentor.js';
+// app.js v408 - ORIGINELE UI + parsing/ ZONDER SPATIES - 2e versie zoals bedoeld
+import { parseDeStentor } from './parsing/DeStentor.js';
 import { parseRondOmmen } from './parsing/RondOmmen.js';
-import { parseOmmenCity } from './parsing/Ommen City.js';
+import { parseOmmenCity } from './parsing/OmmenCity.js';
 import { parseOudOmmen } from './parsing/OudOmmen.js';
-import { parseNatuurlijkOmmen } from './parsing/Natuurlijk Ommen.js';
-import { parseRTVOost } from './parsing/RTV Oost.js';
-import { parseRTVVechtdal } from './parsing/RTV Vechtdal.js';
-import { parseVechtdalCentraal } from './parsing/Vechtdal Centraal.js';
-import { parseGemeenteOmmen } from './parsing/Gemeente Ommen.js';
+import { parseNatuurlijkOmmen } from './parsing/NatuurlijkOmmen.js';
+import { parseRTVOost } from './parsing/RTVOost.js';
+import { parseRTVVechtdal } from './parsing/RTVVechtdal.js';
+import { parseVechtdalCentraal } from './parsing/VechtdalCentraal.js';
+import { parseGemeenteOmmen } from './parsing/GemeenteOmmen.js';
 import { parseNieuwsbrief } from './parsing/Nieuwsbrief.js';
 
 const BRON_PARSERS = {
@@ -22,22 +22,6 @@ const BRON_PARSERS = {
   'Gemeente Ommen': parseGemeenteOmmen,
   'Nieuwsbrief': parseNieuwsbrief
 };
-
-// Compat layer voor oude namen - gebruikt nieuwe modulaire parsers
-function parseVechtdalCentraalECHT(html){ try{ return BRON_PARSERS['Vechtdal Centraal'](html); }catch(e){ return []; } }
-function parseRTVVechtdalECHT(html){ try{ return BRON_PARSERS['RTV Vechtdal'](html); }catch(e){ return []; } }
-function parseRTVOostECHT(html){ try{ return BRON_PARSERS['RTV Oost'](html); }catch(e){ return []; } }
-function parseGemeenteOverview(html){ try{ return BRON_PARSERS['Gemeente Ommen'](html); }catch(e){ return []; } }
-function parseOostFull(html){ try{ return BRON_PARSERS['RTV Oost'](html); }catch(e){ return []; } }
-function parseVechtdalCentraalFallback(html){ try{ return BRON_PARSERS['Vechtdal Centraal'](html); }catch(e){ return []; } }
-function parseRTVVechtdalFull(html){ try{ return BRON_PARSERS['RTV Vechtdal'](html); }catch(e){ return []; } }
-function parseNieuwsbriefECHT(json){ try{ return BRON_PARSERS['Nieuwsbrief'](json); }catch(e){ return []; } }
-function parseRSSFull(xml, id){ 
-  const p = BRON_PARSERS[id];
-  if(p){ try{ return p(xml, id); }catch(e){ try{ return p(xml); }catch{} } }
-  return [];
-}
-
 
 const BRONNEN = [
   {id:'De Stentor', name:'De Stentor', sub:'regionaal (Ommen)'},
