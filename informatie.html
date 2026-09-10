@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informatie - Nieuw(s)Ommen</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f5f7fb;color:#1a1a1a;line-height:1.6;max-width:680px;margin:0 auto;width:100%;padding:0 16px}
+header{background:#0b5bd3;color:white;position:sticky;top:0;z-index:10;max-width:680px;margin:0 auto;width:100%;border-radius:0 0 14px 14px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header-inner{position:relative;display:flex;align-items:center;justify-content:center;padding:14px 16px;min-height:56px}
+header a.back-btn{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;background:#ffffff;color:#0b5bd3;text-decoration:none;line-height:1;padding:0;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.22);width:40px;height:40px;min-width:40px;min-height:40px;border:2px solid #ffffff}
+header a.back-btn:hover{background:#eef4ff}
+header h1{font-size:18px;font-weight:700;text-align:center;flex:1}
+.tabs-wrap{background:white;border-bottom:1px solid #e5e7eb;position:sticky;top:62px;z-index:9;max-width:680px;margin:8px auto 0;width:100%;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;white-space:nowrap}
+.tabs button{padding:8px 14px;border-radius:20px;border:1px solid #d1d5db;background:white;font-size:14px;cursor:pointer;flex-shrink:0}
+.tabs button.active{background:#0b5bd3;color:white;border-color:#0b5bd3}
+.tabs button.admin-tab{background:#fff7ed;border-color:#fb923c;color:#9a3412;display:none}
+.tabs button.admin-tab.visible{display:inline-flex;align-items:center;gap:6px}
+.tabs button.admin-tab.visible.active{background:#f97316;color:white;border-color:#f97316}
+.badge{font-size:10px;background:#f97316;color:white;padding:2px 6px;border-radius:10px;font-weight:800}
+.content{max-width:680px;margin:0 auto;padding:20px 0 40px;width:100%}
+.panel{display:none;background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.panel.active{display:block}
+h2{font-size:20px;margin-bottom:12px;color:#0b5bd3}
+h3{font-size:16px;margin:16px 0 8px;color:#111}
+p{margin-bottom:12px;color:#374151}
+ul{margin:8px 0 12px 20px;color:#374151}
+li{margin-bottom:6px}
+.source-grid{display:grid;grid-template-columns:1fr;gap:6px;margin:8px 0} /* ENIGE WIJZIGING 1: was 10px gap, 12px margin */
+@media(min-width:600px){.source-grid{grid-template-columns:1fr 1fr}}
+.source-card{border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;background:#fafafa;line-height:1.25} /* ENIGE WIJZIGING 2: was 12px padding, line-height 1.6 -> 1.25 */
+.source-card strong{display:block;color:#111;margin-bottom:2px;line-height:1.2} /* ENIGE WIJZIGING 3: was geen line-height */
+.source-card span{font-size:13px;color:#6b7280;line-height:1.2} /* ENIGE WIJZIGING 4: was geen line-height */
+.btn{padding:10px 16px;border-radius:8px;border:0;background:#0b5bd3;color:white;font-weight:600;cursor:pointer;margin:6px 6px 6px 0}
+.btn.secondary{background:#e5e7eb;color:#111}
+.btn.orange{background:#f97316}
+.result{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:12px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto}
+.admin-only{border:2px solid #fb923c;background:#fff7ed;border-radius:12px;padding:16px;margin-top:16px}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<header>
+<div class="header-inner">
+<a href="javascript:void(0)" onclick="if(history.length>1){history.back()}else{location.href='./'}" class="back-btn" title="Terug" aria-label="Terug">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block">
+<path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+</svg>
+</a>
+<h1>Nieuw(s)Ommen - Info</h1>
+</div>
+</header>
+
+<div class="tabs-wrap"><div class="tabs" id="tabs">
+<button data-tab="over" class="active">Over</button>
+<button data-tab="bronnen">Bronnen</button>
+<button data-tab="meldingen">Meldingen</button>
+<button data-tab="tips">Filters & Tips</button>
+<button data-tab="privacy">Privacy & Contact</button>
+<button data-tab="beheer" class="admin-tab visible" id="adminTab" style="display:inline-flex;align-items:center;gap:6px">Beheer <span class="badge">ADMIN</span></button>
+</div></div>
+
+<div class="content">
+<div class="panel active" id="panel-over">
+<h2>Over Nieuw(s)Ommen</h2>
+<p>Nieuw(s)Ommen bundelt al het lokale nieuws uit Ommen en omgeving op één plek. Geen losse sites meer afstruinen, alles overzichtelijk bij elkaar.</p>
+<p>De app ververst automatisch en toont de laatste artikelen bovenaan. Je kunt filteren op bron en zoeken op onderwerp.</p>
+<h3>Hoe werkt het?</h3>
+<ul>
+<li>We lezen de RSS-feeds en websites van 9 lokale bronnen uit</li>
+<li>Nieuwe artikelen verschijnen automatisch in de app</li>
+<li>Je kiest zelf welke bronnen je wilt zien</li>
+<li>Met meldingen aan krijg je direct een push bij nieuwe berichten</li>
+<li>Je ontvangt alleen pushmeldingen van geselecteerde bronnen</li>
+</ul>
+</div>
+
+<div class="panel" id="panel-bronnen">
+<h2>Bronnen</h2>
+<p>We verzamelen nieuws uit deze 9 betrouwbare lokale bronnen:</p>
+<div class="source-grid">
+<div class="source-card"><strong>De Stentor</strong><span>Regionaal dagblad - Ommen sectie</span></div>
+<div class="source-card"><strong>Gemeente Ommen</strong><span>Officiële berichten gemeente</span></div>
+<div class="source-card"><strong>Natuurlijk Ommen</strong><span>Evenementen en uit-tips</span></div>
+<div class="source-card"><strong>Ommen City</strong><span>Lokaal nieuws & ondernemers</span></div>
+<div class="source-card"><strong>OudOmmen</strong><span>Historie en verhalen uit Ommen</span></div>
+<div class="source-card"><strong>RondOmmen</strong><span>Nieuws uit de regio</span></div>
+<div class="source-card"><strong>RTV Oost</strong><span>Provinciaal nieuws Overijssel</span></div>
+<div class="source-card"><strong>RTV Vechtdal</strong><span>Lokaal Vechtdal nieuws</span></div>
+<div class="source-card"><strong>Vechtdal Centraal</strong><span>Nieuws uit het Vechtdal</span></div>
+</div>
+<p style="margin-top:16px">Tip: via Filters kun je bronnen aan/uit zetten. Sta je alles aan (9/9) dan zie je alles.</p>
+</div>
+
+<div class="panel" id="panel-meldingen">
+<h2>Meldingen instellen</h2>
+<p>Wil je direct weten als er nieuws is? Zet meldingen aan via het belletje rechtsboven in de app.</p>
+<h3>Zo werkt het:</h3>
+<ul>
+<li>Klik op het belletje 🔔</li>
+<li>Geef toestemming voor meldingen</li>
+<li>Je krijgt nu een pushmelding bij nieuwe artikelen</li>
+<li>Klik op de melding om direct naar het artikel te gaan</li>
+</ul>
+<h3>Geen meldingen?</h3>
+<ul>
+<li>Controleer of je toestemming hebt gegeven in je browser/telefoon instellingen</li>
+<li>Zet het belletje uit en weer aan</li>
+<li>Op iPhone: voeg de site toe aan je beginscherm voor betere meldingen</li>
+</ul>
+</div>
+
+<div class="panel" id="panel-tips">
+<h2>Filters & Tips</h2>
+<h3>Filteren op bron</h3>
+<p>Via het filter icoon kun je kiezen welke van de 9 bronnen je wilt zien. Handig als je alleen gemeente nieuws of alleen RTV Oost wilt.</p>
+<h3>9/9 bronnen aan?</h3>
+<p>Als je alle bronnen aan hebt staan, zie je al het nieuws. De app onthoudt je keuze, ook na het sluiten.</p>
+<h3>Installeren als app</h3>
+<p>Op je telefoon: open het menu van je browser en kies "Toevoegen aan beginscherm" of "Installeren". Dan werkt Nieuw(s)Ommen als een echte app, ook offline.</p>
+</div>
+
+<div class="panel" id="panel-privacy">
+<h2>Privacy & Contact</h2>
+<h3>Privacy</h3>
+<p>Nieuw(s)Ommen plaatst geen tracking cookies, volgt je niet en verkoopt geen data. We slaan alleen je filter voorkeur lokaal op je eigen apparaat op (in je browser). Push abonnementen worden alleen gebruikt om je meldingen te sturen.</p>
+<h3>Disclaimer</h3>
+<p>Artikelen zijn afkomstig van externe bronnen. Wij zijn niet verantwoordelijk voor de inhoud van die bronnen.</p>
+<h3>Contact & Ideeën</h3>
+<p>Heb je een tip, mis je een bron of heb je een idee? Mail naar <a href="mailto:leeuw008@gmail.com">leeuw008@gmail.com</a></p>
+<p>We horen graag van je!</p>
+</div>
+
+<div class="panel" id="panel-beheer">
+<h2>Beheer & Diagnose <span class="badge">ALLEEN VOOR ADMIN</span></h2>
+<div class="admin-only">
+<p><strong>Ingelogd als admin:</strong> <span id="adminEmail">-</span></p>
+<p id="adminStatus" style="font-size:13px;color:#6b7280">Controleren...</p>
+<h3>1. Push status</h3>
+<p id="pushStatus">Controleren...</p>
+<button class="btn" id="btnLocal">Test lokale melding</button>
+<button class="btn orange" id="btnPush">Test echte push via worker</button>
+<button class="btn secondary" id="btnCheckDebug">Check /debug</button>
+<h3 style="margin-top:20px">2. Service Worker</h3>
+<p id="swStatus">Controleren...</p>
+<h3>Resultaat</h3>
+<div class="result" id="result">Nog geen test uitgevoerd.</div>
+</div>
+</div>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('.tabs button');
+const panels = document.querySelectorAll('.panel');
+tabs.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    tabs.forEach(b=>b.classList.remove('active'));
+    panels.forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+function getEmail(){
+  try{
+    const keys=['ommen_current_user_email','user_email','email','auth_email','leeuw008_email'];
+    for(const k of keys){
+      const v=localStorage.getItem(k)||sessionStorage.getItem(k);
+      if(v && v.toLowerCase().includes('@')) return v;
+    }
+    if(window.ommenCurrentUser && window.ommenCurrentUser.email) return window.ommenCurrentUser.email;
+  }catch(e){}
+  return null;
+}
+let authFailCount = 0;
+async function checkAdmin(){
+  const adminTab=document.getElementById('adminTab');
+  const adminEmailEl=document.getElementById('adminEmail');
+  const adminStatus=document.getElementById('adminStatus');
+  adminTab.classList.add('visible');
+  adminTab.style.display='inline-flex';
+  let email=getEmail();
+  if(authFailCount < 3){
+    try{
+      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
+      if(token){
+        const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/auth/me',{headers:{'Authorization':'Bearer '+token}});
+        if(r.status===401){authFailCount++;} 
+        else if(r.ok){
+          const j=await r.json();
+          if(j.email) email=j.email;
+          authFailCount=0;
+        }
+      }
+    }catch(e){ authFailCount++; }
+  }
+  adminEmailEl.textContent=email||'(geen email gevonden)';
+  if(email && email.toLowerCase()==='leeuw008@gmail.com'){
+    adminStatus.textContent='Admin toegang verleend ✓';
+  }else{
+    adminStatus.textContent='Tab blijft zichtbaar voor debug (email: '+(email||'onbekend')+') - auth fails: '+authFailCount;
+  }
+  initAdmin();
+}
+function initAdmin(){
+  const pushStatus=document.getElementById('pushStatus');
+  const swStatus=document.getElementById('swStatus');
+  const result=document.getElementById('result');
+  try{
+    pushStatus.textContent='Permission: '+Notification.permission;
+  }catch(e){pushStatus.textContent='Notification API niet beschikbaar';}
+  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+    swStatus.textContent='Service Worker actief ✓';
+  }else{
+    swStatus.textContent='Service Worker: controleren...';
+    navigator.serviceWorker.ready.then(()=>{swStatus.textContent='Service Worker actief ✓';}).catch(()=>{swStatus.textContent='Service Worker niet actief';});
+  }
+  document.getElementById('btnLocal').onclick=async()=>{
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      await reg.showNotification('Nieuw(s)Ommen - Test',{body:'Lokale test melding werkt! ✓',icon:'./icons/icon-192x192.png',badge:'./icons/badge-lion-96x96.png'});
+      result.textContent='Lokale notificatie verstuurd ✓\n(Als je niets ziet, check browser toestemming)';
+    }catch(e){result.textContent='Fout lokale notificatie: '+e.message;}
+  };
+  document.getElementById('btnPush').onclick=async()=>{
+    result.textContent='Echte push versturen via worker...';
+    try{
+      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/test?source=Nieuwsbrief&title=Test%20Ommen%20Nieuwsbrief&body=Dit%20is%20een%20echte%20push%20test%20via%20Nieuwsbrief');
+      const txt=await r.text();
+      result.textContent='Response van /test:\n'+txt;
+    }catch(e){result.textContent='Fout bij /test: '+e.message;}
+  };
+  document.getElementById('btnCheckDebug').onclick=async()=>{
+    result.textContent='Debug ophalen...';
+    try{
+      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/debug');
+      const j=await r.json();
+      result.textContent='Debug info:\n'+JSON.stringify(j,null,2);
+    }catch(e){result.textContent='Fout debug: '+e.message;}
+  };
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  checkAdmin();
+  setTimeout(checkAdmin,1000);
+});
+</script>
+</body>
+</html>
