@@ -1,4 +1,4 @@
-// app.js v408 - ORIGINELE UI + parsing/ ZONDER SPATIES - 2e versie zoals bedoeld
+// app.js v409-RTVVechtdal-fix - ORIGINELE UI + parsing/ ZONDER SPATIES - 2e versie zoals bedoeld
 import { parseDeStentor } from './parsing/DeStentor.js';
 import { parseRondOmmen } from './parsing/RondOmmen.js';
 import { parseOmmenCity } from './parsing/OmmenCity.js';
@@ -44,7 +44,7 @@ const BRON_URLS = {
   'OudOmmen': {url:'https://weblog.oudommen.nl/feed/', homepage:'https://weblog.oudommen.nl/'},
   'RondOmmen': {url:'https://www.rondommen.nl/feed/', homepage:'https://www.rondommen.nl/'},
   'RTV Oost': {url:'https://www.oost.nl/nieuws/vechtdal', homepage:'https://www.oost.nl/nieuws/vechtdal', type:'oost', fallback:'https://www.oost.nl/nieuws/vechtdal'},
-  'RTV Vechtdal': {url:'https://rtvvechtdal.nl/feed/', homepage:'https://rtvvechtdal.nl/'},
+  'RTV Vechtdal': {url:'https://www.rtvvechtdal.nl/', homepage:'https://www.rtvvechtdal.nl/', fallback:'https://rtvvechtdal.nl/feed/', type:'rtvvechtdal'},
   'Vechtdal Centraal': {url:'https://www.vechtdalcentraal.nl/feed/', homepage:'https://www.vechtdalcentraal.nl/', fallback:'https://www.vechtdalcentraal.nl/'},
   'Nieuwsbrief': {url:'https://ommen-push-v2.leeuw008.workers.dev/newsletter/feed', homepage:'https://nieuwommen.leeuw008.nl/', type:'nieuwsbrief'},
 };
