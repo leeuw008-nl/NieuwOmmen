@@ -80,6 +80,7 @@ function extractGemeenteDate(html){
   }
   return null;
 }
+
 function extractDescAfter(pos, clean){
   const slice = clean.substring(pos, pos+1500);
   const re = /<(p|div)[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -97,6 +98,7 @@ function extractDescAfter(pos, clean){
   }
   return ' [...]';
 }
+
 function parseGemeenteOverview(html){
   const max = MAX_PER_BRON['Gemeente Ommen'];
   let clean = html.replace(/<!--[\s\S]*?-->/g,' ');
@@ -116,138 +118,7 @@ function parseGemeenteOverview(html){
   }
   return results.slice(0,max);
 }
-function getGemeenteCache(){
-  try{ 
-    const raw = localStorage.getItem('ommen_gemeente_cache');
-    if(!raw) return {};
-    const obj = JSON.parse(raw);
-    // v291 auto-migratie: als cache alleen datum zonder tijd bevat, wis hem zodat echte tijd opnieuw gehaald wordt
-    let hasMidnight=false;
-    for(const k in obj){
-      try{
-        const d=new Date(obj[k].iso);
-        if(d.getHours()===0 && d.getMinutes()===0) { hasMidnight=true; break; }
-      }catch{}
-    }
-    if(hasMidnight){
-      console.log('[v291] oude gemeente cache met 00:00 gevonden -> wissen voor echte tijd');
-      localStorage.removeItem('ommen_gemeente_cache');
-      return {};
-    }
-    return obj;
-  }catch{ return {}; }
-}
-function setGemeenteCache(cache){
-  localStorage.setItem('ommen_gemeente_cache', JSON.stringify(cache));
-}
-function enrichGemeenteWithDetail(arts){
-  let cache=getGemeenteCache();
-  const now=Date.now();
-  const pollingNow=new Date();
-  const CACHE_TTL=1000*60*60*2;
-  // v288 FIX: wis oude cache entries met 00:00 (middernacht) - die verbergen echte tijd
-  let cleaned=false;
-  for(const k in cache){
-    try{
-      const d=new Date(cache[k].iso);
-      if(d.getHours()===0 && d.getMinutes()===0 && d.getSeconds()===0){
-        delete cache[k];
-        cleaned=true;
-      }
-    }catch{}
-  }
-  if(cleaned){ setGemeenteCache(cache); console.log('[v288] gemeente cache middernacht opgeschoond'); }
-  console.log('[v293] start enrich check voor', arts.length, 'artikelen, cache size', Object.keys(cache).length);
-  const needEnrich=arts.filter(a=>{
-    const cached=cache[a.link];
-    if(cached && (now - cached.ts) < CACHE_TTL && cached.iso){
-      const cd=new Date(cached.iso);
-      if(cd.getHours()!==0 || cd.getMinutes()!==0) return false;
-    }
-    if(a.pubDate && !isNaN(a.pubDate.getTime()) && (a.pubDate.getHours()!==0 || a.pubDate.getMinutes()!==0)) return false;
-    return true;
-  }).slice(0,10);
-  if(needEnrich.length===0){
-    // v293 FIX: als we niks hoeven te enrichen, gebruik dan de echte tijden uit cache (niet de middernacht uit overzicht)
-    console.log('[v293] geen enrich nodig, gebruik cache tijden voor', arts.length, 'artikelen');
-    arts.forEach(a=>{
-      const cached=cache[a.link];
-      if(cached && cached.iso){
-        const cd=new Date(cached.iso);
-        if(!isNaN(cd.getTime()) && (cd.getHours()!==0 || cd.getMinutes()!==0)){
-          a.pubDate=cd;
-          console.log('[v293] cache tijd gebruikt voor', a.title.slice(0,30), cd.toLocaleString('nl-NL'));
-        }
-      }
-      if(a.pubDate && !isNaN(a.pubDate.getTime()) && (a.pubDate.getHours()!==0 || a.pubDate.getMinutes()!==0)){
-        cache[a.link]={iso:a.pubDate.toISOString(), ts:now};
-      }
-    });
-    setGemeenteCache(cache);
-    return arts;
-  }
-  await Promise.allSettled(needEnrich.map(async (a)=>{
-    try{
-      // v293: gebruik allorigins direct voor gemeente details om KV block te omzeilen
-      let html=null;
-      try{
-        const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.link)}&t=${Date.now()}`, {cache:'no-store'});
-        if(r.ok){
-          const j = await r.json();
-          if(j.contents && j.contents.length>500){
-            html=j.contents;
-            console.log('[v293] allorigins OK voor', a.link.slice(-30));
-          }
-        }
-      }catch(e){ console.log('[v293] allorigins fail', e.message); }
-      if(!html){
-        html = await fetchViaWorker(a.link);
-      }
-      const realDate = extractGemeenteDate(html);
-      if(realDate && (realDate.getHours()!==0 || realDate.getMinutes()!==0)){
-        a.pubDate=realDate;
-        cache[a.link]={iso:realDate.toISOString(), ts:now};
-      }else if(realDate){
-        const d=new Date(realDate);
-        d.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
-        a.pubDate=d;
-        cache[a.link]={iso:d.toISOString(), ts:now};
-      }else{
-        const fallback = a.pubDate && !isNaN(a.pubDate.getTime()) ? new Date(a.pubDate) : new Date();
-        if(fallback.getHours()===0 && fallback.getMinutes()===0){
-          fallback.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
-        }
-        a.pubDate=fallback;
-        cache[a.link]={iso:fallback.toISOString(), ts:now};
-      }
-    }catch(e){
-      if(a.pubDate && a.pubDate.getHours()===0){
-        const fb=new Date(a.pubDate);
-        fb.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
-        a.pubDate=fb;
-      }
-    }
-  }));
-  arts.forEach(a=>{
-    // v293: alleen echte tijd bewaren, geen fake polling tijd - als geen echte tijd gevonden, laat middernacht staan (wordt later echte tijd na retry)
-    if(!a.pubDate || isNaN(a.pubDate.getTime())){
-      console.log('[v293] geen datum gevonden voor', a.link);
-    } else if(a.pubDate.getHours()===0 && a.pubDate.getMinutes()===0 && a.pubDate.getSeconds()===0){
-      console.log('[v293] nog steeds middernacht na detail fetch voor', a.link, '- behoud middernacht, retry later');
-    } else {
-      console.log('[v293] echte tijd gevonden voor', a.title.slice(0,30), a.pubDate.toLocaleString('nl-NL'));
-    }
-    if(a.pubDate && !isNaN(a.pubDate.getTime()) && (a.pubDate.getHours()!==0 || a.pubDate.getMinutes()!==0)){
-      cache[a.link]={iso:a.pubDate.toISOString(), ts:now};
-    }
-  });
-  setGemeenteCache(cache);
-  return arts;
-}
 
 export function parseGemeenteOmmen(html){
   return parseGemeenteOverview(html);
 }
-
-// Export enrich for app.js if it wants to use it
-export { enrichGemeenteWithDetail };
