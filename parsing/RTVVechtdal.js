@@ -93,7 +93,8 @@ function parseRTVVechtdalFallback(html){
   const items=[]; const seen=new Set(); let m;
   const patterns=[
     /<h[2-3][^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([^<]{8,150})<\/a>/gi,
-    /<article[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([^<]{8,150})<\/a>/gi
+    /<article[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([^<]{8,150})<\/a>/gi,
+    /<div class="[^"]*title[^"]*"[^>]*>\s*<a href="([^"]+)">([^<]{8,150})<\/a>/gi
   ];
   for(const re of patterns){
     while((m=re.exec(html))!==null && items.length<20){
@@ -107,53 +108,14 @@ function parseRTVVechtdalFallback(html){
   return items;
 }
 
-export async function parseRTVVechtdal(htmlOrXml){
-  console.log('[RTV Vechtdal] parser ontvangt len', htmlOrXml?.length, 'isRSS', htmlOrXml?.includes('<rss')||htmlOrXml?.includes('<item'));
-  
-  // 1. Probeer RSS (exact oude code)
-  if(htmlOrXml.includes('<rss')||htmlOrXml.includes('<item')||htmlOrXml.includes('<feed')||htmlOrXml.includes('<entry')){
+export function parseRTVVechtdal(htmlOrXml){
+  console.log('[RTV Vechtdal] parser ontvangt len', htmlOrXml?.length);
+  if(htmlOrXml.includes('<rss')||htmlOrXml.includes('<item')||htmlOrXml.includes('<feed')){
     const rss = parseRSSFull(htmlOrXml,'RTV Vechtdal');
-    console.log('[RTV Vechtdal] RSS parsing resultaat', rss.length);
     if(rss.length>0) return rss;
   }
-  
-  // 2. Probeer oude ECHT HTML parser (allmode_date) - exact oude code
   let arts = parseRTVVechtdalFull(htmlOrXml);
-  console.log('[RTV Vechtdal] ECHT parser resultaat', arts.length);
   if(arts.length>0) return arts;
-  
-  // 3. Probeer generieke fallback
   arts = parseRTVVechtdalFallback(htmlOrXml);
-  console.log('[RTV Vechtdal] fallback parser resultaat', arts.length);
-  if(arts.length>0) return arts;
-  
-  // 4. SELF-HEALING: als we alleen feed kregen die leeg is, fetch zelf de homepage (zoals oude app.js v293 deed)
-  console.log('[RTV Vechtdal] feed leeg, probeer zelf homepage te fetchen zoals oude v293...');
-  try{
-    // Probeer via allorigins (om CORS te omzeilen)
-    const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://www.rtvvechtdal.nl/')}&t=${Date.now()}`, {cache:'no-store'});
-    if(r.ok){
-      const j = await r.json();
-      if(j.contents && j.contents.length>1000){
-        console.log('[RTV Vechtdal] homepage via allorigins len', j.contents.length);
-        let arts2 = parseRTVVechtdalFull(j.contents);
-        if(arts2.length===0) arts2 = parseRTVVechtdalFallback(j.contents);
-        console.log('[RTV Vechtdal] homepage parsing resultaat', arts2.length);
-        if(arts2.length>0) return arts2;
-      }
-    }
-  }catch(e){ console.log('[RTV Vechtdal] allorigins fail', e.message); }
-  
-  try{
-    const r2 = await fetch('https://www.rtvvechtdal.nl/', {cache:'no-store'});
-    if(r2.ok){
-      const html2 = await r2.text();
-      console.log('[RTV Vechtdal] direct homepage len', html2.length);
-      let arts2 = parseRTVVechtdalFull(html2);
-      if(arts2.length===0) arts2 = parseRTVVechtdalFallback(html2);
-      if(arts2.length>0) return arts2;
-    }
-  }catch(e){ console.log('[RTV Vechtdal] direct fetch fail', e.message); }
-  
-  return [];
+  return arts;
 }
