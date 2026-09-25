@@ -377,7 +377,7 @@ function renderFilters(){
 
 
 function updateHeaderCount(){
-  const aan = BRONNEN.filter(b => state[b.id]?.aan === true).length;
+  const aan = Object.values(state).filter(s=>s.aan).length;
   const countEl = document.getElementById('header-count');
   if(countEl){
     countEl.textContent = `${loadedSources.size || aan} v/d ${BRONNEN.length} bronnen`;
@@ -416,11 +416,8 @@ function setupFilterHeader(){
     if(e.target.closest('#bell-slot') || e.target.closest('#push-bell-btn')) return;
     if(e.target.id==='btn-all' || e.target.closest('#btn-all')){
       e.stopPropagation();
-      const allOn = BRONNEN.every(b => state[b.id]?.aan === true);
-      BRONNEN.forEach(b => {
-        if(!state[b.id]) state[b.id] = {aan:true, vandaag:false, scope:'gemeente'};
-        state[b.id].aan = !allOn;
-      });
+      const allOn = Object.values(state).every(s=>s.aan);
+      BRONNEN.forEach(b=>state[b.id].aan = !allOn);
       saveState(); renderFilters(); filterNews(); updateSourceLeds(); return;
     }
     const p = document.getElementById('source-panel');
