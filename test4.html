@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ommen Push - RESET & TEST v16.4</title>
+<title>Ommen Push - RESET & TEST v16.5</title>
 <style>
 body{font-family:system-ui;background:#111;color:#eee;padding:20px;max-width:800px;margin:0 auto}
 .card{background:#222;padding:15px;border-radius:10px;margin:10px 0;border-left:4px solid #444}
@@ -192,18 +192,20 @@ async function sendTest(){
   }
 }
 
+async function readResponse(r){
+  const contentType=r.headers.get('content-type')||'(geen content-type)';
+  const body=await r.text();
+  let json=null; try{json=JSON.parse(body);}catch{}
+  return {status:r.status,contentType,body,json};
+}
 async function checkServer(){
-  const out = document.getElementById('serverOut');
-  out.textContent = 'Laden...';
+  const out=document.getElementById('serverOut');
+  out.textContent='Laden...';
   try{
-    const r1 = await fetch(WORKER+'/');
-    const j1 = await r1.json();
-    const r2 = await fetch(WORKER+'/subs');
-    const j2 = await r2.json();
-    out.textContent = `Worker: ${JSON.stringify(j1, null, 2)}\n\nSubs: ${JSON.stringify(j2, null, 2)}`;
-  }catch(e){
-    out.textContent = 'Fout: '+e.message;
-  }
+    const r1=await readResponse(await fetch(WORKER+'/',{cache:'no-store'}));
+    const r2=await readResponse(await fetch(WORKER+'/subs',{cache:'no-store'}));
+    out.textContent='WORKER /\n'+JSON.stringify(r1,null,2)+'\n\nWORKER /subs\n'+JSON.stringify(r2,null,2);
+  }catch(e){out.textContent='Fout: '+e.message;}
 }
 
 checkSW();
