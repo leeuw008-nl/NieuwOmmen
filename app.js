@@ -1078,7 +1078,7 @@ async function refreshNews(){
   console.log('refreshNews klaar v275 FIX 0/0', allArticles.length, 'artikelen');
 }
 document.addEventListener('DOMContentLoaded', ()=>{
-  loadState(); renderFilters(); saveState(); restorePanelState(); setupFilterHeader();
+  loadState(); renderFilters(); restorePanelState(); setupFilterHeader();
   document.getElementById('search-input')?.addEventListener('input', filterNews);
   setTimeout(()=>refreshNews(), 200);
 });
@@ -1415,7 +1415,7 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
       if(oldAuthSlot) oldAuthSlot.remove();
       await checkLogin();
       if(currentUser){
-        await loadFromCloud(true);
+        await loadFromCloud(false);
         startLiveSync();
         ensureNotificationPermission();
       }
