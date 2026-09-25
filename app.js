@@ -416,7 +416,7 @@ function setupFilterHeader(){
     if(e.target.closest('#bell-slot') || e.target.closest('#push-bell-btn')) return;
     if(e.target.id==='btn-all' || e.target.closest('#btn-all')){
       e.stopPropagation();
-      const allOn = Object.values(state).every(s=>s.aan);
+      const allOn = BRONNEN.every(b => state[b.id]?.aan === true);
       BRONNEN.forEach(b=>state[b.id].aan = !allOn);
       saveState(); renderFilters(); filterNews(); updateSourceLeds(); return;
     }
