@@ -227,10 +227,26 @@ function initAdmin(){
   document.getElementById('btnPush').onclick=async()=>{
     result.textContent='Echte push versturen via worker...';
     try{
-      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/test?source=Nieuwsbrief&title=Test%20Ommen%20Nieuwsbrief&body=Dit%20is%20een%20echte%20push%20test%20via%20Nieuwsbrief');
+      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
+      if(!token){
+        result.textContent='Geen ingelogde admin-sessie gevonden. Log eerst in.';
+        return;
+      }
+      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/api/admin/test-push',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          title:'Test Ommen Nieuwsbrief',
+          source:'Nieuwsbrief',
+          link:'https://nieuwommen.leeuw008.nl/',
+          body:'Dit is een echte push test via Nieuwsbrief',
+          filter:true,
+          isReal:false
+        })
+      });
       const txt=await r.text();
-      result.textContent='Response van /test:\n'+txt;
-    }catch(e){result.textContent='Fout bij /test: '+e.message;}
+      result.textContent='Response van /api/admin/test-push:\n'+txt;
+    }catch(e){result.textContent='Fout bij echte push: '+e.message;}
   };
   document.getElementById('btnCheckDebug').onclick=async()=>{
     result.textContent='Debug ophalen...';
