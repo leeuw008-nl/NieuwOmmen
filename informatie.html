@@ -225,20 +225,28 @@ function initAdmin(){
     }catch(e){result.textContent='Fout lokale notificatie: '+e.message;}
   };
   document.getElementById('btnPush').onclick=async()=>{
-    result.textContent='Echte push + diagnose uitvoeren...';
+    result.textContent='Echte push versturen via worker...';
     try{
       const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
       if(!token){
         result.textContent='Geen ingelogde admin-sessie gevonden. Log eerst in.';
         return;
       }
-      const base='https://ommen-push-v2.lee008.workers.dev';
-      const r=await fetch(base+'/test?mode=no-payload&cb='+Date.now(),{cache:'no-store'});
-      const testTxt=await r.text();
-      const debugTxt=await fetch(base+'/debug?cb='+Date.now(),{cache:'no-store'}).then(x=>x.text()).catch(e=>'debug fout: '+e.message);
-      const lastTxt=await fetch(base+'/last?cb='+Date.now(),{cache:'no-store'}).then(x=>x.text()).catch(e=>'last fout: '+e.message);
-      result.textContent='No-payload test:\\n'+testTxt+'\\n\\nDebug:\\n'+debugTxt+'\\n\\nLaatste push:\\n'+lastTxt;
-    }catch(e){result.textContent='Fout bij echte push/diagnose: '+e.message;}
+      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/api/admin/test-push',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          title:'Test Ommen Nieuwsbrief',
+          source:'Nieuwsbrief',
+          link:'https://nieuwommen.leeuw008.nl/',
+          body:'Dit is een echte push test via Nieuwsbrief',
+          filter:true,
+          isReal:false
+        })
+      });
+      const txt=await r.text();
+      result.textContent='Response van /api/admin/test-push:\n'+txt;
+    }catch(e){result.textContent='Fout bij echte push: '+e.message;}
   };
   document.getElementById('btnCheckDebug').onclick=async()=>{
     result.textContent='Debug ophalen...';
