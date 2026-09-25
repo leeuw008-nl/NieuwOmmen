@@ -140,6 +140,19 @@ li{margin-bottom:6px}
 <p id="adminStatus" style="font-size:13px;color:#6b7280">Controleren...</p>
 <h3>1. Push status</h3>
 <p id="pushStatus">Controleren...</p>
+<label for="pushTestSource" style="display:block;margin:8px 0 4px;font-weight:600">Bron voor testpush</label>
+<select id="pushTestSource" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:white;font-size:14px;margin-bottom:6px">
+<option value="De Stentor">De Stentor</option>
+<option value="Gemeente Ommen">Gemeente Ommen</option>
+<option value="Natuurlijk Ommen">Natuurlijk Ommen</option>
+<option value="Ommen City">Ommen City</option>
+<option value="OudOmmen">OudOmmen</option>
+<option value="RondOmmen">RondOmmen</option>
+<option value="RTV Oost">RTV Oost</option>
+<option value="RTV Vechtdal">RTV Vechtdal</option>
+<option value="Vechtdal Centraal">Vechtdal Centraal</option>
+<option value="Nieuwsbrief">Nieuwsbrief</option>
+</select>
 <button class="btn" id="btnLocal">Test lokale melding</button>
 <button class="btn orange" id="btnPush">Test echte push via worker</button>
 <button class="btn secondary" id="btnCheckDebug">Check /debug</button>
@@ -236,10 +249,10 @@ function initAdmin(){
         method:'POST',
         headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
         body:JSON.stringify({
-          title:'Test Ommen Nieuwsbrief',
-          source:'Nieuwsbrief',
+          title:'Test Ommen '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
+          source:(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
           link:'https://nieuwommen.leeuw008.nl/',
-          body:'Dit is een echte push test via Nieuwsbrief',
+          body:'Dit is een echte push test via '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
           filter:true,
           isReal:false
         })
