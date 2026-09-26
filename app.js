@@ -1189,6 +1189,23 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
 
 let cloudSaveChain = Promise.resolve();
   let cloudSaveInFlight = false;
+
+  function showSyncDiag(message, ok=false){
+    try{
+      let el=document.getElementById('sync-diagnostic');
+      if(!el){
+        el=document.createElement('div');
+        el.id='sync-diagnostic';
+        el.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:100000;background:#111827;color:white;padding:10px 12px;border-radius:10px;font:12px/1.45 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:pre-wrap';
+        document.body.appendChild(el);
+      }
+      el.style.background=ok?'#065f46':'#991b1b';
+      el.textContent=message;
+      clearTimeout(el._timer);
+      el._timer=setTimeout(()=>el.remove(),8000);
+    }catch{}
+  }
+
   async function saveToCloud(){
     if(!authToken || !SYNC_ENABLED) return false;
 
@@ -1211,12 +1228,15 @@ let cloudSaveChain = Promise.resolve();
           lastRemoteUpdated=updated;
           localStorage.setItem('ommen_last_sync',String(updated));
           console.log('[sync] saved ok, updated:',updated);
+          showSyncDiag('SYNC OPSLAAN OK\\nHTTP '+r.status+'\\nupdated: '+updated+'\\nbronnen: '+Object.values(JSON.parse(snapshot)).filter(x=>x&&x.aan).length,true);
           return true;
         }
         console.warn('[sync] save failed',j);
+        showSyncDiag('SYNC OPSLAAN MISLUKT\\nHTTP '+r.status+'\\nantwoord: '+JSON.stringify(j));
         return false;
       }catch(e){
         console.log('Sync save fail',e.message);
+        showSyncDiag('SYNC OPSLAAN FOUT\\n'+e.message);
         return false;
       }finally{
         cloudSaveInFlight=false;
@@ -1247,6 +1267,7 @@ let cloudSaveChain = Promise.resolve();
       }
       const data = await r.json();
       console.log('[sync] load data', {hasState: !!data.state, updated: data.updated, keys: data.state?Object.keys(data.state).length:0});
+      showSyncDiag('SYNC OPHALEN OK\\nHTTP '+r.status+'\\nupdated: '+(data.updated||'geen')+'\\nbronnen: '+(data.state?Object.values(data.state).filter(x=>x&&x.aan).length:'geen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend'),true);
       if(!data.state){
         console.log('[sync] no remote state');
         return false;
