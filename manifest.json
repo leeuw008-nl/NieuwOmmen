@@ -1,6 +1,6 @@
 {
   "name": "Nieuw(s)Ommen",
-  "short_name": "OmmenNieuws",
+  "short_name": "Nieuw(s)Ommen",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b5bd3",
