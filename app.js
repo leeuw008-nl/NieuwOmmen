@@ -1245,6 +1245,9 @@ let cloudSaveChain = Promise.resolve();
     return cloudSaveChain;
   }
 
+  // Expose saveToCloud so saveState() can trigger the automatic cloud save.
+  window.saveToCloud = saveToCloud;
+
   async function loadFromCloud(force=false){
     if(!authToken){
       console.log('[sync] load skipped, no authToken');
