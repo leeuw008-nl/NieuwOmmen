@@ -1325,7 +1325,10 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
           const origText=btn.textContent;
           btn.textContent='Bezig...'; btn.disabled=true;
           try{
-            await saveToCloud();
+            // "Sync nu" haalt de centrale selectie op.
+            // De gewijzigde selectie wordt via saveState()/saveToCloud() al automatisch opgeslagen.
+            // Niet eerst saveToCloud() uitvoeren: op een tweede apparaat zou daarmee de
+            // lokale (mogelijk oudere) selectie de centrale selectie overschrijven.
             const ok = await loadFromCloud(true);
             btn.textContent='✓ Gesynced!';
             btn.style.background='#16a34a';
