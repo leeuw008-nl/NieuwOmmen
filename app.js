@@ -1180,11 +1180,11 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
 
   let pendingSave = false;
   async function saveToCloud(){
-    if(!authToken || !SYNC_ENABLED) return;
+    if(!authToken || !SYNC_ENABLED) return false;
     if(isSyncing){
       pendingSave = true;
       console.log('[sync] save queued, isSyncing true');
-      return;
+      return false;
     }
     try{
       isSyncing = true;
@@ -1197,10 +1197,12 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
         lastRemoteUpdated = updated;
         localStorage.setItem('ommen_last_sync', String(updated));
         console.log('[sync] saved ok, updated:', updated);
+        return true;
       } else {
         console.warn('[sync] save failed', j);
+        return false;
       }
-    }catch(e){ console.log('Sync save fail', e.message); }
+    }catch(e){ console.log('Sync save fail', e.message); return false; }
     finally{ 
       isSyncing = false; 
       if(pendingSave){
@@ -1325,11 +1327,11 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
           const origText=btn.textContent;
           btn.textContent='Bezig...'; btn.disabled=true;
           try{
-            // "Sync nu" haalt de centrale selectie op.
-            // De gewijzigde selectie wordt via saveState()/saveToCloud() al automatisch opgeslagen.
-            // Niet eerst saveToCloud() uitvoeren: op een tweede apparaat zou daarmee de
-            // lokale (mogelijk oudere) selectie de centrale selectie overschrijven.
-            const ok = await loadFromCloud(true);
+            // "Sync nu" is bewust een PUSH vanaf dit apparaat:
+            // eerst de huidige bronselectie naar de centrale opslag schrijven.
+            // Andere apparaten halen deze selectie via hun live-sync op.
+            const ok = await saveToCloud();
+            if(!ok) throw new Error('Opslaan naar de centrale sync is mislukt');
             btn.textContent='✓ Gesynced!';
             btn.style.background='#16a34a';
             // Toast bevestiging
