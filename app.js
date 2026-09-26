@@ -300,6 +300,7 @@ function loadState(){
     else { BRONNEN.forEach(b=> state[b.id] = {aan:true, vandaag:false, scope:'gemeente'}); }
   }catch(e){ BRONNEN.forEach(b=> state[b.id]={aan:true,vandaag:false,scope:'gemeente'}); }
 }
+let cloudSaveTimer = null;
 function saveState(){
   localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(state));
   updateHiddenCompat(); updateHeaderCount();
@@ -309,6 +310,14 @@ function saveState(){
   try{
     if(window.pushFiltersToSW) window.pushFiltersToSW();
   }catch(e){}
+  // Ingelogde gebruikers slaan een wijziging ook centraal op.
+  // De expliciete knop "Sync nu" kan daarna hetzelfde save-proces afdwingen.
+  if(localStorage.getItem('ommen_auth_token')){
+    if(cloudSaveTimer) clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(()=>{
+      try{ if(window.saveToCloud) window.saveToCloud(); }catch(e){}
+    }, 500);
+  }
 }
 function updateHiddenCompat(){
   const cont = document.getElementById('compat-sources'); if(!cont) return;
@@ -1178,39 +1187,42 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
     }
   }
 
-  let pendingSave = false;
+let cloudSaveChain = Promise.resolve();
+  let cloudSaveInFlight = false;
   async function saveToCloud(){
     if(!authToken || !SYNC_ENABLED) return false;
-    if(isSyncing){
-      pendingSave = true;
-      console.log('[sync] save queued, isSyncing true');
-      return false;
-    }
-    try{
-      isSyncing = true;
-      console.log('[sync] saving state to cloud, items:', Object.keys(state).length);
-      const r = await fetch(WORKER+'/sync/save', {method:'POST', headers: getAuthHeaders(), body: JSON.stringify({state})});
-      const j = await r.json().catch(()=>({}));
-      console.log('[sync] save response', j);
-      if(r.ok && (j.ok || j.updated)){
-        const updated = j.updated || Date.now();
-        lastRemoteUpdated = updated;
-        localStorage.setItem('ommen_last_sync', String(updated));
-        console.log('[sync] saved ok, updated:', updated);
-        return true;
-      } else {
-        console.warn('[sync] save failed', j);
+
+    // Iedere save krijgt een eigen snapshot. Saves worden achter elkaar
+    // uitgevoerd zodat een ouder apparaat nooit een nieuwer save overschrijft.
+    const snapshot = JSON.stringify(state);
+    cloudSaveChain = cloudSaveChain.catch(()=>{}).then(async()=>{
+      cloudSaveInFlight = true;
+      try{
+        console.log('[sync] saving state to cloud, items:', Object.keys(JSON.parse(snapshot)).length);
+        const r = await fetch(WORKER+'/sync/save', {
+          method:'POST',
+          headers:getAuthHeaders(),
+          body:JSON.stringify({state:JSON.parse(snapshot)})
+        });
+        const j = await r.json().catch(()=>({}));
+        console.log('[sync] save response', j);
+        if(r.ok && (j.ok || j.updated)){
+          const updated=j.updated||Date.now();
+          lastRemoteUpdated=updated;
+          localStorage.setItem('ommen_last_sync',String(updated));
+          console.log('[sync] saved ok, updated:',updated);
+          return true;
+        }
+        console.warn('[sync] save failed',j);
         return false;
+      }catch(e){
+        console.log('Sync save fail',e.message);
+        return false;
+      }finally{
+        cloudSaveInFlight=false;
       }
-    }catch(e){ console.log('Sync save fail', e.message); return false; }
-    finally{ 
-      isSyncing = false; 
-      if(pendingSave){
-        pendingSave = false;
-        console.log('[sync] processing queued save');
-        setTimeout(()=>saveToCloud(), 300);
-      }
-    }
+    });
+    return cloudSaveChain;
   }
 
   async function loadFromCloud(force=false){
@@ -1218,8 +1230,8 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
       console.log('[sync] load skipped, no authToken');
       return false;
     }
-    if(isSyncing && !force){
-      console.log('[sync] load skipped, isSyncing true and not force');
+    if(cloudSaveInFlight && !force){
+      console.log('[sync] load skipped, cloud save in progress');
       return false;
     }
     let didUpdate = false;
@@ -1397,22 +1409,6 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
     document.body.appendChild(overlay);
   }
 
-  if(typeof saveState === 'function'){
-    const origSave = saveState;
-    let saveTimeout = null;
-    window.saveState = function(){
-      try{ origSave(); }catch{}
-      localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(state));
-      try{ if(typeof updateHiddenCompat==='function') updateHiddenCompat(); }catch{}
-      try{ if(typeof updateHeaderCount==='function') updateHeaderCount(); }catch{}
-      try{ if(window.updatePushBell) window.updatePushBell(); }catch{}
-      if(authToken){
-        // debounce cloud save 500ms
-        if(saveTimeout) clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(()=>{ saveToCloud(); }, 500);
-      }
-    };
-  }
 
   document.addEventListener('DOMContentLoaded', function(){
     setTimeout(async function(){
