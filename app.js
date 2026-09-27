@@ -390,8 +390,7 @@ function updateHeaderCount(){
   const aan = Object.values(state).filter(s=>s.aan).length;
   const countEl = document.getElementById('header-count');
   if(countEl){
-    countEl.textContent = `${loadedSources.size || aan} v/d ${BRONNEN.length} bronnen`;
-    if(loadedSources.size>=BRONNEN.length) countEl.textContent = `9 v/d 9 bronnen`;
+    countEl.textContent = `${aan} v/d ${BRONNEN.length} bronnen`;
   }
   const btn = document.getElementById('btn-all');
   if(btn){
