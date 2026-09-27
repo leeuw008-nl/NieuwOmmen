@@ -19,6 +19,7 @@ self.addEventListener('notificationclick', event => {
   const link = data.link || data.url || 'https://nieuwommen.leeuw008.nl/';
   const title = data.title || 'Nieuw artikel';
   const source = data.source || '';
+  const articleId = data.articleId || data.id || link;
   
   // Maak URL met highlight param zodat app.js weet welk artikel omlijnd moet
   // We gebruiken #highlight of ?highlight= encoded link
@@ -30,7 +31,7 @@ self.addEventListener('notificationclick', event => {
   // Voor externe links (destentor etc) ga direct naar artikel maar met highlight param voor terug-knop
   let targetUrl;
   if(link.includes('nieuwommen.leeuw008.nl') || link === '/' || link.includes('localhost')){
-    targetUrl = 'https://nieuwommen.leeuw008.nl/?highlight=' + encodeURIComponent(link) + '&fromPush=1&pushTitle=' + encodeURIComponent(title) + '&pushSource=' + encodeURIComponent(source);
+    targetUrl = 'https://nieuwommen.leeuw008.nl/?highlight=' + encodeURIComponent(link) + '&focusId=' + encodeURIComponent(articleId) + '&fromPush=1&pushTitle=' + encodeURIComponent(title) + '&pushSource=' + encodeURIComponent(source);
   } else {
     // Externe bron: open direct artikel met highlight param + fromPush flag voor omlijning
     // We openen artikel URL met extra params zodat als gebruiker later naar homepage gaat, highlight blijft
@@ -54,6 +55,8 @@ self.addEventListener('notificationclick', event => {
             title: title,
             source: source,
             highlight: link,
+            id: articleId,
+            articleId: articleId,
             fromPush: true
           });
           return client.focus().then(c => {
@@ -99,7 +102,11 @@ self.addEventListener('push', event => {
       url: link,
       title: title,
       source: source,
+      id: data.id || link,
+      articleId: data.articleId || data.id || link,
       highlight: link,
+      id: data.id || link,
+      articleId: data.articleId || data.id || link,
       fromPush: true
     },
     tag: data.id || link,
