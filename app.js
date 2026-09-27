@@ -1272,7 +1272,6 @@ let cloudSaveChain = Promise.resolve();
       }
       const data = await r.json();
       console.log('[sync] load data', {hasState: !!data.state, updated: data.updated, keys: data.state?Object.keys(data.state).length:0});
-      showSyncDiag('Synchronisatie uitgevoerd',true);
       if(!data.state){
         console.log('[sync] no remote state');
         return false;
@@ -1300,6 +1299,7 @@ let cloudSaveChain = Promise.resolve();
         return false;
       }
       console.log('[sync] applying remote state');
+      showSyncDiag('Synchronisatie uitgevoerd',true);
       state = data.state;
       // Ensure all bronnen exist
       try{ BRONNEN.forEach(b=>{ if(!state[b.id]) state[b.id]={aan:true, vandaag:false, scope:'gemeente'}; }); }catch{}
