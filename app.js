@@ -1215,7 +1215,8 @@ let cloudSaveChain = Promise.resolve();
     cloudSaveChain = cloudSaveChain.catch(()=>{}).then(async()=>{
       cloudSaveInFlight = true;
       try{
-        console.log('[sync] saving state to cloud, items:', Object.keys(JSON.parse(snapshot)).length);
+        console.log('[sync] synchronisatie gestart');
+        showSyncDiag('Synchronisatie gestart...',true);
         const r = await fetch(WORKER+'/sync/save', {
           method:'POST',
           headers:getAuthHeaders(),
@@ -1228,7 +1229,7 @@ let cloudSaveChain = Promise.resolve();
           lastRemoteUpdated=updated;
           localStorage.setItem('ommen_last_sync',String(updated));
           console.log('[sync] saved ok, updated:',updated);
-          showSyncDiag('SYNC OPSLAAN OK\\nHTTP '+r.status+'\\nupdated: '+updated+'\\nbronnen: '+Object.values(JSON.parse(snapshot)).filter(x=>x&&x.aan).length+'\\nchanged: '+(j.changed?'JA':'NEE / overgeslagen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend'),true);
+          showSyncDiag('Synchronisatie uitgevoerd',true);
           return true;
         }
         console.warn('[sync] save failed',j);
@@ -1260,7 +1261,8 @@ let cloudSaveChain = Promise.resolve();
     let didUpdate = false;
     try{
       if(!force) isSyncing = true;
-      console.log('[sync] loading from cloud, force=', force, 'lastRemote=', lastRemoteUpdated);
+      console.log('[sync] synchronisatie gestart (ophalen)');
+      showSyncDiag('Synchronisatie gestart...',true);
       const r = await fetch(WORKER+'/sync/load', {headers: getAuthHeaders()});
       console.log('[sync] load status', r.status);
       if(!r.ok){
@@ -1270,7 +1272,7 @@ let cloudSaveChain = Promise.resolve();
       }
       const data = await r.json();
       console.log('[sync] load data', {hasState: !!data.state, updated: data.updated, keys: data.state?Object.keys(data.state).length:0});
-      showSyncDiag('SYNC OPHALEN OK\\nHTTP '+r.status+'\\nupdated: '+(data.updated||'geen')+'\\nbronnen: '+(data.state?Object.values(data.state).filter(x=>x&&x.aan).length:'geen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend')+'\\nuserId: '+(data.userId||currentUser?.id||'onbekend'),true);
+      showSyncDiag('Synchronisatie uitgevoerd',true);
       if(!data.state){
         console.log('[sync] no remote state');
         return false;
