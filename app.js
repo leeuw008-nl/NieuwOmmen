@@ -1229,7 +1229,6 @@ let cloudSaveChain = Promise.resolve();
           lastRemoteUpdated=updated;
           localStorage.setItem('ommen_last_sync',String(updated));
           console.log('[sync] saved ok, updated:',updated);
-          showSyncDiag('Synchronisatie uitgevoerd',true);
           return true;
         }
         console.warn('[sync] save failed',j);
@@ -1261,8 +1260,7 @@ let cloudSaveChain = Promise.resolve();
     let didUpdate = false;
     try{
       if(!force) isSyncing = true;
-      console.log('[sync] synchronisatie gestart (ophalen)');
-      showSyncDiag('Synchronisatie gestart...',true);
+      console.log('[sync] synchronisatie ophalen');
       const r = await fetch(WORKER+'/sync/load', {headers: getAuthHeaders()});
       console.log('[sync] load status', r.status);
       if(!r.ok){
