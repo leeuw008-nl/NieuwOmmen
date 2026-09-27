@@ -1196,7 +1196,7 @@ let cloudSaveChain = Promise.resolve();
       if(!el){
         el=document.createElement('div');
         el.id='sync-diagnostic';
-        el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:616px;bottom:12px;z-index:100000;background:#111827;color:white;padding:10px 12px;border-radius:10px;font:12px/1.45 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:pre-wrap;box-sizing:border-box';
+        el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);bottom:12px;z-index:100000;background:#111827;color:white;padding:10px 12px;border-radius:10px;font:12px/1.45 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:pre-wrap;box-sizing:border-box';
         document.body.appendChild(el);
       }
       el.style.background=ok?'#065f46':'#991b1b';
