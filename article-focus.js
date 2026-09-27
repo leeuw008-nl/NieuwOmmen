@@ -4,7 +4,6 @@
   let focusedLink = null;
   let focusedSource = null;
   let focusedId = null;
-  let focusCheckStarted = false;
 
   function getState(){ try{ return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}'); }catch{ return {}; } }
   function saveState(s){ localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(s)); }
@@ -117,9 +116,28 @@
       }
     });
 
-    // Geen bron-fallback: zonder exacte match nooit een willekeurig artikel omlijnen.
-    // Zo blijft de focus altijd gekoppeld aan het ene push-artikel.
-    
+    // Fallback: bron
+    if(!found && focusedSource){
+      const srcLower=focusedSource.toLowerCase();
+      let matches=[];
+      articles.forEach(el=>{
+        const sm=el.querySelector('small');
+        if(sm && sm.textContent.toLowerCase().includes(srcLower)) matches.push(el);
+      });
+      if(matches.length>0){
+        matches.forEach((el,i)=>{
+          if(i===0){
+            el.style.display=''; el.classList.add(HIGHLIGHT_CLASS);
+            el.style.outline='3px solid #0b5bd3'; el.style.outlineOffset='4px';
+            el.style.boxShadow='0 0 0 8px rgba(11,91,211,0.12), 0 12px 32px rgba(11,91,211,0.25)';
+            el.style.borderRadius='12px';
+            matchedEl=el;
+          }else el.style.display='none';
+        });
+        found=true;
+      }
+    }
+
     if(found && matchedEl){
       const total=window.allArticles?window.allArticles.length:articles.length;
       createFocusBanner(total);
@@ -163,18 +181,16 @@
     focusedSource=src?decodeURIComponent(src):null;
     focusedId=id?decodeURIComponent(id):(highlight?decodeURIComponent(highlight):null);
     if(focusedSource) ensureSourceEnabled(focusedSource);
-    if(focusCheckStarted) return;
-    focusCheckStarted=true;
     let tries=0;
     const iv=setInterval(()=>{
       tries++;
       const hasArt=document.querySelectorAll('.article').length>0;
       const loaded=window.allArticles && window.allArticles.length>0;
-      if((hasArt && loaded) || tries>=30){
+      if((hasArt && loaded) || tries>80){
         clearInterval(iv);
-        applyFocusMode();
+        if(!applyFocusMode() && tries<80) setTimeout(()=>applyFocusMode(), 800);
       }
-    }, 200);
+    }, 300);
   }
 
   if('serviceWorker' in navigator){
@@ -186,7 +202,7 @@
           focusedLink=link; focusedSource=src; focusedId=id;
           if(src) ensureSourceEnabled(src);
           try{ const newUrl=`/?focus=${encodeURIComponent(link)}&src=${encodeURIComponent(src||'')}&id=${encodeURIComponent(id||'')}`; history.replaceState({}, '', newUrl); }catch{}
-          setTimeout(()=>checkFocusParam(), 100);
+          setTimeout(()=>checkFocusParam(), 400);
         }
       }
     });
@@ -194,6 +210,6 @@
 
   window.exitFocusMode=exitFocusMode;
   window.showOnlyFocusedArticle=applyFocusMode;
-  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 200));
-  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 400));
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 600));
+  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 1200));
 })();
