@@ -1,7 +1,7 @@
-// sw.js v301 - FIX omlijnd artikel bij push click + knop naar overzicht
+// sw.js v302 - FIX omlijnd artikel bij push click + knop naar overzicht
 // Deze file wordt als service worker geregistreerd, vervangt oude sw.js en push.js logic
 
-const SW_VERSION = 'v301-omlijnd-fix';
+const SW_VERSION = 'v302-exact-push-id';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -38,7 +38,7 @@ self.addEventListener('notificationclick', event => {
     targetUrl = highlightUrl;
     // Alternatief: open homepage met highlight naar externe link (beter voor omlijnd in overzicht)
     // Voor omlijnd in overzicht willen we homepage openen met highlight param:
-    targetUrl = 'https://nieuwommen.leeuw008.nl/?highlight=' + encodeURIComponent(link) + '&fromPush=1&pushTitle=' + encodeURIComponent(title) + '&pushSource=' + encodeURIComponent(source) + '&externalLink=' + encodeURIComponent(link);
+    targetUrl = 'https://nieuwommen.leeuw008.nl/?highlight=' + encodeURIComponent(link) + '&fromPush=1&pushTitle=' + encodeURIComponent(title) + '&pushSource=' + encodeURIComponent(source) + '&focusId=' + encodeURIComponent(articleId) + '&externalLink=' + encodeURIComponent(link);
   }
 
   console.log('[sw v301] Opening', targetUrl);
@@ -105,8 +105,6 @@ self.addEventListener('push', event => {
       id: data.id || link,
       articleId: data.articleId || data.id || link,
       highlight: link,
-      id: data.id || link,
-      articleId: data.articleId || data.id || link,
       fromPush: true
     },
     tag: data.id || link,
