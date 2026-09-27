@@ -273,18 +273,18 @@ try{
 const existing=await SYNC_KV.get(sess.userId,'json');
 if(existing && existing.state && stableStringify(existing.state)===stableStringify(state)){
 console.log('[v277] sync/save skip - unchanged');
-return json({ok:true,changed:false,skipped:true,updated:existing.updated||Date.now(),version:'v277'});
+return json({ok:true,changed:false,skipped:true,updated:existing.updated||Date.now(),userId:sess.userId,aanCount:Object.values(existing.state||{}).filter(x=>x&&x.aan===true).length,version:'v277'});
 }
 }catch(e){console.log('[v277] sync compare error:',e.message);}
 const updated=Date.now();
 await SYNC_KV.put(sess.userId,JSON.stringify({state,updated}));
 console.log('[v277] sync/save STORED',sess.userId,'updated=',updated,'keys=',Object.keys(state).length);
-return json({ok:true,changed:true,skipped:false,updated,version:'v277'});
+return json({ok:true,changed:true,skipped:false,updated,userId:sess.userId,aanCount:Object.values(state).filter(x=>x&&x.aan===true).length,version:'v277'});
 }
 
 if(path==='/sync/load'){
 const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);
-const data=await getKV(env,'SYNC').get(sess.userId,'json');if(!data)return json({state:null,updated:0});return json(data);
+const data=await getKV(env,'SYNC').get(sess.userId,'json');if(!data)return json({state:null,updated:0,userId:sess.userId});return json({...data,userId:sess.userId,aanCount:Object.values(data.state||{}).filter(x=>x&&x.aan===true).length,version:'v277'});
 }
 
 if(path==='/subscribe' && request.method==='POST'){
@@ -318,7 +318,7 @@ const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Ni
 if(path==='/last'){const last=await getKV(env,'SEEN').get('last_article','json')||{title:'Nieuw(s)Ommen',link:'/',source:'Ommen',id:'last'};return json(last);}
 if(path.startsWith('/proxy')){const target=url.searchParams.get('url');if(!target)return text('missing url',400);try{const r=await fetch(target,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});const txt=await r.text();return new Response(txt,{headers:{...ch,'Content-Type':r.headers.get('content-type')||'text/plain','Cache-Control':'no-store'}});}catch(e){return text('proxy error '+e.message,500);}}
 if(path==='/test' || path==='/test-push'){
-const q=url.searchParams;const srcParam=q.get('source')||'Nieuwsbrief';const testArticle={title:q.get('title')||'Test push '+srcParam,link:q.get('link')||'https://www.ommen.nl/actueel/',source:srcParam,id:q.get('id')||'test-'+Date.now(),isTest:q.get('real')!=='1'};
+const q=url.searchParams;const srcParam=q.get('source')||'Nieuwsbrief';const testArticle={title:q.get('title')||'Test echte push + bronfilter',link:q.get('link')||'https://www.ommen.nl/actueel/',source:srcParam,id:q.get('id')||'test-'+Date.now(),isTest:q.get('real')!=='1'};
 const subs=await getAllSubs(env);let sent=0;let blocked=[];let failed=[];for(const sub of subs){if(!(await shouldSendToSub(sub,testArticle,env))){blocked.push(sub._id.slice(0,8));continue;}const result=await sendPush(sub,testArticle,env);if(result.ok)sent++;else failed.push({id:sub._id.slice(0,8),status:result.status||0,error:result.error||'onbekend'});}
 return json({ok:sent>0||subs.length===0,sent,total:subs.length,blocked,failed,source:testArticle.source,version:'v277'});
 }
