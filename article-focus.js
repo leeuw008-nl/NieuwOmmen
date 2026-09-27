@@ -1,4 +1,4 @@
-// article-focus.js v7 - direct focus, stabiel bij herladen van de artikellijst
+// article-focus.js v6 - DEFINITIEF: push -> omlijnd artikel in app (niet extern)
 (function(){
   const HIGHLIGHT_CLASS = 'focused-article';
   let focusedLink = null;
@@ -116,8 +116,8 @@
       }
     });
 
-    // Geen brede bron-fallback: we mogen nooit een ander artikel omlijnen.
-    /* if(!found && focusedSource){
+    // Fallback: bron
+    if(!found && focusedSource){
       const srcLower=focusedSource.toLowerCase();
       let matches=[];
       articles.forEach(el=>{
@@ -136,7 +136,7 @@
         });
         found=true;
       }
-    } */
+    }
 
     if(found && matchedEl){
       const total=window.allArticles?window.allArticles.length:articles.length;
@@ -181,10 +181,16 @@
     focusedSource=src?decodeURIComponent(src):null;
     focusedId=id?decodeURIComponent(id):(highlight?decodeURIComponent(highlight):null);
     if(focusedSource) ensureSourceEnabled(focusedSource);
-    // Meteen proberen; als refreshNews de lijst later opnieuw opbouwt,
-    // zorgt de MutationObserver hieronder ervoor dat het juiste artikel
-    // opnieuw uitsluitend wordt geselecteerd.
-    applyFocusMode();
+    let tries=0;
+    const iv=setInterval(()=>{
+      tries++;
+      const hasArt=document.querySelectorAll('.article').length>0;
+      const loaded=window.allArticles && window.allArticles.length>0;
+      if((hasArt && loaded) || tries>80){
+        clearInterval(iv);
+        if(!applyFocusMode() && tries<80) setTimeout(()=>applyFocusMode(), 800);
+      }
+    }, 300);
   }
 
   if('serviceWorker' in navigator){
@@ -202,20 +208,8 @@
     });
   }
 
-  function observeArticleList(){
-    const container=document.getElementById('news-container');
-    if(!container || container.__focusObserver) return;
-    const observer=new MutationObserver(()=>{
-      if(!focusedLink) return;
-      clearTimeout(container.__focusTimer);
-      container.__focusTimer=setTimeout(()=>applyFocusMode(),40);
-    });
-    observer.observe(container,{childList:true,subtree:true});
-    container.__focusObserver=observer;
-  }
-
   window.exitFocusMode=exitFocusMode;
   window.showOnlyFocusedArticle=applyFocusMode;
-  document.addEventListener('DOMContentLoaded', ()=>{ observeArticleList(); checkFocusParam(); });
-  window.addEventListener('load', ()=>{ observeArticleList(); checkFocusParam(); });
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 600));
+  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 1200));
 })();
