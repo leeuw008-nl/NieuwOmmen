@@ -1,4 +1,4 @@
-// article-focus.js v7 - exacte push-identificatie, geen brede bron/path-match: push -> omlijnd artikel in app (niet extern)
+// article-focus.js v8 - snelle exacte push-identificatie, geen brede bron/path-match: push -> omlijnd artikel in app (niet extern)
 (function(){
   const HIGHLIGHT_CLASS = 'focused-article';
   let focusedLink = null;
@@ -64,101 +64,81 @@
     }
   }
 
-  function applyFocusMode(){
-    if(!focusedLink) return false;
+  function normalizeLink(url){
+    try{
+      const u=new URL(url, location.href);
+      u.hash='';
+      return u.href.replace(/\\/$/,'').toLowerCase();
+    }catch{
+      return String(url||'').replace(/\\/$/,'').toLowerCase().trim();
+    }
+  }
+
+  function findFocusedArticle(){
+    if(!focusedLink) return null;
+    const target=normalizeLink(focusedLink);
     const articles=document.querySelectorAll('.article');
-    if(articles.length===0) return false;
+    for(const el of articles){
+      const a=el.querySelector('h2 a');
+      if(a && normalizeLink(a.href)===target) return el;
+    }
+    return null;
+  }
 
-    const normFocus=decodeURIComponent(focusedLink).toLowerCase().trim();
-    const focusAsset=getAssetId(focusedLink);
-    
+  function applyFocusMode(){
+    const matchedEl=findFocusedArticle();
+    if(!matchedEl) return false;
 
-    let found=false; let matchedEl=null;
-
-    // Belangrijk: iedere nieuwe render begint schoon. Zo kan een oude
-    // focus nooit op meerdere artikelen blijven staan.
+    const articles=document.querySelectorAll('.article');
     articles.forEach(el=>{
-      el.style.display='none';
+      const isMatch=el===matchedEl;
+      el.style.display=isMatch?'':'none';
       el.classList.remove(HIGHLIGHT_CLASS);
-      el.style.outline=''; el.style.outlineOffset=''; el.style.boxShadow=''; el.style.borderRadius='';
-      const linkEl=el.querySelector('h2 a');
-      if(!linkEl){ el.style.display='none'; return; }
-      const href=linkEl.href;
-      const normHref=href.toLowerCase();
-      const hrefAsset=getAssetId(href);
-
-      let isMatch=false;
-      // Alleen exacte identificatie: volledige link of een expliciete asset-ID.
-      // Geen gedeeltelijke pathname-match meer: die kon meerdere artikelen raken.
-      if(href===focusedLink || normHref===normFocus) isMatch=true;
-      if(!isMatch && focusAsset && hrefAsset && focusAsset===hrefAsset) isMatch=true;
-      if(!isMatch && focusedId){
-        const nid=decodeURIComponent(focusedId).toLowerCase();
-        if(nid.length>5 && (href===nid || normHref===nid)) isMatch=true;
-      }
-
+      el.style.outline='';
+      el.style.outlineOffset='';
+      el.style.boxShadow='';
+      el.style.borderRadius='';
       if(isMatch){
-        el.style.display=''; el.classList.add(HIGHLIGHT_CLASS);
-        el.style.outline='3px solid #0b5bd3'; el.style.outlineOffset='4px';
+        el.classList.add(HIGHLIGHT_CLASS);
+        el.style.outline='3px solid #0b5bd3';
+        el.style.outlineOffset='4px';
         el.style.boxShadow='0 0 0 8px rgba(11,91,211,0.12), 0 12px 32px rgba(11,91,211,0.25)';
         el.style.borderRadius='12px';
-        if(!matchedEl) matchedEl=el;
-        found=true;
-      }else{
-        el.style.display='none';
       }
     });
 
-    // Geen bron-fallback: een push mag nooit een willekeurig artikel van dezelfde bron selecteren.
-    /* if(!found && focusedSource){
-      const srcLower=focusedSource.toLowerCase();
-      let matches=[];
-      articles.forEach(el=>{
-        const sm=el.querySelector('small');
-        if(sm && sm.textContent.toLowerCase().includes(srcLower)) matches.push(el);
-      });
-      if(matches.length>0){
-        matches.forEach((el,i)=>{
-          if(i===0){
-            el.style.display=''; el.classList.add(HIGHLIGHT_CLASS);
-            el.style.outline='3px solid #0b5bd3'; el.style.outlineOffset='4px';
-            el.style.boxShadow='0 0 0 8px rgba(11,91,211,0.12), 0 12px 32px rgba(11,91,211,0.25)';
-            el.style.borderRadius='12px';
-            matchedEl=el;
-          }else el.style.display='none';
-        });
-        found=true;
-      }
-    } */
+    const total=window.allArticles?window.allArticles.length:articles.length;
+    createFocusBanner(total);
+    setTimeout(()=>matchedEl.scrollIntoView({behavior:'smooth', block:'center'}),100);
+    console.log('[focus v8] Exact artikel gevonden', matchedEl.querySelector('h2')?.textContent?.slice(0,80));
+    return true;
+  }
 
-    if(found && matchedEl){
-      const total=window.allArticles?window.allArticles.length:articles.length;
-      createFocusBanner(total);
-      setTimeout(()=>matchedEl.scrollIntoView({behavior:'smooth', block:'center'}), 300);
-      console.log('[focus v6] Gevonden', matchedEl.querySelector('h2')?.textContent?.slice(0,50));
-      return true;
-    }
-
-    console.log('[focus v6] Geen match voor', focusedLink, 'asset', focusAsset);
-    // Toon gele banner met externe link knop, maar verberg niet alles
-    articles.forEach(el=>{ el.style.display=''; el.classList.remove(HIGHLIGHT_CLASS); el.style.outline=''; el.style.boxShadow=''; });
+  function showNotFound(){
+    const articles=document.querySelectorAll('.article');
+    articles.forEach(el=>{
+      el.style.display='';
+      el.classList.remove(HIGHLIGHT_CLASS);
+      el.style.outline='';
+      el.style.outlineOffset='';
+      el.style.boxShadow='';
+      el.style.borderRadius='';
+    });
     const container=document.getElementById('news-container');
-    if(container){
-      const old=document.getElementById('focus-banner'); if(old) old.remove();
-      const banner=document.createElement('div');
-      banner.id='focus-banner';
-      banner.style.cssText='background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
-      banner.innerHTML=`
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#92400e;flex:1;">
-          <span style="background:#f59e0b;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;">⚠️</span>
-          <span>Artikel niet in lijst – <a href="${focusedLink}" target="_blank" style="color:#0b5bd3;text-decoration:underline;">open bij bron</a></span>
-        </div>
-        <button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer;">Toon alle →</button>
-      `;
-      container.insertAdjacentElement('afterbegin', banner);
-      document.getElementById('btn-show-all').onclick=()=>{ banner.remove(); };
-    }
-    return false;
+    if(!container) return;
+    const old=document.getElementById('focus-banner'); if(old) old.remove();
+    const banner=document.createElement('div');
+    banner.id='focus-banner';
+    banner.style.cssText='background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+    banner.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#92400e;flex:1;">
+        <span style="background:#f59e0b;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;">⚠️</span>
+        <span>Artikel niet in de huidige lijst – <a href="${focusedLink}" target="_blank" style="color:#0b5bd3;text-decoration:underline;">open bij bron</a></span>
+      </div>
+      <button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer;">Toon alle →</button>
+    `;
+    container.insertAdjacentElement('afterbegin', banner);
+    document.getElementById('btn-show-all').onclick=()=>banner.remove();
   }
 
   function checkFocusParam(){
@@ -170,20 +150,33 @@
     let targetLink=focus?decodeURIComponent(focus):null;
     if(!targetLink && highlight) targetLink=decodeURIComponent(highlight);
     if(!targetLink) return;
+
     focusedLink=targetLink;
     focusedSource=src?decodeURIComponent(src):null;
     focusedId=id?decodeURIComponent(id):(highlight?decodeURIComponent(highlight):null);
     if(focusedSource) ensureSourceEnabled(focusedSource);
-    let tries=0;
-    const iv=setInterval(()=>{
-      tries++;
-      const hasArt=document.querySelectorAll('.article').length>0;
-      const loaded=window.allArticles && window.allArticles.length>0;
-      if((hasArt && loaded) || tries>80){
-        clearInterval(iv);
-        if(!applyFocusMode() && tries<80) setTimeout(()=>applyFocusMode(), 800);
-      }
-    }, 300);
+
+    if(window._focusWaitTimer) clearInterval(window._focusWaitTimer);
+    if(window._focusWaitTimeout) clearTimeout(window._focusWaitTimeout);
+
+    let found=false;
+    const started=Date.now();
+    const tryFind=()=>{
+      if(applyFocusMode()){ found=true; cleanup(); return; }
+      if(Date.now()-started>=8000){ cleanup(); showNotFound(); }
+    };
+    const cleanup=()=>{
+      if(window._focusWaitTimer){ clearInterval(window._focusWaitTimer); window._focusWaitTimer=null; }
+      if(window._focusWaitTimeout){ clearTimeout(window._focusWaitTimeout); window._focusWaitTimeout=null; }
+    };
+
+    // Niet wachten op een globale 'loaded'-vlag: zodra het exacte artikel
+    // door de normale renderer verschijnt, wordt het direct omlijnd.
+    tryFind();
+    if(!found){
+      window._focusWaitTimer=setInterval(tryFind,150);
+      window._focusWaitTimeout=setTimeout(()=>{ if(!found){ cleanup(); showNotFound(); } },8200);
+    }
   }
 
   if('serviceWorker' in navigator){
@@ -203,6 +196,6 @@
 
   window.exitFocusMode=exitFocusMode;
   window.showOnlyFocusedArticle=applyFocusMode;
-  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 600));
-  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 1200));
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 100));
+  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 300));
 })();
