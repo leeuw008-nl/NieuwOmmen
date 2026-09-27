@@ -301,6 +301,7 @@ function loadState(){
   }catch(e){ BRONNEN.forEach(b=> state[b.id]={aan:true,vandaag:false,scope:'gemeente'}); }
 }
 let cloudSaveTimer = null;
+let applyingRemoteState = false;
 function saveState(){
   localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(state));
   updateHiddenCompat(); updateHeaderCount();
@@ -312,7 +313,7 @@ function saveState(){
   }catch(e){}
   // Ingelogde gebruikers slaan een wijziging ook centraal op.
   // De expliciete knop "Sync nu" kan daarna hetzelfde save-proces afdwingen.
-  if(localStorage.getItem('ommen_auth_token')){
+  if(localStorage.getItem('ommen_auth_token') && !applyingRemoteState){
     if(cloudSaveTimer) clearTimeout(cloudSaveTimer);
     cloudSaveTimer = setTimeout(()=>{
       try{ if(window.saveToCloud) window.saveToCloud(); }catch(e){}
@@ -1298,8 +1299,10 @@ let cloudSaveChain = Promise.resolve();
       }
       console.log('[sync] applying remote state');
       showSyncDiag('Synchronisatie uitgevoerd',true);
-      state = data.state;
-      // Ensure all bronnen exist
+      applyingRemoteState = true;
+      try{
+        state = data.state;
+        // Ensure all bronnen exist
       try{ BRONNEN.forEach(b=>{ if(!state[b.id]) state[b.id]={aan:true, vandaag:false, scope:'gemeente'}; }); }catch{}
       localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(state));
       lastRemoteUpdated = remoteUpdated || Date.now();
@@ -1312,13 +1315,16 @@ let cloudSaveChain = Promise.resolve();
       try{ if(window.pushFiltersToSW) window.pushFiltersToSW(); }catch{}
       updateAuthUI();
       didUpdate = true;
-      const isBg = document.visibilityState !== 'visible';
-      if(!force){
-        showSyncNotification(isBg);
-      } else {
-        console.log('[sync] force load applied');
+        const isBg = document.visibilityState !== 'visible';
+        if(!force){
+          showSyncNotification(isBg);
+        } else {
+          console.log('[sync] force load applied');
+        }
+      } finally {
+        applyingRemoteState = false;
       }
-    }catch(e){ console.log('Sync load fail', e.message, e.stack); }
+    }catch(e){ console.log('Sync load fail', e.message, e.stack); applyingRemoteState = false; }
     finally{ isSyncing = false; }
     return didUpdate;
   }
