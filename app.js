@@ -1168,24 +1168,18 @@ window.filterNews=filterNews; window.refreshNews=refreshNews;
   }
 
   function showSyncNotification(isBackground){
+    // De synchronisatiediagnose toont al de zichtbare bevestiging.
+    // Geen tweede foreground-melding meer: die kon visueel achter
+    // "Synchronisatie uitgevoerd" terechtkomen.
     try{
       if(navigator.serviceWorker && navigator.serviceWorker.controller){
-        navigator.serviceWorker.controller.postMessage({type: 'SYNC_UPDATED'});
+        navigator.serviceWorker.controller.postMessage({type:'SYNC_UPDATED'});
       } else if(navigator.serviceWorker && navigator.serviceWorker.ready){
         navigator.serviceWorker.ready.then(reg => {
-          if(reg.active) reg.active.postMessage({type: 'SYNC_UPDATED'});
+          if(reg.active) reg.active.postMessage({type:'SYNC_UPDATED'});
         });
       }
     }catch{}
-
-    if(!isBackground){
-      const toast = document.createElement('div');
-      toast.textContent = '✓ Filters gesynchroniseerd';
-      toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#065f46;color:white;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 6px 20px rgba(0,0,0,0.2);opacity:0;transition:opacity 0.3s';
-      document.body.appendChild(toast);
-      setTimeout(()=>{ toast.style.opacity='1'; }, 50);
-      setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(), 400); }, 3000);
-    }
   }
 
 let cloudSaveChain = Promise.resolve();
