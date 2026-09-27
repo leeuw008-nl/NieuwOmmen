@@ -1228,7 +1228,7 @@ let cloudSaveChain = Promise.resolve();
           lastRemoteUpdated=updated;
           localStorage.setItem('ommen_last_sync',String(updated));
           console.log('[sync] saved ok, updated:',updated);
-          showSyncDiag('SYNC OPSLAAN OK\\nHTTP '+r.status+'\\nupdated: '+updated+'\\nbronnen: '+Object.values(JSON.parse(snapshot)).filter(x=>x&&x.aan).length,true);
+          showSyncDiag('SYNC OPSLAAN OK\\nHTTP '+r.status+'\\nupdated: '+updated+'\\nbronnen: '+Object.values(JSON.parse(snapshot)).filter(x=>x&&x.aan).length+'\\nchanged: '+(j.changed?'JA':'NEE / overgeslagen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend'),true);
           return true;
         }
         console.warn('[sync] save failed',j);
@@ -1270,7 +1270,7 @@ let cloudSaveChain = Promise.resolve();
       }
       const data = await r.json();
       console.log('[sync] load data', {hasState: !!data.state, updated: data.updated, keys: data.state?Object.keys(data.state).length:0});
-      showSyncDiag('SYNC OPHALEN OK\\nHTTP '+r.status+'\\nupdated: '+(data.updated||'geen')+'\\nbronnen: '+(data.state?Object.values(data.state).filter(x=>x&&x.aan).length:'geen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend'),true);
+      showSyncDiag('SYNC OPHALEN OK\\nHTTP '+r.status+'\\nupdated: '+(data.updated||'geen')+'\\nbronnen: '+(data.state?Object.values(data.state).filter(x=>x&&x.aan).length:'geen')+'\\naccount: '+(currentUser?.email||currentUser?.id||'onbekend')+'\\nuserId: '+(data.userId||currentUser?.id||'onbekend'),true);
       if(!data.state){
         console.log('[sync] no remote state');
         return false;
