@@ -1298,6 +1298,11 @@ let cloudSaveChain = Promise.resolve();
         return false;
       }
       console.log('[sync] applying remote state');
+      // Een nog wachtende lokale save hoort bij de oude lokale toestand.
+      // Zodra we de centrale toestand daadwerkelijk toepassen, moet die save
+      // worden geannuleerd; anders volgt enkele honderden ms later alsnog
+      // 'Synchronisatie gestart' op dit ontvangende apparaat.
+      if(cloudSaveTimer){ clearTimeout(cloudSaveTimer); cloudSaveTimer=null; }
       showSyncDiag('Synchronisatie uitgevoerd',true);
       applyingRemoteState = true;
       try{
