@@ -1,4 +1,4 @@
-// article-focus.js v6 - DEFINITIEF: push -> omlijnd artikel in app (niet extern)
+// article-focus.js v7 - exacte push-identificatie, geen brede bron/path-match: push -> omlijnd artikel in app (niet extern)
 (function(){
   const HIGHLIGHT_CLASS = 'focused-article';
   let focusedLink = null;
@@ -71,37 +71,30 @@
 
     const normFocus=decodeURIComponent(focusedLink).toLowerCase().trim();
     const focusAsset=getAssetId(focusedLink);
-    const focusHost=(()=>{ try{ return new URL(focusedLink).hostname.toLowerCase(); }catch{ return ''; } })();
-    const focusPath=(()=>{ try{ return new URL(focusedLink).pathname.toLowerCase(); }catch{ return ''; } })();
+    
 
     let found=false; let matchedEl=null;
 
+    // Belangrijk: iedere nieuwe render begint schoon. Zo kan een oude
+    // focus nooit op meerdere artikelen blijven staan.
     articles.forEach(el=>{
+      el.style.display='none';
+      el.classList.remove(HIGHLIGHT_CLASS);
+      el.style.outline=''; el.style.outlineOffset=''; el.style.boxShadow=''; el.style.borderRadius='';
       const linkEl=el.querySelector('h2 a');
       if(!linkEl){ el.style.display='none'; return; }
       const href=linkEl.href;
       const normHref=href.toLowerCase();
       const hrefAsset=getAssetId(href);
-      const hrefHost=(()=>{ try{ return new URL(href).hostname.toLowerCase(); }catch{ return ''; } })();
 
       let isMatch=false;
-      // Exact
+      // Alleen exacte identificatie: volledige link of een expliciete asset-ID.
+      // Geen gedeeltelijke pathname-match meer: die kon meerdere artikelen raken.
       if(href===focusedLink || normHref===normFocus) isMatch=true;
-      // Asset ID match (RTV Vechtdal)
       if(!isMatch && focusAsset && hrefAsset && focusAsset===hrefAsset) isMatch=true;
-      // ID contains
       if(!isMatch && focusedId){
         const nid=decodeURIComponent(focusedId).toLowerCase();
-        if(nid.length>5 && (normHref.includes(nid) || normFocus.includes(nid))) isMatch=true;
-      }
-      // Same host + path
-      if(!isMatch && focusHost && hrefHost && focusHost===hrefHost){
-        try{
-          const uF=new URL(focusedLink); const uH=new URL(href);
-          if(uF.pathname===uH.pathname && uF.search===uH.search) isMatch=true;
-          else if(uF.pathname!=='/' && uH.pathname.includes(uF.pathname)) isMatch=true;
-          else if(uH.pathname!=='/' && uF.pathname.includes(uH.pathname)) isMatch=true;
-        }catch{}
+        if(nid.length>5 && (href===nid || normHref===nid)) isMatch=true;
       }
 
       if(isMatch){
@@ -116,8 +109,8 @@
       }
     });
 
-    // Fallback: bron
-    if(!found && focusedSource){
+    // Geen bron-fallback: een push mag nooit een willekeurig artikel van dezelfde bron selecteren.
+    /* if(!found && focusedSource){
       const srcLower=focusedSource.toLowerCase();
       let matches=[];
       articles.forEach(el=>{
@@ -136,7 +129,7 @@
         });
         found=true;
       }
-    }
+    } */
 
     if(found && matchedEl){
       const total=window.allArticles?window.allArticles.length:articles.length;
@@ -173,7 +166,7 @@
     const focus=params.get('focus');
     const highlight=params.get('highlight');
     const src=params.get('src');
-    const id=params.get('id');
+    const id=params.get('id') || params.get('focusId');
     let targetLink=focus?decodeURIComponent(focus):null;
     if(!targetLink && highlight) targetLink=decodeURIComponent(highlight);
     if(!targetLink) return;
@@ -195,9 +188,9 @@
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('message', e=>{
-      if(e.data && e.data.type==='NOTIFICATION_CLICK'){
+      if(e.data && (e.data.type==='NOTIFICATION_CLICK' || e.data.type==='PUSH_CLICKED')){
         const link=e.data.link || e.data.url || e.data.focusUrl;
-        const src=e.data.source; const id=e.data.id;
+        const src=e.data.source; const id=e.data.id || e.data.articleId;
         if(link){
           focusedLink=link; focusedSource=src; focusedId=id;
           if(src) ensureSourceEnabled(src);
