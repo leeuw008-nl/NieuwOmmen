@@ -137,6 +137,22 @@ async function sendPush(sub,article,env){
   const resp=await fetch(endpoint,{method:'POST',headers:{'TTL':'86400','Content-Type':'application/octet-stream','Content-Encoding':'aes128gcm','Urgency':'high',...vapidHeaders},body:encryptedBody});
   if(resp.status===404||resp.status===410){try{await getKV(env,'SUBS').delete(sub._id||safeId(endpoint));}catch{}}
   if(!resp.ok){let detail='';try{detail=(await resp.text()).slice(0,300);}catch{}return {ok:false,status:resp.status,error:detail||('push service HTTP '+resp.status)};}
+  // Bewaar push-administratie centraal bij een geslaagde push.
+  // Deze velden worden uitsluitend bijgewerkt na HTTP-succes; naam/bronnen blijven behouden.
+  try{
+    const SUBS=getKV(env,'SUBS');
+    const key=sub._id||safeId(endpoint);
+    const current=await SUBS.get(key,'json');
+    if(current){
+      const now=Date.now();
+      current.lastPush=now;
+      current.lastPushSource=article.source||'';
+      current.lastPushTitle=article.title||'';
+      current.pushCount=(Number(current.pushCount)||0)+1;
+      current.updated=now;
+      await SUBS.put(key,JSON.stringify(current));
+    }
+  }catch(e){ console.log('[v277] push administratie opslaan mislukt',e.message); }
   return {ok:true,status:resp.status};
  }catch(e){return {ok:false,error:e.message||String(e)};}
 }
@@ -303,8 +319,17 @@ const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
 if(sameSources&&sameUser&&samePush){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,version:'v277',skipped:true});}
 }
+let preservedDescription=existing?.description||'';
+if(!preservedDescription && sess?.userId){
+  try{
+    const all=await getAllSubs(env);
+    const prior=all.filter(s=>s.userId===sess.userId && s.description && s._id!==id)
+      .sort((a,b)=>(b.updated||b.created||0)-(a.updated||a.created||0))[0];
+    if(prior) preservedDescription=prior.description;
+  }catch{}
+}
 const now=Date.now();
-const newSub={endpoint,keys:keys||existing?.keys||{},sources:finalSources,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||existing?.description||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,pushCount:existing?.pushCount||0};
+const newSub={endpoint,keys:keys||existing?.keys||{},sources:finalSources,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
 await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,version:'v277'});
 }catch(e){return json({error:'Subscribe crash: '+e.message,stack:e.stack},500);}
 }
