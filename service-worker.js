@@ -1,7 +1,7 @@
 // sw.js v302 - FIX omlijnd artikel bij push click + knop naar overzicht
 // Deze file wordt als service worker geregistreerd, vervangt oude sw.js en push.js logic
 
-const SW_VERSION = 'v302-exact-push-id';
+const SW_VERSION = 'v303-no-push-when-app-visible';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -111,8 +111,20 @@ self.addEventListener('push', event => {
     requireInteraction: false
   };
 
+  // Geen pushmelding wanneer Nieuw(s)Ommen al zichtbaar op het scherm staat.
+  // De Worker blijft wel pushen als de app gesloten of naar de achtergrond is.
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    clients.matchAll({type:'window', includeUncontrolled:true}).then(clientList => {
+      const appVisible = clientList.some(client =>
+        client.url.includes('nieuwommen.leeuw008.nl') &&
+        (client.visibilityState === 'visible' || client.focused === true)
+      );
+      if(appVisible){
+        console.log('[sw v303] app zichtbaar - pushmelding onderdrukt');
+        return;
+      }
+      return self.registration.showNotification(title, options);
+    })
   );
 });
 
