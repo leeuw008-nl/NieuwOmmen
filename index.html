@@ -52,13 +52,13 @@
 
 <script>
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./service-worker.js?v=302', {scope: './'}).then(r=>{
+  navigator.serviceWorker.register('./service-worker.js?v=304', {scope: './'}).then(r=>{
     console.log('SW registered v297 rollback', r.scope);
   }).catch(e=>console.log('SW fail', e));
 }
 </script>
 <script src="app.js?v=336"></script>
 <script src="push.js?v=270-free-tier"></script>
-<script src="article-focus.js?v=299"></script>
+<script src="article-focus.js?v=300"></script>
 </body>
 </html>
