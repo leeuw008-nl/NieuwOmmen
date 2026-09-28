@@ -1,194 +1,173 @@
-// article-focus.js v8 - snelle exacte push-identificatie, geen brede bron/path-match: push -> omlijnd artikel in app (niet extern)
+// article-focus.js v9 - robuuste push -> exact artikel, blijft actief na her-render
 (function(){
-  const HIGHLIGHT_CLASS = 'focused-article';
-  let focusedLink = null;
-  let focusedSource = null;
-  let focusedId = null;
+  const HIGHLIGHT_CLASS='focused-article';
+  let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
+  let focusActive=false, observer=null, applyTimer=null, notFoundTimer=null;
 
-  function getState(){ try{ return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}'); }catch{ return {}; } }
-  function saveState(s){ localStorage.setItem('nieuwsommen_bronnen_v2', JSON.stringify(s)); }
+  function getState(){try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
+  function saveState(s){try{localStorage.setItem('nieuwsommen_bronnen_v2',JSON.stringify(s));}catch{}}
 
   function ensureSourceEnabled(sourceId){
-    if(!sourceId) return false;
+    if(!sourceId) return;
     const state=getState();
     if(!state[sourceId]) state[sourceId]={aan:true,vandaag:false,scope:'gemeente'};
-    let wasOff=!state[sourceId].aan;
-    if(wasOff){
+    if(!state[sourceId].aan){
       state[sourceId].aan=true;
       saveState(state);
-      if(typeof window.filterNews==='function') window.filterNews();
-      if(typeof window.renderFilters==='function') setTimeout(()=>window.renderFilters(),100);
+      try{if(typeof window.filterNews==='function') window.filterNews();}catch{}
+      setTimeout(()=>{try{if(typeof window.renderFilters==='function') window.renderFilters();}catch{}},100);
     }
-    return wasOff;
   }
 
-  function createFocusBanner(count){
-    const old=document.getElementById('focus-banner');
-    if(old) old.remove();
-    const container=document.getElementById('news-container');
-    if(!container) return;
-    const banner=document.createElement('div');
-    banner.id='focus-banner';
-    banner.style.cssText='background:#eff6ff;border:2px solid #0b5bd3;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn .3s ease;';
-    banner.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#1e40af;flex:1;min-width:200px;">
-        <span style="background:#0b5bd3;color:white;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">📍</span>
-        <span>Nieuw artikel via push – alleen dit artikel</span>
-      </div>
-      <button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(11,91,211,.3);">
-        Toon alle ${count||''} artikelen →
-      </button>
-    `;
-    container.insertAdjacentElement('afterbegin', banner);
-    document.getElementById('btn-show-all').onclick=()=>exitFocusMode();
-  }
-
-  function exitFocusMode(){
-    const banner=document.getElementById('focus-banner');
-    if(banner) banner.remove();
-    document.querySelectorAll('.article').forEach(el=>{
-      el.style.display=''; el.style.outline=''; el.style.outlineOffset=''; el.style.boxShadow=''; el.classList.remove(HIGHLIGHT_CLASS);
-    });
-    if(typeof window.filterNews==='function') window.filterNews();
-    try{ history.replaceState({}, '', location.pathname); }catch{}
-    focusedLink=null; focusedSource=null; focusedId=null;
-  }
-
-  function getAssetId(url){
-    try{
-      const u=new URL(url);
-      return u.searchParams.get('asset')||'';
-    }catch{ 
-      const m=url.match(/asset=(\d+)/);
-      return m?m[1]:'';
-    }
+  function normalizeText(s){
+    return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();
   }
 
   function normalizeLink(url){
     try{
-      const u=new URL(url, location.href);
+      const u=new URL(url,location.href);
       u.hash='';
-      return u.href.replace(/\\/$/,'').toLowerCase();
+      const drop=['highlight','focus','focusid','frompush','pushtitle','pushsource','externallink'];
+      [...u.searchParams.keys()].forEach(k=>{if(drop.includes(k.toLowerCase()))u.searchParams.delete(k);});
+      return u.href.replace(/\/$/,'').toLowerCase();
     }catch{
-      return String(url||'').replace(/\\/$/,'').toLowerCase().trim();
+      return String(url||'').replace(/\/$/,'').toLowerCase().trim();
     }
   }
 
-  function findFocusedArticle(){
-    if(!focusedLink) return null;
-    const target=normalizeLink(focusedLink);
-    const articles=document.querySelectorAll('.article');
-    for(const el of articles){
-      const a=el.querySelector('h2 a');
-      if(a && normalizeLink(a.href)===target) return el;
+  function articleMatches(el){
+    const a=el.querySelector('h2 a');
+    if(!a) return false;
+
+    // 1. Exacte link-match.
+    if(focusedLink && normalizeLink(a.href)===normalizeLink(focusedLink)) return true;
+
+    // 2. Titel als veilige fallback wanneer een bron de URL normaliseert/wijzigt.
+    if(focusedTitle){
+      const title=normalizeText(a.textContent);
+      if(title===normalizeText(focusedTitle)){
+        if(!focusedSource) return true;
+        const small=normalizeText(el.querySelector('small')?.textContent);
+        return small.includes(normalizeText(focusedSource));
+      }
     }
-    return null;
+
+    return false;
+  }
+
+  function createFocusBanner(total){
+    const old=document.getElementById('focus-banner'); if(old) old.remove();
+    const container=document.getElementById('news-container'); if(!container) return;
+    const banner=document.createElement('div');
+    banner.id='focus-banner';
+    banner.style.cssText='background:#eff6ff;border:2px solid #0b5bd3;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn .3s ease;';
+    banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#1e40af;flex:1;min-width:200px;"><span style="background:#0b5bd3;color:white;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">📍</span><span>Nieuw artikel via push – alleen dit artikel</span></div><button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(11,91,211,.3);">Toon alle '+(total||'')+' artikelen →</button>';
+    container.insertAdjacentElement('afterbegin',banner);
+    document.getElementById('btn-show-all').onclick=exitFocusMode;
   }
 
   function applyFocusMode(){
-    const matchedEl=findFocusedArticle();
-    if(!matchedEl) return false;
+    if(!focusActive) return false;
+    const articles=[...document.querySelectorAll('.article')];
+    const matched=articles.find(articleMatches);
+    if(!matched) return false;
 
-    const articles=document.querySelectorAll('.article');
+    let count=articles.length;
     articles.forEach(el=>{
-      const isMatch=el===matchedEl;
-      el.style.display=isMatch?'':'none';
-      el.classList.remove(HIGHLIGHT_CLASS);
-      el.style.outline='';
-      el.style.outlineOffset='';
-      el.style.boxShadow='';
-      el.style.borderRadius='';
-      if(isMatch){
-        el.classList.add(HIGHLIGHT_CLASS);
-        el.style.outline='3px solid #0b5bd3';
-        el.style.outlineOffset='4px';
-        el.style.boxShadow='0 0 0 8px rgba(11,91,211,0.12), 0 12px 32px rgba(11,91,211,0.25)';
-        el.style.borderRadius='12px';
-      }
+      const yes=el===matched;
+      el.style.display=yes?'':'none';
+      el.classList.toggle(HIGHLIGHT_CLASS,yes);
+      el.style.outline=yes?'3px solid #0b5bd3':'';
+      el.style.outlineOffset=yes?'4px':'';
+      el.style.boxShadow=yes?'0 0 0 8px rgba(11,91,211,0.12),0 12px 32px rgba(11,91,211,0.25)':'';
+      el.style.borderRadius=yes?'12px':'';
     });
-
-    const total=window.allArticles?window.allArticles.length:articles.length;
-    createFocusBanner(total);
-    setTimeout(()=>matchedEl.scrollIntoView({behavior:'smooth', block:'center'}),100);
-    console.log('[focus v8] Exact artikel gevonden', matchedEl.querySelector('h2')?.textContent?.slice(0,80));
+    createFocusBanner(count);
+    setTimeout(()=>{try{matched.scrollIntoView({behavior:'smooth',block:'center'});}catch{}},80);
+    console.log('[focus v9] Exact push-artikel gevonden:',matched.querySelector('h2')?.textContent?.trim().slice(0,100));
     return true;
   }
 
+  function scheduleApply(){
+    if(applyTimer) clearTimeout(applyTimer);
+    applyTimer=setTimeout(()=>{applyTimer=null;applyFocusMode();},30);
+  }
+
   function showNotFound(){
-    const articles=document.querySelectorAll('.article');
-    articles.forEach(el=>{
-      el.style.display='';
-      el.classList.remove(HIGHLIGHT_CLASS);
-      el.style.outline='';
-      el.style.outlineOffset='';
-      el.style.boxShadow='';
-      el.style.borderRadius='';
-    });
-    const container=document.getElementById('news-container');
-    if(!container) return;
+    if(!focusActive) return;
+    if(applyFocusMode()) return;
+    const container=document.getElementById('news-container'); if(!container) return;
     const old=document.getElementById('focus-banner'); if(old) old.remove();
     const banner=document.createElement('div');
     banner.id='focus-banner';
     banner.style.cssText='background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
-    banner.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#92400e;flex:1;">
-        <span style="background:#f59e0b;color:white;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;">⚠️</span>
-        <span>Artikel niet in de huidige lijst – <a href="${focusedLink}" target="_blank" style="color:#0b5bd3;text-decoration:underline;">open bij bron</a></span>
-      </div>
-      <button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer;">Toon alle →</button>
-    `;
-    container.insertAdjacentElement('afterbegin', banner);
-    document.getElementById('btn-show-all').onclick=()=>banner.remove();
+    banner.innerHTML='<div style="font-size:13px;font-weight:700;color:#92400e;flex:1;">⚠️ Het push-artikel staat niet in de huidige selectie.</div><button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer;">Toon alle artikelen →</button>';
+    container.insertAdjacentElement('afterbegin',banner);
+    document.getElementById('btn-show-all').onclick=exitFocusMode;
+  }
+
+  function startObserver(){
+    const container=document.getElementById('news-container');
+    if(!container || observer) return;
+    observer=new MutationObserver(()=>{if(focusActive)scheduleApply();});
+    observer.observe(container,{childList:true,subtree:true});
+  }
+
+  function exitFocusMode(){
+    focusActive=false;
+    if(observer){observer.disconnect();observer=null;}
+    if(applyTimer)clearTimeout(applyTimer);
+    if(notFoundTimer)clearTimeout(notFoundTimer);
+    const banner=document.getElementById('focus-banner'); if(banner)banner.remove();
+    document.querySelectorAll('.article').forEach(el=>{
+      el.style.display='';el.style.outline='';el.style.outlineOffset='';el.style.boxShadow='';el.style.borderRadius='';el.classList.remove(HIGHLIGHT_CLASS);
+    });
+    try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
+    try{history.replaceState({},'',location.pathname);}catch{}
+    focusedLink=focusedSource=focusedId=focusedTitle=null;
+  }
+
+  function activate(link,source,id,title){
+    focusedLink=link||null;
+    focusedSource=source||null;
+    focusedId=id||null;
+    focusedTitle=title||null;
+    focusActive=!!(focusedLink||focusedTitle);
+    if(!focusActive)return;
+    ensureSourceEnabled(focusedSource);
+    startObserver();
+    scheduleApply();
+    if(notFoundTimer)clearTimeout(notFoundTimer);
+    notFoundTimer=setTimeout(showNotFound,10000);
   }
 
   function checkFocusParam(){
-    const params=new URLSearchParams(location.search);
-    const focus=params.get('focus');
-    const highlight=params.get('highlight');
-    const src=params.get('src');
-    const id=params.get('id') || params.get('focusId');
-    let targetLink=focus?decodeURIComponent(focus):null;
-    if(!targetLink && highlight) targetLink=decodeURIComponent(highlight);
-    if(!targetLink) return;
-
-    focusedLink=targetLink;
-    focusedSource=src?decodeURIComponent(src):null;
-    focusedId=id?decodeURIComponent(id):(highlight?decodeURIComponent(highlight):null);
-    if(focusedSource) ensureSourceEnabled(focusedSource);
-
-    if(window._focusWaitTimer) clearInterval(window._focusWaitTimer);
-    if(window._focusWaitTimeout) clearTimeout(window._focusWaitTimeout);
-
-    let found=false;
-    const started=Date.now();
-    const tryFind=()=>{
-      if(applyFocusMode()){ found=true; cleanup(); return; }
-      if(Date.now()-started>=8000){ cleanup(); showNotFound(); }
-    };
-    const cleanup=()=>{
-      if(window._focusWaitTimer){ clearInterval(window._focusWaitTimer); window._focusWaitTimer=null; }
-      if(window._focusWaitTimeout){ clearTimeout(window._focusWaitTimeout); window._focusWaitTimeout=null; }
-    };
-
-    // Niet wachten op een globale 'loaded'-vlag: zodra het exacte artikel
-    // door de normale renderer verschijnt, wordt het direct omlijnd.
-    tryFind();
-    if(!found){
-      window._focusWaitTimer=setInterval(tryFind,150);
-      window._focusWaitTimeout=setTimeout(()=>{ if(!found){ cleanup(); showNotFound(); } },8200);
-    }
+    const p=new URLSearchParams(location.search);
+    const link=p.get('focus')||p.get('highlight');
+    const source=p.get('src')||p.get('pushSource')||'';
+    const id=p.get('id')||p.get('focusId')||'';
+    const title=p.get('title')||p.get('pushTitle')||'';
+    if(link)activate(link,decodeURIComponent(source||''),decodeURIComponent(id||''),decodeURIComponent(title||''));
   }
 
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('message', e=>{
-      if(e.data && (e.data.type==='NOTIFICATION_CLICK' || e.data.type==='PUSH_CLICKED')){
-        const link=e.data.link || e.data.url || e.data.focusUrl;
-        const src=e.data.source; const id=e.data.id || e.data.articleId;
+    navigator.serviceWorker.addEventListener('message',e=>{
+      if(!e.data)return;
+      if(e.data.type==='NOTIFICATION_CLICK'||e.data.type==='PUSH_CLICKED'){
+        const link=e.data.link||e.data.url||e.data.focusUrl||e.data.highlight;
         if(link){
-          focusedLink=link; focusedSource=src; focusedId=id;
-          if(src) ensureSourceEnabled(src);
-          try{ const newUrl=`/?focus=${encodeURIComponent(link)}&src=${encodeURIComponent(src||'')}&id=${encodeURIComponent(id||'')}`; history.replaceState({}, '', newUrl); }catch{}
-          setTimeout(()=>checkFocusParam(), 400);
+          activate(link,e.data.source||e.data.pushSource||'',e.data.id||e.data.articleId||'',e.data.title||e.data.pushTitle||'');
+          try{
+            const u=new URL(location.href);
+            u.pathname='/';
+            u.search='';
+            u.searchParams.set('highlight',link);
+            if(e.data.source)u.searchParams.set('pushSource',e.data.source);
+            if(e.data.articleId||e.data.id)u.searchParams.set('focusId',e.data.articleId||e.data.id);
+            if(e.data.title)u.searchParams.set('pushTitle',e.data.title);
+            history.replaceState({},'',u.href);
+          }catch{}
+          scheduleApply();
         }
       }
     });
@@ -196,6 +175,6 @@
 
   window.exitFocusMode=exitFocusMode;
   window.showOnlyFocusedArticle=applyFocusMode;
-  document.addEventListener('DOMContentLoaded', ()=>setTimeout(checkFocusParam, 100));
-  window.addEventListener('load', ()=>setTimeout(checkFocusParam, 300));
+  document.addEventListener('DOMContentLoaded',()=>{startObserver();setTimeout(checkFocusParam,50);});
+  window.addEventListener('load',()=>setTimeout(checkFocusParam,100));
 })();
