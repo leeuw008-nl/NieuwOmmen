@@ -1,4 +1,4 @@
-// article-focus.js v9 - robuuste push -> exact artikel, blijft actief na her-render
+// article-focus.js v10 - pushfocus zonder MutationObserver-lus, banner blijft stabiel
 (function(){
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
@@ -56,14 +56,20 @@
   }
 
   function createFocusBanner(total){
-    const old=document.getElementById('focus-banner'); if(old) old.remove();
     const container=document.getElementById('news-container'); if(!container) return;
-    const banner=document.createElement('div');
-    banner.id='focus-banner';
-    banner.style.cssText='background:#eff6ff;border:2px solid #0b5bd3;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn .3s ease;';
-    banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#1e40af;flex:1;min-width:200px;"><span style="background:#0b5bd3;color:white;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">📍</span><span>Nieuw artikel via push – alleen dit artikel</span></div><button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(11,91,211,.3);">Toon alle '+(total||'')+' artikelen →</button>';
-    container.insertAdjacentElement('afterbegin',banner);
-    document.getElementById('btn-show-all').onclick=exitFocusMode;
+    let banner=document.getElementById('focus-banner');
+    if(!banner){
+      banner=document.createElement('div');
+      banner.id='focus-banner';
+      banner.style.cssText='background:#eff6ff;border:2px solid #0b5bd3;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn .3s ease;';
+      banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#1e40af;flex:1;min-width:200px;"><span style="background:#0b5bd3;color:white;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">📍</span><span>Nieuw artikel via push – alleen dit artikel</span></div><button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(11,91,211,.3);">Toon alle '+(total||'')+' artikelen →</button>';
+      container.insertAdjacentElement('afterbegin',banner);
+      const btn=banner.querySelector('#btn-show-all');
+      if(btn) btn.onclick=exitFocusMode;
+    }else{
+      const btn=banner.querySelector('#btn-show-all');
+      if(btn) btn.textContent='Toon alle '+(total||'')+' artikelen →';
+    }
   }
 
   function applyFocusMode(){
