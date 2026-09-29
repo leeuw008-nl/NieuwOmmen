@@ -1,7 +1,7 @@
 // sw.js v302 - FIX omlijnd artikel bij push click + knop naar overzicht
 // Deze file wordt als service worker geregistreerd, vervangt oude sw.js en push.js logic
 
-const SW_VERSION = 'v304-push-focus';
+const SW_VERSION = 'v303-no-push-when-app-visible';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -13,7 +13,7 @@ self.addEventListener('activate', event => {
 
 // FIX v301: push click moet artikel omlijnd tonen met ?highlight= link + overzicht knop
 self.addEventListener('notificationclick', event => {
-  console.log('[sw v304] notificationclick', event.notification.data);
+  console.log('[sw v301] notificationclick', event.notification.data);
   event.notification.close();
   const data = event.notification.data || {};
   const link = data.link || data.url || 'https://nieuwommen.leeuw008.nl/';
