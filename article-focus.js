@@ -1,4 +1,4 @@
-// article-focus.js v10 - pushfocus zonder MutationObserver-lus, banner blijft stabiel
+// article-focus.js v11 - voorkom late 'niet gevonden' melding na succesvolle match
 (function(){
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
@@ -77,6 +77,13 @@
     const articles=[...document.querySelectorAll('.article')];
     const matched=articles.find(articleMatches);
     if(!matched) return false;
+
+    // Het artikel is gevonden: de tijdelijke niet-gevonden timer mag
+    // nooit later alsnog de succesvolle focusbalk overschrijven.
+    if(notFoundTimer){
+      clearTimeout(notFoundTimer);
+      notFoundTimer=null;
+    }
 
     let count=articles.length;
     articles.forEach(el=>{
