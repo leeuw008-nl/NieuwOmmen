@@ -3,6 +3,7 @@
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
   let focusActive=false, observer=null, applyTimer=null, notFoundTimer=null;
+  let loadingShown=false;
 
   function getState(){try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
   function saveState(s){try{localStorage.setItem('nieuwsommen_bronnen_v2',JSON.stringify(s));}catch{}}
@@ -55,6 +56,41 @@
     return false;
   }
 
+  function showFocusLoading(title){
+    const existing=document.getElementById('focus-loading');
+    const text=title ? 'Ophalen artikel "'+title+'"' : 'Ophalen artikel...';
+    if(existing){
+      const label=existing.querySelector('.focus-loading-text');
+      if(label) label.textContent=text;
+      return;
+    }
+    const overlay=document.createElement('div');
+    overlay.id='focus-loading';
+    overlay.style.cssText='position:fixed;left:0;right:0;top:0;bottom:0;z-index:9999;background:rgba(255,255,255,.97);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;';
+    overlay.innerHTML='<div style="text-align:center;max-width:520px;padding:24px 20px;">'+
+      '<div style="font-size:42px;line-height:1;margin-bottom:18px;animation:focusHourglass 1.2s ease-in-out infinite;">⏳</div>'+
+      '<div class="focus-loading-text" style="font-size:17px;font-weight:700;color:#1e40af;line-height:1.45;">'+escapeHtml(text)+'</div>'+
+      '<div style="margin-top:8px;font-size:13px;color:#64748b;">Even geduld...</div></div>';
+    if(!document.getElementById('focus-loading-style')){
+      const style=document.createElement('style');
+      style.id='focus-loading-style';
+      style.textContent='@keyframes focusHourglass{0%,100%{transform:rotate(0deg);opacity:.8}50%{transform:rotate(180deg);opacity:1}}';
+      document.head.appendChild(style);
+    }
+    document.body.appendChild(overlay);
+    loadingShown=true;
+  }
+
+  function hideFocusLoading(){
+    const overlay=document.getElementById('focus-loading');
+    if(overlay) overlay.remove();
+    loadingShown=false;
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>'\"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;' }[c]));
+  }
+
   function createFocusBanner(total){
     const container=document.getElementById('news-container'); if(!container) return;
     let banner=document.getElementById('focus-banner');
@@ -95,6 +131,7 @@
       el.style.boxShadow=yes?'0 0 0 8px rgba(11,91,211,0.12),0 12px 32px rgba(11,91,211,0.25)':'';
       el.style.borderRadius=yes?'12px':'';
     });
+    hideFocusLoading();
     createFocusBanner(count);
     setTimeout(()=>{try{matched.scrollIntoView({behavior:'smooth',block:'center'});}catch{}},80);
     console.log('[focus v9] Exact push-artikel gevonden:',matched.querySelector('h2')?.textContent?.trim().slice(0,100));
@@ -132,6 +169,7 @@
     if(applyTimer)clearTimeout(applyTimer);
     if(notFoundTimer)clearTimeout(notFoundTimer);
     const banner=document.getElementById('focus-banner'); if(banner)banner.remove();
+    hideFocusLoading();
     document.querySelectorAll('.article').forEach(el=>{
       el.style.display='';el.style.outline='';el.style.outlineOffset='';el.style.boxShadow='';el.style.borderRadius='';el.classList.remove(HIGHLIGHT_CLASS);
     });
@@ -147,6 +185,7 @@
     focusedTitle=title||null;
     focusActive=!!(focusedLink||focusedTitle);
     if(!focusActive)return;
+    showFocusLoading(focusedTitle || focusedLink || '');
     ensureSourceEnabled(focusedSource);
     startObserver();
     scheduleApply();
