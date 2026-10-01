@@ -17,8 +17,10 @@ header h1{display:flex;align-items:center;gap:12px;justify-content:center;width:
 .search-row input:focus{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
 .filter-header{margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:all .2s;gap:6px;min-height:36px}
 .filter-header.open{border-radius:12px 12px 0 0;border-bottom:2px solid var(--brand);box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.filter-header-center{flex:1;display:flex;justify-content:center;align-items:center}
+.filter-header-center{flex:1;display:flex;justify-content:flex-start;align-items:center;min-width:0}
 .filter-header-count{font-weight:600;color:#1d4ed8;font-size:11px;white-space:nowrap;background:#eff6ff;padding:4px 10px;border-radius:999px;border:1px solid #bfdbfe;height:28px;display:inline-flex;align-items:center;justify-content:center}
+.filter-header-center .search-row{margin:0;width:100%;max-width:none}
+.filter-header-center .search-row input{height:28px;padding:4px 9px;border-radius:8px;font-size:13px;border:1px solid #cbd5e1;background:#fff;color:var(--text)}
 .filter-header-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .bell-slot{display:flex;align-items:center;justify-content:center;min-width:42px;min-height:28px;width:42px;height:28px}
 .bell-slot:empty::after{content:"🔕";opacity:1;font-size:18px;display:flex;align-items:center;justify-content:center;width:42px;height:28px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;color:#64748b}
