@@ -28,11 +28,14 @@
     try{
       const u=new URL(url,location.href);
       u.hash='';
+      // Worker en app gebruiken bij RTV Vechtdal soms dezelfde URL met
+      // en zonder "www". Voor push-focus is dat dezelfde artikel-URL.
+      u.hostname=u.hostname.replace(/^www\\./i,'').toLowerCase();
       const drop=['highlight','focus','focusid','frompush','pushtitle','pushsource','externallink'];
       [...u.searchParams.keys()].forEach(k=>{if(drop.includes(k.toLowerCase()))u.searchParams.delete(k);});
       return u.href.replace(/\/$/,'').toLowerCase();
     }catch{
-      return String(url||'').replace(/\/$/,'').toLowerCase().trim();
+      return String(url||'').replace(/^https?:\\/\\/www\\./i,'https://').replace(/\/$/,'').toLowerCase().trim();
     }
   }
 
