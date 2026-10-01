@@ -146,6 +146,9 @@
   function showNotFound(){
     if(!focusActive) return;
     if(applyFocusMode()) return;
+    // Geen match binnen de wachttijd: verwijder het laadscherm, anders blijft
+    // de fullscreen overlay boven de 'niet gevonden'-melding staan.
+    hideFocusLoading();
     const container=document.getElementById('news-container'); if(!container) return;
     const old=document.getElementById('focus-banner'); if(old) old.remove();
     const banner=document.createElement('div');
@@ -190,7 +193,7 @@
     startObserver();
     scheduleApply();
     if(notFoundTimer)clearTimeout(notFoundTimer);
-    notFoundTimer=setTimeout(showNotFound,10000);
+    notFoundTimer=setTimeout(showNotFound,20000);
   }
 
   function checkFocusParam(){
