@@ -1,9 +1,9 @@
-// article-focus.js v11 - voorkom late 'niet gevonden' melding na succesvolle match
+// article-focus.js v12 - stabiele push-focus zonder render-flikkering
 (function(){
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
   let focusActive=false, observer=null, applyTimer=null, notFoundTimer=null;
-  let loadingShown=false;
+  let loadingShown=false, hideLoadingTimer=null, matchedElement=null;
 
   function getState(){try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
   function saveState(s){try{localStorage.setItem('nieuwsommen_bronnen_v2',JSON.stringify(s));}catch{}}
@@ -82,6 +82,7 @@
   }
 
   function hideFocusLoading(){
+    if(hideLoadingTimer){clearTimeout(hideLoadingTimer);hideLoadingTimer=null;}
     const overlay=document.getElementById('focus-loading');
     if(overlay) overlay.remove();
     loadingShown=false;
@@ -112,7 +113,11 @@
     if(!focusActive) return false;
     const articles=[...document.querySelectorAll('.article')];
     const matched=articles.find(articleMatches);
-    if(!matched) return false;
+    if(!matched){
+      matchedElement=null;
+      if(hideLoadingTimer){clearTimeout(hideLoadingTimer);hideLoadingTimer=null;}
+      return false;
+    }
 
     // Het artikel is gevonden: de tijdelijke niet-gevonden timer mag
     // nooit later alsnog de succesvolle focusbalk overschrijven.
@@ -131,8 +136,18 @@
       el.style.boxShadow=yes?'0 0 0 8px rgba(11,91,211,0.12),0 12px 32px rgba(11,91,211,0.25)':'';
       el.style.borderRadius=yes?'12px':'';
     });
-    hideFocusLoading();
     createFocusBanner(count);
+    // Houd het laadscherm nog even vast. De nieuwsfeed kan direct hierna
+    // opnieuw renderen (cache -> verse data). Alleen als hetzelfde gevonden
+    // DOM-element stabiel blijft, laten we het artikel definitief zien.
+    if(matchedElement!==matched){
+      matchedElement=matched;
+      if(hideLoadingTimer) clearTimeout(hideLoadingTimer);
+      hideLoadingTimer=setTimeout(()=>{
+        hideLoadingTimer=null;
+        if(focusActive && document.body.contains(matchedElement) && articleMatches(matchedElement)) hideFocusLoading();
+      },900);
+    }
     setTimeout(()=>{try{matched.scrollIntoView({behavior:'smooth',block:'center'});}catch{}},80);
     console.log('[focus v9] Exact push-artikel gevonden:',matched.querySelector('h2')?.textContent?.trim().slice(0,100));
     return true;
@@ -196,13 +211,15 @@
     notFoundTimer=setTimeout(showNotFound,20000);
   }
 
+  function safeDecode(s){try{return decodeURIComponent(s||'');}catch{return String(s||'');}}
+
   function checkFocusParam(){
     const p=new URLSearchParams(location.search);
     const link=p.get('focus')||p.get('highlight');
     const source=p.get('src')||p.get('pushSource')||'';
     const id=p.get('id')||p.get('focusId')||'';
     const title=p.get('title')||p.get('pushTitle')||'';
-    if(link)activate(link,decodeURIComponent(source||''),decodeURIComponent(id||''),decodeURIComponent(title||''));
+    if(link)activate(link,safeDecode(source),safeDecode(id),safeDecode(title));
   }
 
   if('serviceWorker' in navigator){
