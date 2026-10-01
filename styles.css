@@ -107,4 +107,4 @@ footer button{margin:5px;padding:10px 18px;font-size:14px;background:var(--brand
 @media(max-width:400px){header h1{font-size:1.4em} .source-row{grid-template-columns:1fr 124px;gap:4px;padding:6px 2px 6px 6px} .toggles{grid-template-columns:38px 42px 42px;gap:1px}}
 
 /* Vaste breedte voor Alles aan/uit */
-.btn-all-toets{width:72px;box-sizing:border-box;text-align:center;}
+.btn-all-toets{width:96px !important;min-width:96px !important;max-width:96px !important;flex:0 0 96px !important;box-sizing:border-box;text-align:center;}
