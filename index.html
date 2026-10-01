@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="styles.css?v=298">
 <link rel="icon" href="icons/icon-192x192.png" type="image/png">
 <meta name="theme-color" content="#0b5bd3">
-</head>
+<style>.search-box{position:relative;width:100%;}.search-box #search-input{width:100%;box-sizing:border-box;padding-right:34px;}.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:#64748b;font-size:22px;line-height:28px;padding:0;cursor:pointer;display:none;}.search-clear:hover{color:#0b5bd3;}</style>\n</head>
 <body>
 <header>
   <h1>
@@ -21,7 +21,7 @@
     </span>
   </h1>
   <div class="filter-header" id="filter-header">
-    <div class="filter-header-center"><div class="search-row"><input type="text" id="search-input" placeholder="Zoek in nieuws..."></div></div>
+    <div class="filter-header-center"><div class="search-row"><div class="search-box"><input type="text" id="search-input" placeholder="Zoek in nieuws..." autocomplete="off"><button type="button" id="search-clear" class="search-clear" aria-label="Zoekveld leegmaken" title="Zoekveld leegmaken">×</button></div></div></div>
     <div class="filter-header-right">
       <div class="bell-slot" id="bell-slot"></div>
       <button class="btn-all-toets" id="btn-all">Alles aan</button>
