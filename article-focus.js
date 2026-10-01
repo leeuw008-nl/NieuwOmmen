@@ -1,4 +1,4 @@
-// article-focus.js v12 - stabiele push-focus zonder render-flikkering
+// article-focus.js v13 - stabiele push-focus zonder URL-verschil tussen www en non-www
 (function(){
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
@@ -15,65 +15,50 @@
     if(!state[sourceId].aan){
       state[sourceId].aan=true;
       saveState(state);
-      try{if(typeof window.filterNews==='function') window.filterNews();}catch{}
-      setTimeout(()=>{try{if(typeof window.renderFilters==='function') window.renderFilters();}catch{}},100);
+      try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
+      setTimeout(()=>{try{if(typeof window.renderFilters==='function')window.renderFilters();}catch{}},100);
     }
   }
 
-  function normalizeText(s){
-    return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();
-  }
+  function normalizeText(s){return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();}
 
   function normalizeLink(url){
     try{
       const u=new URL(url,location.href);
       u.hash='';
-      // Worker en app gebruiken bij RTV Vechtdal soms dezelfde URL met
-      // en zonder "www". Voor push-focus is dat dezelfde artikel-URL.
-      u.hostname=u.hostname.replace(/^www\\./i,'').toLowerCase();
+      // www en non-www zijn voor push-focus dezelfde artikel-URL.
+      u.hostname=u.hostname.replace(/^www[.]/i,'').toLowerCase();
       const drop=['highlight','focus','focusid','frompush','pushtitle','pushsource','externallink'];
       [...u.searchParams.keys()].forEach(k=>{if(drop.includes(k.toLowerCase()))u.searchParams.delete(k);});
       return u.href.replace(/\/$/,'').toLowerCase();
     }catch{
-      return String(url||'').replace(/^https?:\\/\\/www\\./i,'https://').replace(/\/$/,'').toLowerCase().trim();
+      return String(url||'').replace(/^https?:\/\/www[.]/i,'https://').replace(/\/$/,'').toLowerCase().trim();
     }
   }
 
   function articleMatches(el){
     const a=el.querySelector('h2 a');
-    if(!a) return false;
-
-    // 1. Exacte link-match.
-    if(focusedLink && normalizeLink(a.href)===normalizeLink(focusedLink)) return true;
-
-    // 2. Titel als veilige fallback wanneer een bron de URL normaliseert/wijzigt.
+    if(!a)return false;
+    if(focusedLink&&normalizeLink(a.href)===normalizeLink(focusedLink))return true;
     if(focusedTitle){
       const title=normalizeText(a.textContent);
       if(title===normalizeText(focusedTitle)){
-        if(!focusedSource) return true;
+        if(!focusedSource)return true;
         const small=normalizeText(el.querySelector('small')?.textContent);
         return small.includes(normalizeText(focusedSource));
       }
     }
-
     return false;
   }
 
   function showFocusLoading(title){
     const existing=document.getElementById('focus-loading');
-    const text=title ? 'Ophalen artikel "'+title+'"' : 'Ophalen artikel...';
-    if(existing){
-      const label=existing.querySelector('.focus-loading-text');
-      if(label) label.textContent=text;
-      return;
-    }
+    const text=title?'Ophalen artikel "'+title+'"':'Ophalen artikel...';
+    if(existing){const label=existing.querySelector('.focus-loading-text');if(label)label.textContent=text;return;}
     const overlay=document.createElement('div');
     overlay.id='focus-loading';
     overlay.style.cssText='position:fixed;left:0;right:0;top:0;bottom:0;z-index:9999;background:rgba(255,255,255,.97);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;';
-    overlay.innerHTML='<div style="text-align:center;max-width:520px;padding:24px 20px;">'+
-      '<div style="font-size:42px;line-height:1;margin-bottom:18px;animation:focusHourglass 1.2s ease-in-out infinite;">⏳</div>'+
-      '<div class="focus-loading-text" style="font-size:17px;font-weight:700;color:#1e40af;line-height:1.45;">'+escapeHtml(text)+'</div>'+
-      '<div style="margin-top:8px;font-size:13px;color:#64748b;">Even geduld...</div></div>';
+    overlay.innerHTML='<div style="text-align:center;max-width:520px;padding:24px 20px;"><div style="font-size:42px;line-height:1;margin-bottom:18px;animation:focusHourglass 1.2s ease-in-out infinite;">⏳</div><div class="focus-loading-text" style="font-size:17px;font-weight:700;color:#1e40af;line-height:1.45;">'+escapeHtml(text)+'</div><div style="margin-top:8px;font-size:13px;color:#64748b;">Even geduld...</div></div>';
     if(!document.getElementById('focus-loading-style')){
       const style=document.createElement('style');
       style.id='focus-loading-style';
@@ -86,17 +71,14 @@
 
   function hideFocusLoading(){
     if(hideLoadingTimer){clearTimeout(hideLoadingTimer);hideLoadingTimer=null;}
-    const overlay=document.getElementById('focus-loading');
-    if(overlay) overlay.remove();
+    const overlay=document.getElementById('focus-loading');if(overlay)overlay.remove();
     loadingShown=false;
   }
 
-  function escapeHtml(s){
-    return String(s||'').replace(/[&<>'\"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;' }[c]));
-  }
+  function escapeHtml(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
   function createFocusBanner(total){
-    const container=document.getElementById('news-container'); if(!container) return;
+    const container=document.getElementById('news-container');if(!container)return;
     let banner=document.getElementById('focus-banner');
     if(!banner){
       banner=document.createElement('div');
@@ -104,16 +86,14 @@
       banner.style.cssText='background:#eff6ff;border:2px solid #0b5bd3;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:fadeIn .3s ease;';
       banner.innerHTML='<div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#1e40af;flex:1;min-width:200px;"><span style="background:#0b5bd3;color:white;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">📍</span><span>Nieuw artikel via push – alleen dit artikel</span></div><button id="btn-show-all" style="background:#0b5bd3;color:white;border:0;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(11,91,211,.3);">Toon alle '+(total||'')+' artikelen →</button>';
       container.insertAdjacentElement('afterbegin',banner);
-      const btn=banner.querySelector('#btn-show-all');
-      if(btn) btn.onclick=exitFocusMode;
+      const btn=banner.querySelector('#btn-show-all');if(btn)btn.onclick=exitFocusMode;
     }else{
-      const btn=banner.querySelector('#btn-show-all');
-      if(btn) btn.textContent='Toon alle '+(total||'')+' artikelen →';
+      const btn=banner.querySelector('#btn-show-all');if(btn)btn.textContent='Toon alle '+(total||'')+' artikelen →';
     }
   }
 
   function applyFocusMode(){
-    if(!focusActive) return false;
+    if(!focusActive)return false;
     const articles=[...document.querySelectorAll('.article')];
     const matched=articles.find(articleMatches);
     if(!matched){
@@ -121,15 +101,8 @@
       if(hideLoadingTimer){clearTimeout(hideLoadingTimer);hideLoadingTimer=null;}
       return false;
     }
-
-    // Het artikel is gevonden: de tijdelijke niet-gevonden timer mag
-    // nooit later alsnog de succesvolle focusbalk overschrijven.
-    if(notFoundTimer){
-      clearTimeout(notFoundTimer);
-      notFoundTimer=null;
-    }
-
-    let count=articles.length;
+    if(notFoundTimer){clearTimeout(notFoundTimer);notFoundTimer=null;}
+    const count=articles.length;
     articles.forEach(el=>{
       const yes=el===matched;
       el.style.display=yes?'':'none';
@@ -140,35 +113,29 @@
       el.style.borderRadius=yes?'12px':'';
     });
     createFocusBanner(count);
-    // Houd het laadscherm nog even vast. De nieuwsfeed kan direct hierna
-    // opnieuw renderen (cache -> verse data). Alleen als hetzelfde gevonden
-    // DOM-element stabiel blijft, laten we het artikel definitief zien.
     if(matchedElement!==matched){
       matchedElement=matched;
-      if(hideLoadingTimer) clearTimeout(hideLoadingTimer);
+      if(hideLoadingTimer)clearTimeout(hideLoadingTimer);
       hideLoadingTimer=setTimeout(()=>{
         hideLoadingTimer=null;
-        if(focusActive && document.body.contains(matchedElement) && articleMatches(matchedElement)) hideFocusLoading();
+        if(focusActive&&document.body.contains(matchedElement)&&articleMatches(matchedElement))hideFocusLoading();
       },900);
     }
     setTimeout(()=>{try{matched.scrollIntoView({behavior:'smooth',block:'center'});}catch{}},80);
-    console.log('[focus v9] Exact push-artikel gevonden:',matched.querySelector('h2')?.textContent?.trim().slice(0,100));
     return true;
   }
 
   function scheduleApply(){
-    if(applyTimer) clearTimeout(applyTimer);
+    if(applyTimer)clearTimeout(applyTimer);
     applyTimer=setTimeout(()=>{applyTimer=null;applyFocusMode();},30);
   }
 
   function showNotFound(){
-    if(!focusActive) return;
-    if(applyFocusMode()) return;
-    // Geen match binnen de wachttijd: verwijder het laadscherm, anders blijft
-    // de fullscreen overlay boven de 'niet gevonden'-melding staan.
+    if(!focusActive)return;
+    if(applyFocusMode())return;
     hideFocusLoading();
-    const container=document.getElementById('news-container'); if(!container) return;
-    const old=document.getElementById('focus-banner'); if(old) old.remove();
+    const container=document.getElementById('news-container');if(!container)return;
+    const old=document.getElementById('focus-banner');if(old)old.remove();
     const banner=document.createElement('div');
     banner.id='focus-banner';
     banner.style.cssText='background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:12px 16px;margin:0 0 16px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
@@ -179,7 +146,7 @@
 
   function startObserver(){
     const container=document.getElementById('news-container');
-    if(!container || observer) return;
+    if(!container||observer)return;
     observer=new MutationObserver(()=>{if(focusActive)scheduleApply();});
     observer.observe(container,{childList:true,subtree:true});
   }
@@ -189,7 +156,7 @@
     if(observer){observer.disconnect();observer=null;}
     if(applyTimer)clearTimeout(applyTimer);
     if(notFoundTimer)clearTimeout(notFoundTimer);
-    const banner=document.getElementById('focus-banner'); if(banner)banner.remove();
+    const banner=document.getElementById('focus-banner');if(banner)banner.remove();
     hideFocusLoading();
     document.querySelectorAll('.article').forEach(el=>{
       el.style.display='';el.style.outline='';el.style.outlineOffset='';el.style.boxShadow='';el.style.borderRadius='';el.classList.remove(HIGHLIGHT_CLASS);
@@ -206,7 +173,7 @@
     focusedTitle=title||null;
     focusActive=!!(focusedLink||focusedTitle);
     if(!focusActive)return;
-    showFocusLoading(focusedTitle || focusedLink || '');
+    showFocusLoading(focusedTitle||focusedLink||'');
     ensureSourceEnabled(focusedSource);
     startObserver();
     scheduleApply();
@@ -222,7 +189,7 @@
     const source=p.get('src')||p.get('pushSource')||'';
     const id=p.get('id')||p.get('focusId')||'';
     const title=p.get('title')||p.get('pushTitle')||'';
-    if(link)activate(link,safeDecode(source),safeDecode(id),safeDecode(title));
+    if(link)activate(safeDecode(link),safeDecode(source),safeDecode(id),safeDecode(title));
   }
 
   if('serviceWorker' in navigator){
@@ -230,20 +197,7 @@
       if(!e.data)return;
       if(e.data.type==='NOTIFICATION_CLICK'||e.data.type==='PUSH_CLICKED'){
         const link=e.data.link||e.data.url||e.data.focusUrl||e.data.highlight;
-        if(link){
-          activate(link,e.data.source||e.data.pushSource||'',e.data.id||e.data.articleId||'',e.data.title||e.data.pushTitle||'');
-          try{
-            const u=new URL(location.href);
-            u.pathname='/';
-            u.search='';
-            u.searchParams.set('highlight',link);
-            if(e.data.source)u.searchParams.set('pushSource',e.data.source);
-            if(e.data.articleId||e.data.id)u.searchParams.set('focusId',e.data.articleId||e.data.id);
-            if(e.data.title)u.searchParams.set('pushTitle',e.data.title);
-            history.replaceState({},'',u.href);
-          }catch{}
-          scheduleApply();
-        }
+        if(link)activate(link,e.data.source||e.data.pushSource||'',e.data.id||e.data.articleId||'',e.data.title||e.data.pushTitle||'');
       }
     });
   }
