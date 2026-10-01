@@ -400,8 +400,21 @@ await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,ite
 }catch(e){return json({error:'Update fout: '+e.message},500);}
 }
 if(path==='/api/admin/test-push' && request.method==='POST'){
-const {title,source,link,body,filter,isReal}=await request.json();const article={title:title||'Test push',source:source||'De Stentor',link:link||'https://www.ommen.nl/actueel/',id:(isReal?'real-':'test-')+Date.now(),isTest:!isReal};
-const subs=await getAllSubs(env);let sent=0,total=0,skipped=[];for(const sub of subs){if(filter){const ok=await shouldSendToSub(sub,article,env);if(!ok){skipped.push(sub._id);continue;}}total++;if(await sendPush(sub,article,env))sent++;}if(!filter)total=subs.length;return json({sent,total,skipped,filtered:filter,article,version:'v277'});
+const {title,source,link,body,filter,isReal}=await request.json();
+const article={title:title||'Test push',source:source||'De Stentor',link:link||'https://www.ommen.nl/actueel/',id:(isReal?'real-':'test-')+Date.now(),isTest:!isReal};
+const subs=await getAllSubs(env);let sent=0,total=0,skipped=[],results=[];
+for(const sub of subs){
+  if(filter){
+    const ok=await shouldSendToSub(sub,article,env);
+    if(!ok){skipped.push(sub._id);results.push({id:sub._id,endpoint:!!sub.endpoint,sent:false,skipped:true});continue;}
+  }
+  total++;
+  const result=await sendPush(sub,article,env);
+  if(result.ok)sent++;
+  results.push({id:sub._id,endpoint:!!sub.endpoint,sent:!!result.ok,skipped:false,status:result.status||null,error:result.error||null});
+}
+if(!filter)total=subs.length;
+return json({sent,total,skipped,filtered:!!filter,article,results,version:'v277-testdiag'});
 }
 if(path==='/api/admin/newsletter/push-real' && request.method==='POST'){
 const {title,link,description}=await request.json();if(!title)return json({error:'title vereist'},400);
