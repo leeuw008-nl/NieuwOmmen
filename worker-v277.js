@@ -195,7 +195,7 @@ if(link.startsWith('/?') || link.startsWith('?')) link='https://rtvvechtdal.nl/'
 else if(link.startsWith('/')) link='https://rtvvechtdal.nl'+link;
 let iso=null; const dmatch=dateStr.match(/(\d{2})-(\d{2})-(\d{4})/);
 if(dmatch){ const d=new Date(`${dmatch[3]}-${dmatch[2]}-${dmatch[1]}T00:00:00Z`); if(!isNaN(d.getTime())) iso=d.toISOString(); }
-if(title && link) out.push({title,link,source:bronId,pubDate:iso});
+if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso});
 }
 return out;
 }catch(e){ return []; }
@@ -225,6 +225,26 @@ if(existingSet.size===set.size){ let same=true; for(const v of set){ if(!existin
 await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`[v277] seen_links saved ${set.size}`); return true;
 }catch(e){ console.log('[v277] setSeenLinks fail',e.message); return false; }
 }
+// v278: voorkom dat oude feed-items alsnog als push worden verzonden.
+// RSS-artikelen met een echte tijd mogen maximaal 6 uur oud zijn.
+// RTV Vechtdal levert alleen een kalenderdatum; die mag alleen op de huidige datum pushen.
+function isRecentPushArticle(article){
+  if(!article || !article.pubDate) return false;
+  const d=new Date(article.pubDate);
+  if(isNaN(d.getTime())) return false;
+  if(article._dateOnly){
+    try{
+      const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});
+      return fmt.format(d)===fmt.format(new Date());
+    }catch{
+      const now=new Date();
+      return d.getUTCFullYear()===now.getUTCFullYear() && d.getUTCMonth()===now.getUTCMonth() && d.getUTCDate()===now.getUTCDate();
+    }
+  }
+  const ageMs=Date.now()-d.getTime();
+  return ageMs>=-60*60*1000 && ageMs<=6*60*60*1000;
+}
+
 async function shouldSendToSub(sub,article,env){
 try{
 if(sub.userId){
@@ -436,7 +456,13 @@ let newArticles=[];let hasNew=false;
 for(const bron of BRONNEN){
 if(bron.type==='nieuwsbrief')continue;
 const arts=await fetchBron(bron);
-for(const art of arts){if(!seen.has(art.link)){newArticles.push(art);seen.add(art.link);hasNew=true;}}
+for(const art of arts){
+if(!seen.has(art.link)){
+  newArticles.push(art);
+  seen.add(art.link);
+  hasNew=true;
+}
+}
 await new Promise(r=>setTimeout(r,800));
 }
 if(!hasNew){console.log('[v277] Geen nieuwe artikelen - 0 puts');return;}
@@ -448,6 +474,10 @@ newArticles.sort((a,b)=>{if(!a.pubDate&&!b.pubDate)return 0;if(!a.pubDate)return
 let cronPushes=0;const MAX_CRON_PUSHES=35;
 for(const article of newArticles){
 if(cronPushes>=MAX_CRON_PUSHES)break;
+if(!isRecentPushArticle(article)){
+  console.log('[v278] oud/ongeldig artikel overgeslagen voor push',article.source,article.pubDate||'geen datum',article.title);
+  continue;
+}
 const relevant=[];for(const sub of subs){if(cronPushes+relevant.length>=MAX_CRON_PUSHES)break;if(await shouldSendToSub(sub,article,env))relevant.push(sub);}
 for(let i=0;i<relevant.length;i+=20){const batch=relevant.slice(i,Math.min(i+20,MAX_CRON_PUSHES-cronPushes));await Promise.all(batch.map(sub=>sendPush(sub,article,env)));cronPushes+=batch.length;await new Promise(r=>setTimeout(r,300));}
 }
