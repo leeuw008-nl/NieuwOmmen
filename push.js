@@ -27,6 +27,17 @@ function getSources(){
   }
   return [];
 }
+function getSourceScopes(){
+  try{
+    const v=JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');
+    const out={};
+    Object.keys(v).forEach(k=>{
+      if(v[k] && typeof v[k]==='object' && v[k].aan) out[k]=v[k].scope==='regio'?'regio':'gemeente';
+    });
+    return out;
+  }catch(e){ return {}; }
+}
+
 function getAuthToken(){
   return localStorage.getItem('ommen_auth_token') || localStorage.getItem('ommen_token') || '';
 }
@@ -55,7 +66,7 @@ async function updateSourcesOnServer(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), pushEnabled:true, token: token||undefined})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true, token: token||undefined})
     });
     console.log('[push v270] Sources geupdate op server:', getSources(), 'met user?', !!token);
   }catch(e){ console.log('[push v270] update sources fail', e.message); }
@@ -73,7 +84,7 @@ async function linkAnonymousSubsToUser(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), pushEnabled:true})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true})
     });
     console.log('[push v270] linkAnonymous - klaar, check admin Abonnementen voor email');
   }catch(e){ console.log('[push v270] linkAnonymous fail', e.message); }
@@ -129,7 +140,7 @@ async function onBellClick(e){
       const p256dh=btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       const auth=btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       console.log('[push v270] POST /subscribe met bronnen', getSources(), 'en token?', !!getAuthToken());
-      const r=await fetch(WORKER_URL+'/subscribe',{method:'POST',headers: authHeaders(), body:JSON.stringify({endpoint:sub.endpoint,keys:{p256dh,auth},sources:getSources(), pushEnabled:true})});
+      const r=await fetch(WORKER_URL+'/subscribe',{method:'POST',headers: authHeaders(), body:JSON.stringify({endpoint:sub.endpoint,keys:{p256dh,auth},sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true})});
       console.log('[push v270] response',r.status); const t=await r.text(); console.log('[push v270] body', t);
       if(!r.ok) throw new Error(t);
       b.textContent='🔔'; b.classList.add('enabled','active');
