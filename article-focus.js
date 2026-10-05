@@ -3,41 +3,10 @@
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
   let focusActive=false, observer=null, applyTimer=null, notFoundTimer=null;
-  let loadingShown=false, hideLoadingTimer=null, matchedElement=null, savedScopeSource=null, savedScopeValue=null;
+  let loadingShown=false, hideLoadingTimer=null, matchedElement=null;
 
   function getState(){try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
   function saveState(s){try{localStorage.setItem('nieuwsommen_bronnen_v2',JSON.stringify(s));}catch{}}
-
-  function ensureScopeVisible(sourceId){
-    if(!sourceId) return;
-    const state=getState();
-    if(!state[sourceId]) state[sourceId]={aan:true,vandaag:false,scope:'gemeente'};
-    // Tijdens push-focus tonen we tijdelijk de volledige bron.
-    // Daardoor kan een Regio-artikel ook worden gevonden als Gemeente actief was.
-    if(savedScopeSource===null){
-      savedScopeSource=sourceId;
-      savedScopeValue=state[sourceId].scope||'gemeente';
-    }
-    if(state[sourceId].scope!=='regio'){
-      state[sourceId].scope='regio';
-      saveState(state);
-      try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
-      setTimeout(()=>{try{if(typeof window.renderFilters==='function')window.renderFilters();}catch{}},100);
-    }
-  }
-
-  function restoreScope(){
-    if(!savedScopeSource)return;
-    const state=getState();
-    if(state[savedScopeSource]){
-      state[savedScopeSource].scope=savedScopeValue||'gemeente';
-      saveState(state);
-      try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
-      setTimeout(()=>{try{if(typeof window.renderFilters==='function')window.renderFilters();}catch{}},100);
-    }
-    savedScopeSource=null;
-    savedScopeValue=null;
-  }
 
   function ensureSourceEnabled(sourceId){
     if(!sourceId) return;
@@ -194,7 +163,7 @@
     document.querySelectorAll('.article').forEach(el=>{
       el.style.display='';el.style.outline='';el.style.outlineOffset='';el.style.boxShadow='';el.style.borderRadius='';el.classList.remove(HIGHLIGHT_CLASS);
     });
-    restoreScope();
+    try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
     try{history.replaceState({},'',location.pathname);}catch{}
     focusedLink=focusedSource=focusedId=focusedTitle=null;
   }
@@ -208,7 +177,6 @@
     if(!focusActive)return;
     showFocusLoading(focusedTitle||focusedLink||'');
     ensureSourceEnabled(focusedSource);
-    ensureScopeVisible(focusedSource);
     startObserver();
     scheduleApply();
     if(notFoundTimer)clearTimeout(notFoundTimer);
