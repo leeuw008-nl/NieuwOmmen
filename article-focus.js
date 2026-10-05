@@ -1,12 +1,43 @@
-// article-focus.js v13 - stabiele push-focus zonder URL-verschil tussen www en non-www
+// article-focus.js v14 - juiste scope bij push + robuustere artikelmatch
 (function(){
   const HIGHLIGHT_CLASS='focused-article';
   let focusedLink=null, focusedSource=null, focusedId=null, focusedTitle=null;
   let focusActive=false, observer=null, applyTimer=null, notFoundTimer=null;
-  let loadingShown=false, hideLoadingTimer=null, matchedElement=null;
+  let loadingShown=false, hideLoadingTimer=null, matchedElement=null, savedScopeSource=null, savedScopeValue=null;
 
   function getState(){try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
   function saveState(s){try{localStorage.setItem('nieuwsommen_bronnen_v2',JSON.stringify(s));}catch{}}
+
+  function ensureScopeVisible(sourceId){
+    if(!sourceId) return;
+    const state=getState();
+    if(!state[sourceId]) state[sourceId]={aan:true,vandaag:false,scope:'gemeente'};
+    // Tijdens push-focus tonen we tijdelijk de volledige bron.
+    // Daardoor kan een Regio-artikel ook worden gevonden als Gemeente actief was.
+    if(savedScopeSource===null){
+      savedScopeSource=sourceId;
+      savedScopeValue=state[sourceId].scope||'gemeente';
+    }
+    if(state[sourceId].scope!=='regio'){
+      state[sourceId].scope='regio';
+      saveState(state);
+      try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
+      setTimeout(()=>{try{if(typeof window.renderFilters==='function')window.renderFilters();}catch{}},100);
+    }
+  }
+
+  function restoreScope(){
+    if(!savedScopeSource)return;
+    const state=getState();
+    if(state[savedScopeSource]){
+      state[savedScopeSource].scope=savedScopeValue||'gemeente';
+      saveState(state);
+      try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
+      setTimeout(()=>{try{if(typeof window.renderFilters==='function')window.renderFilters();}catch{}},100);
+    }
+    savedScopeSource=null;
+    savedScopeValue=null;
+  }
 
   function ensureSourceEnabled(sourceId){
     if(!sourceId) return;
@@ -26,10 +57,10 @@
     try{
       const u=new URL(url,location.href);
       u.hash='';
+      u.search='';
       // www en non-www zijn voor push-focus dezelfde artikel-URL.
       u.hostname=u.hostname.replace(/^www[.]/i,'').toLowerCase();
-      const drop=['highlight','focus','focusid','frompush','pushtitle','pushsource','externallink'];
-      [...u.searchParams.keys()].forEach(k=>{if(drop.includes(k.toLowerCase()))u.searchParams.delete(k);});
+      // Queryparameters worden hierboven volledig verwijderd; tracking verandert de artikelidentiteit niet.
       return u.href.replace(/\/$/,'').toLowerCase();
     }catch{
       return String(url||'').replace(/^https?:\/\/www[.]/i,'https://').replace(/\/$/,'').toLowerCase().trim();
@@ -42,7 +73,9 @@
     if(focusedLink&&normalizeLink(a.href)===normalizeLink(focusedLink))return true;
     if(focusedTitle){
       const title=normalizeText(a.textContent);
-      if(title===normalizeText(focusedTitle)){
+      const wanted=normalizeText(focusedTitle).replace(/^\[[^\]]+\]\s*/,'');
+      const cleanTitle=title.replace(/^\[[^\]]+\]\s*/,'');
+      if(cleanTitle===wanted || (wanted.length>20 && (cleanTitle.includes(wanted)||wanted.includes(cleanTitle)))){
         if(!focusedSource)return true;
         const small=normalizeText(el.querySelector('small')?.textContent);
         return small.includes(normalizeText(focusedSource));
@@ -161,7 +194,7 @@
     document.querySelectorAll('.article').forEach(el=>{
       el.style.display='';el.style.outline='';el.style.outlineOffset='';el.style.boxShadow='';el.style.borderRadius='';el.classList.remove(HIGHLIGHT_CLASS);
     });
-    try{if(typeof window.filterNews==='function')window.filterNews();}catch{}
+    restoreScope();
     try{history.replaceState({},'',location.pathname);}catch{}
     focusedLink=focusedSource=focusedId=focusedTitle=null;
   }
@@ -175,6 +208,7 @@
     if(!focusActive)return;
     showFocusLoading(focusedTitle||focusedLink||'');
     ensureSourceEnabled(focusedSource);
+    ensureScopeVisible(focusedSource);
     startObserver();
     scheduleApply();
     if(notFoundTimer)clearTimeout(notFoundTimer);
