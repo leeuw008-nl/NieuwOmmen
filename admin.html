@@ -24,6 +24,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 @media(max-width:900px){.sidebar{position:relative;width:100%}.main{margin-left:0}}
 
 /* Geïntegreerde mobiele beheeromgeving */
+.sidebar{display:none!important}
+.main{margin:0 auto!important;max-width:760px;padding:12px!important}
+.admin-header{background:#0b5bd3;color:white;display:flex;align-items:center;gap:12px;padding:10px 12px;min-height:60px;position:sticky;top:0;z-index:10}
+.admin-header h1{font-size:18px;flex:1;text-align:center;margin:0}
+.admin-header .admin-back{margin:0!important;flex-shrink:0}
+.admin-news-link{color:white;font-size:13px;text-decoration:none}
+body{background:#f5f7fb}
+
 .admin-back{display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#0b5bd3;border-radius:10px;width:40px;height:40px;min-width:40px;box-shadow:0 2px 8px rgba(0,0,0,.22);text-decoration:none;margin-bottom:14px}
 .admin-access{padding:24px;max-width:640px;margin:24px auto;background:#fff;border-radius:12px}
 #admin-shell[hidden],#admin-access[hidden]{display:none!important}
@@ -32,18 +40,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 </head><body>
 <div id="admin-access" class="admin-access"><p id="admin-access-status">Beheerdersaccount controleren...</p><a href="./">Terug naar nieuws</a></div>
 <div id="admin-shell" hidden>
-<div class="sidebar">
-<a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a>
-<h2>NieuwOmmen v271</h2>
-<a href="#" data-tab="overview" class="active">Overzicht</a>
-<a href="#" data-tab="subs">📱 Abonnementen</a>
-<a href="#" data-tab="users">Gebruikers</a>
-<a href="#" data-tab="newsletter">Nieuwsbrief (10e bron)</a>
-<a href="#" data-tab="push">Push testen (10 bronnen)</a>
-<a href="#" data-tab="logs">Logs</a>
-<a href="#" data-tab="settings">Instellingen</a>
-<div style="margin-top:24px;font-size:11px;color:#9ca3af">Ingelogd als <span id="adminEmail">...</span><br><small id="apiBase"></small><br><br><b>v271 FIX:</b><br>✅ Fix body stream already read<br>✅ Fix onbekende admin route<br>✅ 10e bron Nieuwsbrief<br>✅ Delete/Edit nieuwsbrief (1 put)<br>✅ Volledige tekst leesbaar<br>✅ Echt artikel = omlijnd<br><span id="subs-count-side">laden...</span></div>
-</div>
+<header class="admin-header"><a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a><h1 id="admin-section-title">Admin - Overzicht</h1><a href="./" class="admin-news-link">Nieuws</a></header>
 <div class="main">
 <div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin v307 FINAL FIX #1,2,3,6,7,8,9,10 nieuwsbrief delete/edit + omlijnd lezen</h3><p style="font-size:13px;color:#166534"><b>v271:</b> Zelfde opmaak/inhoud als v266, maar nu met 🗑️ Verwijderen en ✏️ Wijzigen. 1 KV write per actie (gratis tier safe). Deploy eerst Worker v271!</p><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen v271</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
 
@@ -129,7 +126,7 @@ async function verifyAdminSession(){
     document.getElementById('adminEmail').textContent=user.email;
     document.getElementById('login-box').style.display='none';
     shell.hidden=false;access.hidden=true;
-    await Promise.allSettled([loadOverview(),loadSubs(),loadNewsletterFeed()]);
+    const allowed=['overview','subs','users','newsletter','push','logs','settings'];const selected=new URLSearchParams(location.search).get('tab');switchTab(allowed.includes(selected)?selected:'overview');
     return true;
   }catch(e){status.textContent='Geen toegang: '+e.message;return false;}
 }
@@ -149,8 +146,8 @@ async function doLogin(){
   }catch(e){result.textContent='Fout: '+e.message;}
 }
 
-function switchTab(t){ document.querySelectorAll('[id^=tab-]').forEach(el=>el.style.display='none'); document.getElementById('tab-'+t).style.display='block'; document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active')); const link=document.querySelector('[data-tab='+t+']'); if(link) link.classList.add('active'); if(t==='subs') loadSubs(); if(t==='users') loadUsers(); if(t==='logs') loadDebug(); if(t==='overview') loadOverview(); if(t==='newsletter') loadNewsletterFeed(); }
-document.querySelectorAll('.sidebar a').forEach(a=>{ a.addEventListener('click',e=>{ e.preventDefault(); switchTab(a.dataset.tab); }); });
+function switchTab(t){ document.querySelectorAll('[id^=tab-]').forEach(el=>el.style.display='none'); document.getElementById('tab-'+t).style.display='block'; document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active')); const link=document.querySelector('[data-tab='+t+']'); if(link) link.classList.add('active'); const labels={overview:'Overzicht',subs:'Abonnementen',users:'Gebruikers',newsletter:'Nieuwsbrief',push:'Push testen',logs:'Logs',settings:'Instellingen'};document.getElementById('admin-section-title').textContent='Admin - '+(labels[t]||'Overzicht'); if(t==='subs') loadSubs(); if(t==='users') loadUsers(); if(t==='logs') loadDebug(); if(t==='overview') loadOverview(); if(t==='newsletter') loadNewsletterFeed(); }
+document.querySelectorAll('.sidebar a[data-tab]').forEach(a=>{ a.addEventListener('click',e=>{ e.preventDefault(); switchTab(a.dataset.tab); }); });
 async function loadOverview(){
   try{
     const s = await api('/stats'); 
