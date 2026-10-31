@@ -1,7 +1,7 @@
 {
-  "name": "Nieuw(s)Ommen",
-  "short_name": "Nieuw(s)Ommen",
-  "start_url": "./",
+  "name": "Nieuw(s)Ommen TEST",
+  "short_name": "Ommen TEST",
+  "start_url": "./?app=test-admin-2026",
   "display": "standalone",
   "background_color": "#0b5bd3",
   "theme_color": "#0b5bd3",
@@ -34,5 +34,7 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "./?app=test-admin-2026",
+  "scope": "./"
 }
