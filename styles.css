@@ -108,3 +108,13 @@ footer button{margin:5px;padding:10px 18px;font-size:14px;background:var(--brand
 
 /* Vaste breedte voor Alles aan/uit */
 .btn-all-toets{width:65px !important;min-width:65px !important;max-width:65px !important;flex:0 0 65px !important;box-sizing:border-box;text-align:center;}
+
+/* Hoofdmenu */
+header h1{position:relative;padding-left:38px}
+.nav-menu-button{position:absolute;left:0;top:50%;transform:translateY(-50%);width:34px;height:34px;border:1px solid rgba(255,255,255,.5);border-radius:8px;background:rgba(255,255,255,.16);color:#fff;font-size:24px;line-height:1;cursor:pointer}
+.nav-menu{position:absolute;left:12px;top:62px;z-index:1200;background:white;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.2);min-width:150px;overflow:hidden}
+.nav-menu[hidden]{display:none!important}
+.nav-menu a{display:block;padding:12px 18px;color:#0b5bd3;text-decoration:none;font-size:15px;font-weight:600}
+.nav-menu a+a{border-top:1px solid #e5e7eb}
+.nav-menu a:hover{background:#eff6ff}
+@media(max-width:400px){header h1{font-size:1.25em;padding-left:34px;gap:6px}.nav-menu-button{width:30px;height:30px}}
