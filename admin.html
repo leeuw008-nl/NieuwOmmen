@@ -1,165 +1,297 @@
 <!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Nieuw(s)Ommen</title>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Nieuw(s)Ommen TEST</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f5f7fb;color:#1a1a1a;line-height:1.6;max-width:680px;margin:0 auto;width:100%;padding:0 16px}
-header{background:#0b5bd3;color:white;position:sticky;top:0;z-index:10;max-width:680px;margin:0 auto;width:100%;border-radius:0 0 14px 14px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.header-inner{position:relative;display:flex;align-items:center;justify-content:center;padding:14px 16px;min-height:56px}
-header a.back-btn{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;background:#ffffff;color:#0b5bd3;text-decoration:none;line-height:1;padding:0;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.22);width:40px;height:40px;min-width:40px;min-height:40px;border:2px solid #ffffff}
-header a.back-btn:hover{background:#eef4ff}
-header h1{font-size:18px;font-weight:700;text-align:center;flex:1}
-.tabs-wrap{background:white;border-bottom:1px solid #e5e7eb;position:sticky;top:62px;z-index:9;max-width:680px;margin:8px auto 0;width:100%;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;white-space:nowrap}
-.tabs button{padding:8px 14px;border-radius:20px;border:1px solid #d1d5db;background:white;font-size:14px;cursor:pointer;flex-shrink:0}
-.tabs button.active{background:#0b5bd3;color:white;border-color:#0b5bd3}
-.tabs button.admin-tab{background:#fff7ed;border-color:#fb923c;color:#9a3412;display:none}
-.tabs button.admin-tab.visible{display:inline-flex;align-items:center;gap:6px}
-.tabs button.admin-tab.visible.active{background:#f97316;color:white;border-color:#f97316}
-.badge{font-size:10px;background:#f97316;color:white;padding:2px 6px;border-radius:10px;font-weight:800}
-.content{max-width:680px;margin:0 auto;padding:20px 0 40px;width:100%}
-.panel{display:none;background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.panel.active{display:block}
-h2{font-size:20px;margin-bottom:12px;color:#0b5bd3}
-h3{font-size:16px;margin:16px 0 8px;color:#111}
-p{margin-bottom:12px;color:#374151}
-ul{margin:8px 0 12px 20px;color:#374151}
-li{margin-bottom:6px}
-.source-grid{display:grid;grid-template-columns:1fr;gap:6px;margin:8px 0} /* ENIGE WIJZIGING 1: was 10px gap, 12px margin */
-@media(min-width:600px){.source-grid{grid-template-columns:1fr 1fr}}
-.source-card{border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;background:#fafafa;line-height:1.25} /* ENIGE WIJZIGING 2: was 12px padding, line-height 1.6 -> 1.25 */
-.source-card strong{display:block;color:#111;margin-bottom:2px;line-height:1.2} /* ENIGE WIJZIGING 3: was geen line-height */
-.source-card span{font-size:13px;color:#6b7280;line-height:1.2} /* ENIGE WIJZIGING 4: was geen line-height */
-.btn{padding:10px 16px;border-radius:8px;border:0;background:#0b5bd3;color:white;font-weight:600;cursor:pointer;margin:6px 6px 6px 0}
-.btn.secondary{background:#e5e7eb;color:#111}
-.btn.orange{background:#f97316}
-.result{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:12px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto}
-.admin-only{border:2px solid #fb923c;background:#fff7ed;border-radius:12px;padding:16px;margin-top:16px}
-.hidden{display:none !important}
-.admin-only{margin-top:0}.content{padding-top:16px}#admin-protected[hidden]{display:none!important}#access-message[hidden]{display:none!important}
-</style>
-</head>
-<body>
-<header><div class="header-inner"><a href="./" class="back-btn" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block">
-<path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-</svg></a><h1>Nieuw(s)Ommen - Admin</h1></div></header>
-<div class="content"><div id="access-message" class="panel active">Admin-toegang controleren...</div><div id="admin-protected" class="panel active" hidden>
-<h2>Beheer &amp; Diagnose <span class="badge">ADMIN</span></h2>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f6f7f9;color:#111}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;background:#111827;color:#fff;padding:20px;overflow:auto}
+.sidebar h2{margin:0 0 20px;font-size:18px}.sidebar a{display:block;color:#9ca3af;padding:10px 12px;border-radius:8px;text-decoration:none;margin-bottom:4px;font-size:14px}
+.sidebar a.active,.sidebar a:hover{background:#1f2937;color:#fff}
+.main{margin-left:270px;padding:24px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.stat h3{margin:0 0 6px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}.stat .val{font-size:24px;font-weight:700}
+table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:13px;vertical-align:top}th{color:#6b7280;font-weight:600;position:sticky;top:0;background:#fff;z-index:1}
+.btn{background:#2563eb;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-sec{background:#e5e7eb;color:#111}.btn-danger{background:#dc2626;color:#fff}.btn-ok{background:#16a34a;color:#fff}.btn-purple{background:#7c3aed;color:#fff}
+.input,textarea,select{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px}
+.alert{padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px}.alert-warn{background:#fef3c7;color:#92400e}.alert-ok{background:#dcfce7;color:#166534;border:1px solid #16a34a}.alert-info{background:#dbeafe;color:#1e40af;border:1px solid #3b82f6}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#e5e7eb}.badge-green{background:#dcfce7;color:#166534}.badge-purple{background:#ede9fe;color:#6d28d9}
+.table-wrap{overflow:auto;max-height:75vh;border:1px solid #e5e7eb;border-radius:8px}
+.small{font-size:11px;color:#6b7280}
+.news-item{padding:12px;border-bottom:1px solid #eee}
+.news-item:last-child{border:0}
+.news-desc{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-top:6px;font-size:13px;max-height:220px;overflow:auto}
+@media(max-width:900px){.sidebar{position:relative;width:100%}.main{margin-left:0}}
 
-<h2>Beheer & Diagnose <span class="badge">ALLEEN VOOR ADMIN</span></h2>
-<div class="admin-only">
-<p><strong>Ingelogd als admin:</strong> <span id="adminEmail">-</span></p>
-<p id="adminStatus" style="font-size:13px;color:#6b7280">Controleren...</p>
-<h3>1. Push status</h3>
-<p id="pushStatus">Controleren...</p>
-<label for="pushTestSource" style="display:block;margin:8px 0 4px;font-weight:600">Bron voor testpush</label>
-<select id="pushTestSource" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:white;font-size:14px;margin-bottom:6px">
-<option value="De Stentor">De Stentor</option>
-<option value="Gemeente Ommen">Gemeente Ommen</option>
-<option value="Natuurlijk Ommen">Natuurlijk Ommen</option>
-<option value="Ommen City">Ommen City</option>
-<option value="OudOmmen">OudOmmen</option>
-<option value="RondOmmen">RondOmmen</option>
-<option value="RTV Oost">RTV Oost</option>
-<option value="RTV Vechtdal">RTV Vechtdal</option>
-<option value="Vechtdal Centraal">Vechtdal Centraal</option>
-<option value="Nieuwsbrief">Nieuwsbrief</option>
-</select>
-<button class="btn" id="btnLocal">Test lokale notificatie</button>
-<button class="btn orange" id="btnPush">Test echte push + bronfilter</button>
-<button class="btn secondary" id="btnCheckDebug">Check /debug</button>
-<h3 style="margin-top:20px">2. Service Worker</h3>
-<p id="swStatus">Controleren...</p>
-<h3>Resultaat</h3>
-<div class="result" id="result">Nog geen test uitgevoerd.</div>
+/* Geïntegreerde mobiele beheeromgeving */
+.admin-back{display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#0b5bd3;border-radius:10px;width:40px;height:40px;min-width:40px;box-shadow:0 2px 8px rgba(0,0,0,.22);text-decoration:none;margin-bottom:14px}
+.admin-access{padding:24px;max-width:640px;margin:24px auto;background:#fff;border-radius:12px}
+#admin-shell[hidden],#admin-access[hidden]{display:none!important}
+@media(max-width:900px){.sidebar{padding:12px}.sidebar h2{margin-bottom:10px}.sidebar a{display:inline-block;padding:8px 10px;margin:3px;font-size:13px}.main{padding:12px}.card{padding:14px}.grid{grid-template-columns:1fr!important}.table-wrap{max-width:100%;overflow-x:auto}}
+</style>
+</head><body>
+<div id="admin-access" class="admin-access"><p id="admin-access-status">Beheerdersaccount controleren...</p><a href="./">Terug naar nieuws</a></div>
+<div id="admin-shell" hidden>
+<div class="sidebar">
+<a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a>
+<h2>NieuwOmmen v271</h2>
+<a href="#" data-tab="overview" class="active">Overzicht</a>
+<a href="#" data-tab="subs">📱 Abonnementen</a>
+<a href="#" data-tab="users">Gebruikers</a>
+<a href="#" data-tab="newsletter">Nieuwsbrief (10e bron)</a>
+<a href="#" data-tab="push">Push testen (10 bronnen)</a>
+<a href="#" data-tab="logs">Logs</a>
+<a href="#" data-tab="settings">Instellingen</a>
+<div style="margin-top:24px;font-size:11px;color:#9ca3af">Ingelogd als <span id="adminEmail">...</span><br><small id="apiBase"></small><br><br><b>v271 FIX:</b><br>✅ Fix body stream already read<br>✅ Fix onbekende admin route<br>✅ 10e bron Nieuwsbrief<br>✅ Delete/Edit nieuwsbrief (1 put)<br>✅ Volledige tekst leesbaar<br>✅ Echt artikel = omlijnd<br><span id="subs-count-side">laden...</span></div>
 </div>
-</div></div>
+<div class="main">
+<div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin v307 FINAL FIX #1,2,3,6,7,8,9,10 nieuwsbrief delete/edit + omlijnd lezen</h3><p style="font-size:13px;color:#166534"><b>v271:</b> Zelfde opmaak/inhoud als v266, maar nu met 🗑️ Verwijderen en ✏️ Wijzigen. 1 KV write per actie (gratis tier safe). Deploy eerst Worker v271!</p><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen v271</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
+
+<div id="tab-overview">
+<div class="alert alert-ok">✅ <b>v271 FIX</b> - Nieuw: <b>delete/edit nieuwsbrief</b> (1 put) + volledige tekst tonen zodat gebruiker hele nieuwsbrief kan lezen. Verder identiek aan v266. 10e bron + omlijnd testen blijft werken.</div>
+<div class="grid">
+<div class="card stat"><h3>Push abonnees</h3><div class="val" id="stat-subs">-</div><div class="small">totaal 10 bronnen</div></div>
+<div class="card stat"><h3>Totaal pushes</h3><div class="val" id="stat-totalpush">-</div></div>
+<div class="card stat"><h3>Gebruikers</h3><div class="val" id="stat-users">-</div></div>
+<div class="card stat"><h3>Nieuwsbrief (10e bron)</h3><div class="val" id="stat-newsletter">-</div><div class="small" id="stat-last">-</div></div>
+</div>
+</div>
+
+<div id="tab-subs" style="display:none"><div class="card"><h3>📱 Push Abonnementen - administratie v308</h3><div class="alert alert-info" style="margin:8px 0 12px"><b>Nieuw:</b> laatste push, push-bron, push-titel en push-teller worden centraal bijgehouden door de Worker.</div><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="loadSubs()">🔄 Vernieuwen</button><button class="btn btn-sec" onclick="exportSubsCSV()">📥 CSV</button><button class="btn btn-danger" onclick="clearAllSubs()">🗑 Wis ALLE</button><span id="subs-result" class=small></span></div><div class="table-wrap"><table><thead><tr><th>Abonnement-ID</th><th style="min-width:180px">Naam</th><th>Pushes</th><th>Email</th><th>IP</th><th>Bronnen (10)</th><th>Laatste push</th><th>Push-info</th><th>Acties</th></tr></thead><tbody id="subs-body"></tbody></table></div></div></div>
+<div id="tab-users" style="display:none"><div class="card"><h3>Gebruikers (10 bronnen)</h3><table><thead><tr><th>Email</th><th>ID</th><th>Bronnen aan (10)</th><th>Push</th><th>Acties</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+
+<div id="tab-newsletter" style="display:none">
+<div class="card" style="border:2px solid #16a34a"><h3>📰 Nieuwsbrief - 10e bron + omlijnd testen (v271 FIX delete/edit + volledig lezen)</h3>
+<div class="alert alert-ok">✅ <b>v271:</b> Zelfde formulier als v266. NIEUW: je ziet nu de <b>volledige tekst</b> in de lijst hieronder + knoppen <b>Wijzig / Verwijder</b>. Kost 1 KV put per actie. Deploy eerst Worker v271!</div>
+<div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Onderwerp / Titel (voor 10e bron)</label><input id="nl-subject" class="input" placeholder="Bijv. Nieuwe update: 10e bron toegevoegd!"></div><div><label>Van (email)</label><input id="nl-from" class="input" value="NieuwOmmen <nieuws@nieuwommen.leeuw008.nl>"></div></div><br>
+<label>Link (waar artikel naar toe gaat) - TIP: voor volledig lezen in app, gebruik paarse knop ECHT artikel</label><input id="nl-link" class="input" value="https://nieuwommen.leeuw008.nl/"><br><br>
+<label>Bericht (beschrijving voor 10e bron) - DIT is wat gebruiker volledig leest bij ECHT artikel (omlijnd)</label><textarea id="nl-body" rows="8" class="input" placeholder="Test omlijnd artikel... Volledige tekst hier, dit ziet de gebruiker in de app als je Pusht als ECHT artikel"></textarea><br><br>
+<div class="grid"><div><label>Opslaan als</label><select id="nl-save-mode" class="input"><option value="feed">Alleen feed (10e bron item)</option><option value="email">Alleen email</option><option value="both">Feed + Email</option></select></div><div><label>Ontvangers (voor email)</label><select id="nl-to" class="input"><option value="self">Alleen test naar eigen e-mail</option><option value="all">Alle gebruikers</option></select></div></div><br>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-ok" onclick="saveNewsletterFeed()">💾 Opslaan / Update (FIXED v271 - 1 put)</button>
+<button class="btn btn-purple" onclick="sendNewsletterAsRealPush()">🔔 Push als ECHT artikel (omlijnd!) - volledig leesbaar</button>
+<button class="btn btn-sec" id="btn-cancel-edit" style="display:none" onclick="cancelEdit()">❌ Annuleer wijziging</button>
+</div>
+<div id="edit-status" class="small" style="margin-top:8px;display:none"></div>
+<div id="nl-result" style="margin-top:12px"></div>
+<hr><h4>Huidige Nieuwsbrief items (10e bron feed) - met volledige tekst + Verwijder/Wijzig</h4><div id="nl-feed-list">Laden...</div><button class="btn btn-sec" onclick="loadNewsletterFeed()">🔄 Vernieuw feed (FIXED v271)</button>
+</div>
+</div>
+
+<div id="tab-push" style="display:none">
+<div class="card" style="border:2px solid #7c3aed"><h3>🔔 Push testen - 10 bronnen + omlijnd</h3>
+<div class="alert alert-info"><b>Omlijnd testen + volledig lezen:</b> Kies Bron = <b>Nieuwsbrief</b> + vink <b>Echt artikel</b> aan -> groene rand + pulse bij klik. Dan ziet gebruiker het VOLLEDIGE Bericht-veld in de app.</div>
+<div class="grid"><div><label>Titel</label><input id="push-title" class="input" value="Nieuwsbrief - Test omlijnd artikel v271"></div><div><label>Bron (10)</label><select id="push-source" class="input" onchange="onSourceChange()"><option>De Stentor</option><option>Gemeente Ommen</option><option>Natuurlijk Ommen</option><option>Ommen City</option><option>OudOmmen</option><option>RondOmmen</option><option>RTV Oost</option><option>RTV Vechtdal</option><option>Vechtdal Centraal</option><option value="Nieuwsbrief" selected>📰 Nieuwsbrief (10e bron)</option></select></div></div><br>
+<label>Link</label><input id="push-link" class="input" value="https://nieuwommen.leeuw008.nl/"><br><br>
+<label>Body</label><input id="push-body" class="input" value="Klik voor omlijnd artikel - v271 fix"><br><br>
+<div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="push-is-real" checked><label for="push-is-real"><b>Stuur als ECHT artikel (met omlijning) - dan volledig leesbaar</b></label></div><br>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-purple" onclick="sendTestPush(true)">🔔 Stuur als ECHT (omlijnd)</button>
+<button class="btn" onclick="sendTestPush(false)">Test (zonder omlijning)</button>
+<button class="btn btn-sec" onclick="sendTestPushAll()">Naar alle</button>
+</div>
+<div id="push-result" style="margin-top:12px"></div>
+</div>
+</div>
+
+<div id="tab-logs" style="display:none"><div class="card"><h3>Debug v271</h3><pre id="debug-pre" style="background:#111827;color:#e5e7eb;padding:16px;border-radius:8px;overflow:auto;max-height:500px"></pre><button class="btn btn-sec" onclick="loadDebug()">Vernieuwen</button></div></div>
+<div id="tab-settings" style="display:none"><div class="card"><h3>Instellingen v271</h3><p>Frontend: v271 - delete/edit + volledige tekst zichtbaar (zelfde opmaak als v266)</p><p>Backend: v271 - 2 nieuwe routes: /delete en /update (1 put elk) - blijft ultra low puts</p><p>Bronnen: 10 incl Nieuwsbrief</p><p>Feed: /newsletter/feed - <span id="newsletter-feed-status"></span></p><p id="resend-status"></p><p><b>Hoe gebruiker hele nieuwsbrief leest:</b> Gebruik paarse knop "Push als ECHT artikel (omlijnd!)" - dan opent hij in app met groene omlijning en volledige beschrijving. Als je alleen "Alleen feed" gebruikt, ziet gebruiker alleen snippet en opent hij alleen de Link.</p></div></div>
+</div>
+</div>
+
 <script>
-const ADMIN_EMAIL='leeuw008@gmail.com';
-const WORKER_AUTH='https://ommen-push-v2.leeuw008.workers.dev';
-async function checkAdmin(){
-  const message=document.getElementById('access-message');
-  const protectedPanel=document.getElementById('admin-protected');
-  protectedPanel.hidden=true;
-  message.hidden=false;
-  message.textContent='Admin-toegang controleren...';
-  const token=localStorage.getItem('ommen_auth_token')||'';
-  if(!token){message.textContent='Geen toegang. Log eerst met je beheerdersaccount in via Nieuws > Account.';return;}
+const API_BASE = 'https://ommen-push-v2.leeuw008.workers.dev';
+let token = localStorage.getItem('ommen_auth_token')||'';
+let editingIndex = null; // v271 nieuw
+function headers(){ return {'Content-Type':'application/json','Authorization':'Bearer '+token}; }
+// FIX v266: body stream already read - eerst text() lezen, dan JSON.parse
+async function api(path, opts={}){
+  let url = path.startsWith('http')? path : API_BASE + path;
+  if(token && !url.includes('token=')){ url += (url.includes('?')?'&':'?')+'token='+encodeURIComponent(token); }
+  const r=await fetch(url,{...opts, headers:{...headers(), ...(opts.headers||{})}});
+  const txt = await r.text();
+  try{ return JSON.parse(txt); }catch{ return txt; }
+}
+function fmtDate(ts){ if(!ts) return '-'; return new Date(ts).toLocaleString('nl-NL'); }
+function timeAgo(ts){ if(!ts) return '-'; const diff=Math.floor((Date.now()-ts)/1000); if(diff<60) return diff+'s geleden'; if(diff<3600) return Math.floor(diff/60)+'m geleden'; if(diff<86400) return Math.floor(diff/3600)+'u geleden'; return Math.floor(diff/86400)+'d geleden'; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function verifyAdminSession(){
+  const status=document.getElementById('admin-access-status');
+  const shell=document.getElementById('admin-shell');
+  const access=document.getElementById('admin-access');
+  shell.hidden=true;access.hidden=false;
+  if(!token){status.textContent='Geen beheerderssessie. Log eerst in via het account-icoon in Nieuws.';return false;}
   try{
-    const response=await fetch(WORKER_AUTH+'/auth/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
-    if(!response.ok)throw new Error('Sessie niet geldig');
-    const data=await response.json();
-    const user=data.user||data;
-    if(String(user.email||'').trim().toLowerCase()!==ADMIN_EMAIL){
-      message.textContent='Geen toegang: dit account is geen beheerder.';
-      return;
-    }
+    const r=await fetch(API_BASE+'/auth/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!r.ok)throw Error('Sessie verlopen of ongeldig');
+    const data=await r.json(),user=data.user||data;
+    if(String(user.email||'').trim().toLowerCase()!=='leeuw008@gmail.com')throw Error('Dit account heeft geen beheerrechten');
     document.getElementById('adminEmail').textContent=user.email;
-    document.getElementById('adminStatus').textContent='Admin toegang verleend ✓';
-    message.hidden=true;
-    protectedPanel.hidden=false;
-    initAdmin();
-  }catch(e){message.textContent='Geen toegang: beheerder kon niet worden geverifieerd. '+e.message;}
+    document.getElementById('login-box').style.display='none';
+    shell.hidden=false;access.hidden=true;
+    await Promise.allSettled([loadOverview(),loadSubs(),loadNewsletterFeed()]);
+    return true;
+  }catch(e){status.textContent='Geen toegang: '+e.message;return false;}
 }
-function initAdmin(){
-  const pushStatus=document.getElementById('pushStatus');
-  const swStatus=document.getElementById('swStatus');
-  const result=document.getElementById('result');
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const result=document.getElementById('login-result');
+  if(email.toLowerCase()!=='leeuw008@gmail.com'){result.textContent='Geen beheerdersaccount';return;}
+  result.textContent='Inloggen...';
   try{
-    pushStatus.textContent='Permission: '+Notification.permission;
-  }catch(e){pushStatus.textContent='Notification API niet beschikbaar';}
-  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-    swStatus.textContent='Service Worker actief ✓';
-  }else{
-    swStatus.textContent='Service Worker: controleren...';
-    navigator.serviceWorker.ready.then(()=>{swStatus.textContent='Service Worker actief ✓';}).catch(()=>{swStatus.textContent='Service Worker niet actief';});
-  }
-  document.getElementById('btnLocal').onclick=async()=>{
-    try{
-      const reg=await navigator.serviceWorker.ready;
-      await reg.showNotification('Nieuw(s)Ommen - Test',{body:'Lokale test melding werkt! ✓',icon:'./icons/icon-192x192.png',badge:'./icons/badge-lion-96x96.png'});
-      result.textContent='Lokale notificatie verstuurd ✓\n(Als je niets ziet, check browser toestemming)';
-    }catch(e){result.textContent='Fout lokale notificatie: '+e.message;}
-  };
-  document.getElementById('btnPush').onclick=async()=>{
-    result.textContent='Echte push versturen via worker...';
-    try{
-      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
-      if(!token){
-        result.textContent='Geen ingelogde admin-sessie gevonden. Log eerst in.';
-        return;
-      }
-      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/api/admin/test-push',{
-        method:'POST',
-        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({
-          title:'Test Ommen '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          source:(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          link:'https://nieuwommen.leeuw008.nl/',
-          body:'Dit is een echte push test via '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          filter:true,
-          isReal:false
-        })
-      });
-      const txt=await r.text();
-      result.textContent='Response van /api/admin/test-push:\n'+txt;
-    }catch(e){result.textContent='Fout bij echte push: '+e.message;}
-  };
-  document.getElementById('btnCheckDebug').onclick=async()=>{
-    result.textContent='Debug ophalen...';
-    try{
-      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/debug');
-      const j=await r.json();
-      result.textContent='Debug info:\n'+JSON.stringify(j,null,2);
-    }catch(e){result.textContent='Fout debug: '+e.message;}
-  };
+    const r=await fetch(API_BASE+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const data=await r.json();
+    if(!r.ok||!data.token)throw Error(data.error||'Login mislukt');
+    token=data.token;
+    localStorage.setItem('ommen_auth_token',token);
+    await verifyAdminSession();
+  }catch(e){result.textContent='Fout: '+e.message;}
 }
-document.addEventListener('DOMContentLoaded',()=>{
-  checkAdmin();
-});
+
+function switchTab(t){ document.querySelectorAll('[id^=tab-]').forEach(el=>el.style.display='none'); document.getElementById('tab-'+t).style.display='block'; document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active')); const link=document.querySelector('[data-tab='+t+']'); if(link) link.classList.add('active'); if(t==='subs') loadSubs(); if(t==='users') loadUsers(); if(t==='logs') loadDebug(); if(t==='overview') loadOverview(); if(t==='newsletter') loadNewsletterFeed(); }
+document.querySelectorAll('.sidebar a').forEach(a=>{ a.addEventListener('click',e=>{ e.preventDefault(); switchTab(a.dataset.tab); }); });
+async function loadOverview(){
+  try{
+    const s = await api('/stats'); 
+    document.getElementById('stat-last').textContent=s.last? (s.last.source+': '+s.last.title.slice(0,60)) : '-';
+    const subsData = await api('/api/admin/subs').catch(()=>({subs:[]})); document.getElementById('stat-subs').textContent=subsData.count||0; document.getElementById('subs-count-side').textContent=(subsData.count||0)+' abonnementen'; const totalPush = (subsData.subs||[]).reduce((sum,x)=>sum+(x.pushCount||0),0); document.getElementById('stat-totalpush').textContent=totalPush;
+    const usersData = await api('/api/admin/users').catch(()=>({count:'?'})); document.getElementById('stat-users').textContent=usersData.count||usersData.users?.length||'0';
+    const me = await api('/auth/me'); if(me.email){ document.getElementById('adminEmail').textContent=me.email; document.getElementById('login-box').style.display='none'; }
+    const dbg=await api('/debug'); document.getElementById('resend-status').textContent = (dbg.version||'') + ' - v271'; document.getElementById('stat-newsletter').textContent = dbg.newsletterCount||0; document.getElementById('newsletter-feed-status').textContent = (dbg.newsletterCount||0)+' items'; document.getElementById('apiBase').textContent=API_BASE;
+  }catch(e){ console.log(e); }
+}
+async function loadSubs(){
+  document.getElementById('subs-body').innerHTML='<tr><td colspan=9>Laden...</td></tr>';
+  try{
+    const data = await api('/api/admin/subs'); const tbody=document.getElementById('subs-body'); tbody.innerHTML=''; document.getElementById('subs-result').textContent=data.count+' abonnementen'; document.getElementById('stat-subs').textContent=data.count; document.getElementById('stat-totalpush').textContent=data.subs.reduce((sum,x)=>sum+(x.pushCount||0),0);
+    (data.subs||[]).forEach(sub=>{
+      const tr=document.createElement('tr');
+      const sources = sub.sources && sub.sources.length ? sub.sources.join(', ') : (sub.sourcesCount===0 ? '<span style=color:#dc2626>alles uit</span>' : '-');
+      const isNieuwsbrief = sub.sources && sub.sources.includes('Nieuwsbrief');
+      tr.innerHTML = `<td><span class=badge>${sub.id.slice(0,12)}...</span>${isNieuwsbrief?'<br><span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:999px;font-size:10px">Nieuwsbrief actief</span>':''}</td><td><input class="input" id="desc-${sub.id}" value="${(sub.description||'').replace(/"/g,'&quot;')}" placeholder="Naam"><div style="display:flex;gap:4px;margin-top:4px"><button class="btn btn-ok" style="padding:4px 10px;font-size:12px" onclick="saveDesc('${sub.id}')">💾</button><span id="save-${sub.id}" class=small></span></div></td><td>${sub.pushCount||0}</td><td>${sub.email||'-'}<br><span class=small>${(sub.userId||'').slice(0,12)}</span></td><td>${sub.ip||'-'}<br><span class=small>${(sub.userAgent||'').slice(0,40)}</span></td><td><span class=small>${sources}</span></td><td>${sub.lastPush? fmtDate(sub.lastPush)+'<br><span class=small>'+timeAgo(sub.lastPush)+'</span>': '-'}</td><td><span class=small>${sub.lastPushSource||'-'}${sub.lastPushTitle?'<br><b>'+escapeHtml(sub.lastPushTitle).slice(0,90)+'</b>':''}</span></td><td><button class="btn btn-danger" style="padding:4px 8px" onclick="deleteSub('${sub.id}')">🗑</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(e){ document.getElementById('subs-body').innerHTML='<tr><td colspan=9>Fout: '+e.message+'</td></tr>'; }
+}
+async function saveDesc(id){ const input=document.getElementById('desc-'+id); const val=input.value; const status=document.getElementById('save-'+id); status.textContent='Opslaan...'; try{ const res=await api('/api/admin/subs/update',{method:'POST', body:JSON.stringify({id, description:val})}); if(res.ok){ status.textContent='✅'; } else { status.textContent='❌ '+(res.error||''); } }catch(e){ status.textContent='❌ '+e.message; } }
+async function deleteSub(id){ if(!confirm('Wissen?')) return; const res=await api('/api/admin/subs/delete',{method:'POST', body:JSON.stringify({id})}); loadSubs(); }
+async function clearAllSubs(){ if(!confirm('ALLE wissen?')) return; const res=await api('/api/admin/clear-all-subs',{method:'POST'}); alert(JSON.stringify(res)); loadSubs(); }
+async function exportSubsCSV(){ const data=await api('/api/admin/subs'); let csv='id,description,pushCount,lastPush,lastPushSource,lastPushTitle,email,sources\n'; (data.subs||[]).forEach(s=>{ csv+=`"${s.id}","${(s.description||'').replace(/"/g,'""')}",${s.pushCount||0},"${s.lastPush||''}","${(s.lastPushSource||'').replace(/"/g,'""')}","${(s.lastPushTitle||'').replace(/"/g,'""')}","${s.email||''}","${(s.sources||[]).join(';')}"\n`; }); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='subs_v271.csv'; a.click(); }
+async function loadUsers(){ const data=await api('/api/admin/users'); const tbody=document.getElementById('users-body'); tbody.innerHTML=''; (data.users||[]).forEach(u=>{ const aanKeys = u.sync? Object.keys(u.sync.state||{}).filter(k=>{const v=u.sync.state[k]; return v && typeof v==='object' && v.aan===true;}) : []; const tr=document.createElement('tr'); tr.innerHTML='<td>'+u.email+'</td><td>'+u.id.slice(0,20)+'</td><td>'+aanKeys.length+' aan<br><span class=small>'+aanKeys.join(', ')+'</span></td><td>'+(u.sync?.state?.__pushEnabled!==false?'ja':'nee')+'</td><td><button class=btn-sec onclick="viewSync(\''+u.id+'\')">SYNC</button></td>'; tbody.appendChild(tr); }); }
+async function viewSync(id){ const d=await api('/api/admin/sync/'+id); alert(JSON.stringify(d.sync||{},null,2)); }
+function onSourceChange(){ const sel=document.getElementById('push-source'); const link=sel.options[sel.selectedIndex]?.getAttribute('data-link'); if(link) document.getElementById('push-link').value=link; }
+
+// v271 NIEUW - save met edit support
+async function saveNewsletterFeed(){
+  const subject=document.getElementById('nl-subject').value; const body=document.getElementById('nl-body').value; const link=document.getElementById('nl-link').value;
+  if(!subject){ alert('Titel vereist'); return; }
+  const isEdit = editingIndex!==null;
+  document.getElementById('nl-result').innerHTML= isEdit ? 'Wijzigen... (1 put)' : 'Opslaan als 10e bron... (v271 - 1 put)';
+  try{
+    let res;
+    if(isEdit){
+      res=await api('/api/admin/newsletter/update',{method:'POST', body:JSON.stringify({index: editingIndex, subject, body, link})});
+      document.getElementById('nl-result').innerHTML='<div class=alert-ok>✅ Gewijzigd: '+escapeHtml(res.item?.title||subject)+' (1 put)</div>';
+    }else{
+      res=await api('/api/admin/newsletter',{method:'POST', body:JSON.stringify({subject, body, link})});
+      document.getElementById('nl-result').innerHTML='<div class=alert-ok>✅ Opgeslagen: '+JSON.stringify(res)+' (1 put)</div>';
+    }
+    cancelEdit();
+    loadNewsletterFeed(); loadOverview();
+  }catch(e){ document.getElementById('nl-result').innerHTML='<div style=color:#dc2626>Fout: '+e.message+' - Worker v271 al gedeployed?</div>'; }
+}
+
+function cancelEdit(){
+  editingIndex=null;
+  document.getElementById('btn-cancel-edit').style.display='none';
+  document.getElementById('edit-status').style.display='none';
+  document.getElementById('nl-subject').value='';
+  document.getElementById('nl-body').value='';
+  document.getElementById('nl-link').value='https://nieuwommen.leeuw008.nl/';
+}
+
+// v271 NIEUW - edit
+window.startEditNewsletter = function(idx){
+  const items = window._nlItems||[];
+  const it = items[idx];
+  if(!it) return;
+  editingIndex = idx;
+  document.getElementById('nl-subject').value = it.title||'';
+  document.getElementById('nl-link').value = it.link||'';
+  document.getElementById('nl-body').value = it.description||'';
+  document.getElementById('btn-cancel-edit').style.display='inline-block';
+  document.getElementById('edit-status').style.display='block';
+  document.getElementById('edit-status').textContent = 'Je wijzigt nu item '+(idx+1)+': "'+it.title+'" - daarna Opslaan klikken (overschrijft met 1 put)';
+  document.getElementById('nl-subject').focus();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// v271 NIEUW - delete
+window.deleteNewsletterItem = async function(idx, pubDate){
+  if(!confirm('Item '+(idx+1)+' verwijderen? Kost 1 KV write.')) return;
+  try{
+    const res=await api('/api/admin/newsletter/delete',{method:'POST', body:JSON.stringify({index: idx, pubDate})});
+    alert('Verwijderd: '+res.count+' over');
+    loadNewsletterFeed(); loadOverview();
+  }catch(e){ alert('Delete fout: '+e.message+' - Worker v271 al gedeployed?'); }
+}
+
+async function sendNewsletterAsRealPush(){
+  const subject=document.getElementById('nl-subject').value; const body=document.getElementById('nl-body').value; let link=document.getElementById('nl-link').value;
+  if(!subject){ alert('Titel vereist'); return; }
+  const echtId = 'echt-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+  if(!link || link==='https://nieuwommen.leeuw008.nl/' || link==='https://nieuwommen.leeuw008.nl'){
+    link = 'https://nieuwommen.leeuw008.nl/?echt='+encodeURIComponent(echtId)+'&highlight='+encodeURIComponent(echtId);
+  } else if(!link.includes('echt=')){
+    const sep = link.includes('?')?'&':'?';
+    link = link + sep + 'echt='+encodeURIComponent(echtId)+'&highlight='+encodeURIComponent(echtId);
+  }
+  document.getElementById('nl-result').innerHTML='Pushen als ECHT (omlijnd) - FIX #8 v307 met titel+link...';
+  try{
+    const res=await api('/api/admin/newsletter/push-real',{method:'POST', body:JSON.stringify({title:subject, link:link, description:body, echtId:echtId})});
+    document.getElementById('nl-result').innerHTML='<div class=alert-ok>🔔 FIX #8 v307: ECHT omlijnd naar '+res.sent+'/'+res.total+' - titel: '+escapeHtml(subject)+'<br>Link: '+escapeHtml(link)+'<br><button class=btn onclick="window.open(\''+link.replace(/'/g,'')+'\',\'_blank\')">🔍 Test zelf bekijken (moet rood omlijnd tonen)</button></div>';
+  }catch(e){ document.getElementById('nl-result').innerHTML='<div style=color:#dc2626>Fout: '+e.message+'</div>'; }
+}
+
+// v271 - toont VOLLEDIGE tekst + knoppen
+async function loadNewsletterFeed(){
+  try{
+    const data=await api('/newsletter/feed');
+    window._nlItems = data.items||[];
+    if(typeof data === 'string'){ document.getElementById('nl-feed-list').innerHTML='Fout (geen JSON): '+data.slice(0,200); return; }
+    document.getElementById('nl-feed-list').innerHTML = (data.items||[]).map((it,i)=>`
+      <div class="news-item">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <b>${i+1}. ${escapeHtml(it.title)}</b>
+          <span class="small">${new Date(it.pubDate).toLocaleString('nl-NL')}</span>
+        </div>
+        <div class="small" style="margin:4px 0">${escapeHtml(it.link)} <span class="badge">${escapeHtml(it.source||'Nieuwsbrief')}</span></div>
+        <div class="news-desc">${escapeHtml(it.description||'')}</div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ok" style="padding:6px 10px;font-size:12px" onclick="startEditNewsletter(${i})">✏️ Wijzigen</button>
+          <button class="btn btn-danger" style="padding:6px 10px;font-size:12px" onclick="deleteNewsletterItem(${i}, '${(it.pubDate||'').replace(/'/g,'')}')">🗑️ Verwijder deze</button>
+          <button class="btn btn-sec" style="padding:6px 10px;font-size:12px" onclick="navigator.clipboard.writeText('${escapeHtml(it.link||'').replace(/'/g,'')}').then(()=>alert('Link gekopieerd'))">🔗 Link</button>
+        </div>
+      </div>
+    `).join('') || 'Geen items - nog geen nieuwsbrieven opgeslagen';
+  }catch(e){ document.getElementById('nl-feed-list').innerHTML='Fout: '+e.message+' - Worker v271 gedeployed?'; }
+}
+async function sendTestPush(isReal){
+  const title=document.getElementById('push-title').value; const source=document.getElementById('push-source').value; const link=document.getElementById('push-link').value; const body=document.getElementById('push-body').value;
+  const isRealCheck = document.getElementById('push-is-real').checked; const finalIsReal = typeof isReal==='boolean'? isReal : isRealCheck;
+  document.getElementById('push-result').innerHTML=(finalIsReal?'🔔 ECHT (omlijnd) - volledig leesbaar...':'Test (zonder omlijning)...');
+  try{
+    const res=await api('/api/admin/test-push',{method:'POST', body:JSON.stringify({title, source, link, body, filter:true, isReal:finalIsReal})});
+    document.getElementById('push-result').innerHTML='<div class=alert-ok>✅ '+ (finalIsReal?'ECHT omlijnd - volledig leesbaar':'Test') +' naar '+res.sent+'/'+res.total+'<br>'+JSON.stringify(res.article)+'</div>'; loadSubs();
+  }catch(e){ document.getElementById('push-result').innerHTML='Fout: '+e.message; }
+}
+async function sendTestPushAll(){
+  const title=document.getElementById('push-title').value; const source=document.getElementById('push-source').value; const link=document.getElementById('push-link').value; const body=document.getElementById('push-body').value; const isReal=document.getElementById('push-is-real').checked;
+  const res=await api('/api/admin/test-push',{method:'POST', body:JSON.stringify({title, source, link, body, filter:false, isReal:isReal})});
+  document.getElementById('push-result').innerHTML='<div class=alert-ok>Naar alle: '+res.sent+'/'+res.total+'</div>';
+}
+async function loadDebug(){ const d=await api('/debug'); document.getElementById('debug-pre').textContent=typeof d==='string'? d : JSON.stringify(d,null,2); }
+verifyAdminSession();
 </script>
-</body>
-</html>
+</body></html>
