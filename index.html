@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nieuw(s)Ommen</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=301">
+<link rel="stylesheet" href="styles.css?v=302">
 <link rel="icon" href="icons/icon-192x192.png" type="image/png">
 <meta name="theme-color" content="#0b5bd3">
 <style>.search-box{position:relative;width:100%;}.search-box #search-input{width:100%;box-sizing:border-box;padding-right:34px;}.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:#64748b;font-size:22px;line-height:28px;padding:0;cursor:pointer;display:block}.search-clear:hover{color:#0b5bd3;}</style>
@@ -21,7 +21,7 @@
     </button>
     </span>
   </h1>
-  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html?tab=over">Over</a><a href="informatie.html?tab=bronnen">Bronnen</a><a href="informatie.html?tab=meldingen">Meldingen</a><a href="informatie.html?tab=tips">Filters &amp; Tips</a><a href="informatie.html?tab=privacy">Privacy &amp; Contact</a><a href="admin.html" id="admin-menu-link" hidden>Admin</a></nav>
+  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html?tab=over">Over</a><a href="informatie.html?tab=bronnen">Bronnen</a><a href="informatie.html?tab=meldingen">Meldingen</a><a href="informatie.html?tab=tips">Filters &amp; Tips</a><a href="informatie.html?tab=privacy">Privacy &amp; Contact</a><div id="admin-menu-group" hidden><button type="button" id="admin-menu-link" class="admin-menu-toggle" aria-expanded="false" aria-controls="admin-submenu">Admin <span aria-hidden="true">▾</span></button><div id="admin-submenu" class="admin-submenu" hidden><a href="admin.html?tab=overview">Overzicht</a><a href="admin.html?tab=subs">Abonnementen</a><a href="admin.html?tab=users">Gebruikers</a><a href="admin.html?tab=newsletter">Nieuwsbrief</a><a href="admin.html?tab=push">Push testen</a><a href="admin.html?tab=logs">Logs</a><a href="admin.html?tab=settings">Instellingen</a></div></div></nav>
   <div class="filter-header" id="filter-header">
     <div class="filter-header-center"><div class="search-row"><div class="search-box"><input type="text" id="search-input" placeholder="Zoek in nieuws..." autocomplete="off"><button type="button" id="search-clear" class="search-clear" aria-label="Zoekveld leegmaken" title="Zoekveld leegmaken">×</button></div></div></div>
     <div class="filter-header-right">
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 <script>
 (async function(){
-  const link=document.getElementById('admin-menu-link');
+  const link=document.getElementById('admin-menu-group');
   if(!link)return;
   const token=localStorage.getItem('ommen_auth_token');
   if(!token)return;
@@ -88,6 +88,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     const user=data.user||data;
     link.hidden=String(user.email||'').trim().toLowerCase()!=='leeuw008@gmail.com';
   }catch(e){link.hidden=true;}
+})();
+</script>
+<script>
+(function(){
+ const toggle=document.getElementById('admin-menu-link'),sub=document.getElementById('admin-submenu');
+ if(!toggle||!sub)return;
+ toggle.addEventListener('click',function(e){e.stopPropagation();sub.hidden=!sub.hidden;toggle.setAttribute('aria-expanded',String(!sub.hidden));});
 })();
 </script>
 <script src="app.js?v=336"></script>
