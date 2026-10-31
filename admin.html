@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin - Nieuw(s)Ommen TEST</title>
+<title>Admin - Nieuw(s)Ommen</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f6f7f9;color:#111}
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;background:#111827;color:#fff;padding:20px;overflow:auto}
@@ -23,6 +23,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 .news-desc{white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-top:6px;font-size:13px;max-height:220px;overflow:auto}
 @media(max-width:900px){.sidebar{position:relative;width:100%}.main{margin-left:0}}
 
+/* Zelfde gecentreerde paginabreedte als Nieuw(s)Ommen (640px). */
+.admin-header{width:100%;max-width:640px;margin-left:auto;margin-right:auto}
+.main{width:100%;max-width:640px!important;margin-left:auto!important;margin-right:auto!important}
 /* Geïntegreerde mobiele beheeromgeving */
 .admin-header{display:grid!important;grid-template-columns:40px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;gap:8px 12px}
 .admin-header .admin-back{grid-column:1;grid-row:1}
