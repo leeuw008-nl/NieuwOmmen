@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nieuw(s)Ommen</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=299">
+<link rel="stylesheet" href="styles.css?v=300">
 <link rel="icon" href="icons/icon-192x192.png" type="image/png">
 <meta name="theme-color" content="#0b5bd3">
 <style>.search-box{position:relative;width:100%;}.search-box #search-input{width:100%;box-sizing:border-box;padding-right:34px;}.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:#64748b;font-size:22px;line-height:28px;padding:0;cursor:pointer;display:block}.search-clear:hover{color:#0b5bd3;}</style>
@@ -13,6 +13,7 @@
 <body>
 <header>
   <h1>
+    <button type="button" id="nav-menu-button" class="nav-menu-button" aria-label="Menu openen" aria-expanded="false" aria-controls="nav-menu">☰</button>
     <span class="title-left">📰 Nieuw(s)Ommen</span>
     <span class="header-icons">
       <a href="informatie.html" class="info-icon-btn" title="Info">i</a>
@@ -21,6 +22,7 @@
     </button>
     </span>
   </h1>
+  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html">Info</a><a href="admin.html">Admin</a></nav>
   <div class="filter-header" id="filter-header">
     <div class="filter-header-center"><div class="search-row"><div class="search-box"><input type="text" id="search-input" placeholder="Zoek in nieuws..." autocomplete="off"><button type="button" id="search-clear" class="search-clear" aria-label="Zoekveld leegmaken" title="Zoekveld leegmaken">×</button></div></div></div>
     <div class="filter-header-right">
@@ -70,6 +72,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(typeof filterNews==='function') filterNews();
   });
 });
+</script>
+<script>
+(function(){const button=document.getElementById("nav-menu-button"),menu=document.getElementById("nav-menu");if(!button||!menu)return;button.addEventListener("click",function(e){e.stopPropagation();const open=menu.hidden;menu.hidden=!open;button.setAttribute("aria-expanded",String(open));});document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target)&&e.target!==button){menu.hidden=true;button.setAttribute("aria-expanded","false");}});document.addEventListener("keydown",function(e){if(e.key==="Escape"){menu.hidden=true;button.setAttribute("aria-expanded","false");}});})();
 </script>
 <script src="app.js?v=336"></script>
 <script src="push.js?v=270-free-tier"></script>
