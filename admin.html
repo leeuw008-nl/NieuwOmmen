@@ -58,7 +58,7 @@ body{background:#f5f7fb}
 <div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin v307 FINAL FIX #1,2,3,6,7,8,9,10 nieuwsbrief delete/edit + omlijnd lezen</h3><p style="font-size:13px;color:#166534"><b>v271:</b> Zelfde opmaak/inhoud als v266, maar nu met 🗑️ Verwijderen en ✏️ Wijzigen. 1 KV write per actie (gratis tier safe). Deploy eerst Worker v271!</p><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen v271</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
 
 <div id="tab-overview">
-<div class="alert alert-ok">✅ <b>v271 FIX</b> - Nieuw: <b>delete/edit nieuwsbrief</b> (1 put) + volledige tekst tonen zodat gebruiker hele nieuwsbrief kan lezen. Verder identiek aan v266. 10e bron + omlijnd testen blijft werken.</div>
+
 <div class="grid">
 <div class="card stat"><h3>Push abonnees</h3><div class="val" id="stat-subs">-</div><div class="small">totaal 10 bronnen</div></div>
 <div class="card stat"><h3>Totaal pushes</h3><div class="val" id="stat-totalpush">-</div></div>
@@ -67,12 +67,12 @@ body{background:#f5f7fb}
 </div>
 </div>
 
-<div id="tab-subs" style="display:none"><div class="card"><h3>📱 Push Abonnementen - administratie v308</h3><div class="alert alert-info" style="margin:8px 0 12px"><b>Nieuw:</b> laatste push, push-bron, push-titel en push-teller worden centraal bijgehouden door de Worker.</div><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="loadSubs()">🔄 Vernieuwen</button><button class="btn btn-sec" onclick="exportSubsCSV()">📥 CSV</button><button class="btn btn-danger" onclick="clearAllSubs()">🗑 Wis ALLE</button><span id="subs-result" class=small></span></div><div class="table-wrap"><table><thead><tr><th>Abonnement-ID</th><th style="min-width:180px">Naam</th><th>Pushes</th><th>Email</th><th>IP</th><th>Bronnen (10)</th><th>Laatste push</th><th>Push-info</th><th>Acties</th></tr></thead><tbody id="subs-body"></tbody></table></div></div></div>
+<div id="tab-subs" style="display:none"><div class="card"><h3>📱 Push Abonnementen - administratie v308</h3><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="loadSubs()">🔄 Vernieuwen</button><button class="btn btn-sec" onclick="exportSubsCSV()">📥 CSV</button><button class="btn btn-danger" onclick="clearAllSubs()">🗑 Wis ALLE</button><span id="subs-result" class=small></span></div><div class="table-wrap"><table><thead><tr><th>Abonnement-ID</th><th style="min-width:180px">Naam</th><th>Pushes</th><th>Email</th><th>IP</th><th>Bronnen (10)</th><th>Laatste push</th><th>Push-info</th><th>Acties</th></tr></thead><tbody id="subs-body"></tbody></table></div></div></div>
 <div id="tab-users" style="display:none"><div class="card"><h3>Gebruikers (10 bronnen)</h3><table><thead><tr><th>Email</th><th>ID</th><th>Bronnen aan (10)</th><th>Push</th><th>Acties</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
 
 <div id="tab-newsletter" style="display:none">
 <div class="card" style="border:2px solid #16a34a"><h3>📰 Nieuwsbrief - 10e bron + omlijnd testen (v271 FIX delete/edit + volledig lezen)</h3>
-<div class="alert alert-ok">✅ <b>v271:</b> Zelfde formulier als v266. NIEUW: je ziet nu de <b>volledige tekst</b> in de lijst hieronder + knoppen <b>Wijzig / Verwijder</b>. Kost 1 KV put per actie. Deploy eerst Worker v271!</div>
+
 <div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Onderwerp / Titel (voor 10e bron)</label><input id="nl-subject" class="input" placeholder="Bijv. Nieuwe update: 10e bron toegevoegd!"></div><div><label>Van (email)</label><input id="nl-from" class="input" value="NieuwOmmen <nieuws@nieuwommen.leeuw008.nl>"></div></div><br>
 <label>Link (waar artikel naar toe gaat) - TIP: voor volledig lezen in app, gebruik paarse knop ECHT artikel</label><input id="nl-link" class="input" value="https://nieuwommen.leeuw008.nl/"><br><br>
 <label>Bericht (beschrijving voor 10e bron) - DIT is wat gebruiker volledig leest bij ECHT artikel (omlijnd)</label><textarea id="nl-body" rows="8" class="input" placeholder="Test omlijnd artikel... Volledige tekst hier, dit ziet de gebruiker in de app als je Pusht als ECHT artikel"></textarea><br><br>
