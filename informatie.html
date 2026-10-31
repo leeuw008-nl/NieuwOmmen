@@ -53,14 +53,6 @@ li{margin-bottom:6px}
 </div>
 </header>
 
-<div class="tabs-wrap"><div class="tabs" id="tabs">
-<button data-tab="over" class="active">Over</button>
-<button data-tab="bronnen">Bronnen</button>
-<button data-tab="meldingen">Meldingen</button>
-<button data-tab="tips">Filters & Tips</button>
-<button data-tab="privacy">Privacy & Contact</button>
-</div></div>
-
 <div class="content">
 <div class="panel active" id="panel-over">
 <h2>Over Nieuw(s)Ommen</h2>
@@ -135,17 +127,14 @@ li{margin-bottom:6px}
 </div>
 
 <script>
-const tabs = document.querySelectorAll('.tabs button');
-const panels = document.querySelectorAll('.panel');
-tabs.forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    tabs.forEach(b=>b.classList.remove('active'));
-    panels.forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
-  });
-});
-
+(function(){
+  const labels={over:'Over',bronnen:'Bronnen',meldingen:'Meldingen',tips:'Filters & Tips',privacy:'Privacy & Contact'};
+  const requested=new URLSearchParams(location.search).get('tab')||'over';
+  const tab=Object.prototype.hasOwnProperty.call(labels,requested)?requested:'over';
+  document.querySelectorAll('.panel').forEach(panel=>panel.classList.toggle('active',panel.id==='panel-'+tab));
+  document.querySelector('header h1').textContent='Nieuw(s)Ommen - '+labels[tab];
+  document.title=labels[tab]+' - Nieuw(s)Ommen';
+})();
 </script>
 </body>
 </html>
