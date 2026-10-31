@@ -39,12 +39,12 @@ li{margin-bottom:6px}
 .result{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:12px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto}
 .admin-only{border:2px solid #fb923c;background:#fff7ed;border-radius:12px;padding:16px;margin-top:16px}
 .hidden{display:none !important}
-.admin-only{margin-top:0}.content{padding-top:16px}
+.admin-only{margin-top:0}.content{padding-top:16px}#admin-protected[hidden]{display:none!important}#access-message[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <header><div class="header-inner"><a href="./" class="back-btn" title="Terug naar nieuws" aria-label="Terug naar nieuws">←</a><h1>Nieuw(s)Ommen - Admin</h1></div></header>
-<div class="content"><div class="panel active">
+<div class="content"><div id="access-message" class="panel active">Admin-toegang controleren...</div><div id="admin-protected" class="panel active" hidden>
 <h2>Beheer &amp; Diagnose <span class="badge">ADMIN</span></h2>
 
 <h2>Beheer & Diagnose <span class="badge">ALLEEN VOOR ADMIN</span></h2>
@@ -76,43 +76,31 @@ li{margin-bottom:6px}
 </div>
 </div></div>
 <script>
-function getEmail(){
-  try{
-    const keys=['ommen_current_user_email','user_email','email','auth_email','leeuw008_email'];
-    for(const k of keys){
-      const v=localStorage.getItem(k)||sessionStorage.getItem(k);
-      if(v && v.toLowerCase().includes('@')) return v;
-    }
-    if(window.ommenCurrentUser && window.ommenCurrentUser.email) return window.ommenCurrentUser.email;
-  }catch(e){}
-  return null;
-}
-let authFailCount = 0;
+const ADMIN_EMAIL='leeuw008@gmail.com';
+const WORKER_AUTH='https://ommen-push-v2.leeuw008.workers.dev';
 async function checkAdmin(){
-  const adminEmailEl=document.getElementById('adminEmail');
-  const adminStatus=document.getElementById('adminStatus');
-  let email=getEmail();
-  if(authFailCount < 3){
-    try{
-      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
-      if(token){
-        const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/auth/me',{headers:{'Authorization':'Bearer '+token}});
-        if(r.status===401){authFailCount++;} 
-        else if(r.ok){
-          const j=await r.json();
-          if(j.email) email=j.email;
-          authFailCount=0;
-        }
-      }
-    }catch(e){ authFailCount++; }
-  }
-  adminEmailEl.textContent=email||'(geen email gevonden)';
-  if(email && email.toLowerCase()==='leeuw008@gmail.com'){
-    adminStatus.textContent='Admin toegang verleend ✓';
-  }else{
-    adminStatus.textContent='Geen bevestigde admin-aanmelding (email: '+(email||'onbekend')+') - auth fails: '+authFailCount;
-  }
-  initAdmin();
+  const message=document.getElementById('access-message');
+  const protectedPanel=document.getElementById('admin-protected');
+  protectedPanel.hidden=true;
+  message.hidden=false;
+  message.textContent='Admin-toegang controleren...';
+  const token=localStorage.getItem('ommen_auth_token')||'';
+  if(!token){message.textContent='Geen toegang. Log eerst met je beheerdersaccount in via Nieuws > Account.';return;}
+  try{
+    const response=await fetch(WORKER_AUTH+'/auth/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!response.ok)throw new Error('Sessie niet geldig');
+    const data=await response.json();
+    const user=data.user||data;
+    if(String(user.email||'').trim().toLowerCase()!==ADMIN_EMAIL){
+      message.textContent='Geen toegang: dit account is geen beheerder.';
+      return;
+    }
+    document.getElementById('adminEmail').textContent=user.email;
+    document.getElementById('adminStatus').textContent='Admin toegang verleend ✓';
+    message.hidden=true;
+    protectedPanel.hidden=false;
+    initAdmin();
+  }catch(e){message.textContent='Geen toegang: beheerder kon niet worden geverifieerd. '+e.message;}
 }
 function initAdmin(){
   const pushStatus=document.getElementById('pushStatus');
@@ -169,7 +157,6 @@ function initAdmin(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
   checkAdmin();
-  setTimeout(checkAdmin,1000);
 });
 </script>
 </body>
