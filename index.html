@@ -22,7 +22,7 @@
     </button>
     </span>
   </h1>
-  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html">Info</a><a href="admin.html">Admin</a></nav>
+  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html">Info</a><a href="admin.html" id="admin-menu-link" hidden>Admin</a></nav>
   <div class="filter-header" id="filter-header">
     <div class="filter-header-center"><div class="search-row"><div class="search-box"><input type="text" id="search-input" placeholder="Zoek in nieuws..." autocomplete="off"><button type="button" id="search-clear" class="search-clear" aria-label="Zoekveld leegmaken" title="Zoekveld leegmaken">×</button></div></div></div>
     <div class="filter-header-right">
@@ -75,6 +75,21 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 <script>
 (function(){const button=document.getElementById("nav-menu-button"),menu=document.getElementById("nav-menu");if(!button||!menu)return;button.addEventListener("click",function(e){e.stopPropagation();const open=menu.hidden;menu.hidden=!open;button.setAttribute("aria-expanded",String(open));});document.addEventListener("click",function(e){if(!menu.hidden&&!menu.contains(e.target)&&e.target!==button){menu.hidden=true;button.setAttribute("aria-expanded","false");}});document.addEventListener("keydown",function(e){if(e.key==="Escape"){menu.hidden=true;button.setAttribute("aria-expanded","false");}});})();
+</script>
+<script>
+(async function(){
+  const link=document.getElementById('admin-menu-link');
+  if(!link)return;
+  const token=localStorage.getItem('ommen_auth_token');
+  if(!token)return;
+  try{
+    const response=await fetch('https://ommen-push-v2.leeuw008.workers.dev/auth/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!response.ok)return;
+    const data=await response.json();
+    const user=data.user||data;
+    link.hidden=String(user.email||'').trim().toLowerCase()!=='leeuw008@gmail.com';
+  }catch(e){link.hidden=true;}
+})();
 </script>
 <script src="app.js?v=336"></script>
 <script src="push.js?v=270-free-tier"></script>
