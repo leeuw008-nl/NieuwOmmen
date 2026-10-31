@@ -55,7 +55,7 @@ body{background:#f5f7fb}
 <header class="admin-header"><a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a><h1 id="admin-section-title">Admin - Overzicht</h1><select id="admin-switch" class="admin-switch" aria-label="Ander Admin-onderdeel kiezen"><option value="overview">Overzicht</option><option value="subs">Abonnementen</option><option value="users">Gebruikers</option><option value="newsletter">Nieuwsbrief</option><option value="push">Push testen</option><option value="logs">Logs</option><option value="settings">Instellingen</option></select></header>
 <div id="admin-runtime-meta" hidden><span id="adminEmail"></span><small id="apiBase"></small><span id="subs-count-side"></span></div>
 <div class="main">
-<div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin v307 FINAL FIX #1,2,3,6,7,8,9,10 nieuwsbrief delete/edit + omlijnd lezen</h3><p style="font-size:13px;color:#166534"><b>v271:</b> Zelfde opmaak/inhoud als v266, maar nu met 🗑️ Verwijderen en ✏️ Wijzigen. 1 KV write per actie (gratis tier safe). Deploy eerst Worker v271!</p><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen v271</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
+<div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin – Inloggen</h3><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
 
 <div id="tab-overview">
 
@@ -67,33 +67,33 @@ body{background:#f5f7fb}
 </div>
 </div>
 
-<div id="tab-subs" style="display:none"><div class="card"><h3>📱 Push Abonnementen - administratie v308</h3><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="loadSubs()">🔄 Vernieuwen</button><button class="btn btn-sec" onclick="exportSubsCSV()">📥 CSV</button><button class="btn btn-danger" onclick="clearAllSubs()">🗑 Wis ALLE</button><span id="subs-result" class=small></span></div><div class="table-wrap"><table><thead><tr><th>Abonnement-ID</th><th style="min-width:180px">Naam</th><th>Pushes</th><th>Email</th><th>IP</th><th>Bronnen (10)</th><th>Laatste push</th><th>Push-info</th><th>Acties</th></tr></thead><tbody id="subs-body"></tbody></table></div></div></div>
+<div id="tab-subs" style="display:none"><div class="card"><h3>📱 Push Abonnementen</h3><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="loadSubs()">🔄 Vernieuwen</button><button class="btn btn-sec" onclick="exportSubsCSV()">📥 CSV</button><button class="btn btn-danger" onclick="clearAllSubs()">🗑 Wis ALLE</button><span id="subs-result" class=small></span></div><div class="table-wrap"><table><thead><tr><th>Abonnement-ID</th><th style="min-width:180px">Naam</th><th>Pushes</th><th>Email</th><th>IP</th><th>Bronnen (10)</th><th>Laatste push</th><th>Push-info</th><th>Acties</th></tr></thead><tbody id="subs-body"></tbody></table></div></div></div>
 <div id="tab-users" style="display:none"><div class="card"><h3>Gebruikers (10 bronnen)</h3><table><thead><tr><th>Email</th><th>ID</th><th>Bronnen aan (10)</th><th>Push</th><th>Acties</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
 
 <div id="tab-newsletter" style="display:none">
-<div class="card" style="border:2px solid #16a34a"><h3>📰 Nieuwsbrief - 10e bron + omlijnd testen (v271 FIX delete/edit + volledig lezen)</h3>
+<div class="card" style="border:2px solid #16a34a"><h3>📰 Nieuwsbrief</h3>
 
 <div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Onderwerp / Titel (voor 10e bron)</label><input id="nl-subject" class="input" placeholder="Bijv. Nieuwe update: 10e bron toegevoegd!"></div><div><label>Van (email)</label><input id="nl-from" class="input" value="NieuwOmmen <nieuws@nieuwommen.leeuw008.nl>"></div></div><br>
 <label>Link (waar artikel naar toe gaat) - TIP: voor volledig lezen in app, gebruik paarse knop ECHT artikel</label><input id="nl-link" class="input" value="https://nieuwommen.leeuw008.nl/"><br><br>
 <label>Bericht (beschrijving voor 10e bron) - DIT is wat gebruiker volledig leest bij ECHT artikel (omlijnd)</label><textarea id="nl-body" rows="8" class="input" placeholder="Test omlijnd artikel... Volledige tekst hier, dit ziet de gebruiker in de app als je Pusht als ECHT artikel"></textarea><br><br>
 <div class="grid"><div><label>Opslaan als</label><select id="nl-save-mode" class="input"><option value="feed">Alleen feed (10e bron item)</option><option value="email">Alleen email</option><option value="both">Feed + Email</option></select></div><div><label>Ontvangers (voor email)</label><select id="nl-to" class="input"><option value="self">Alleen test naar eigen e-mail</option><option value="all">Alle gebruikers</option></select></div></div><br>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn btn-ok" onclick="saveNewsletterFeed()">💾 Opslaan / Update (FIXED v271 - 1 put)</button>
+<button class="btn btn-ok" onclick="saveNewsletterFeed()">💾 Opslaan / Update</button>
 <button class="btn btn-purple" onclick="sendNewsletterAsRealPush()">🔔 Push als ECHT artikel (omlijnd!) - volledig leesbaar</button>
 <button class="btn btn-sec" id="btn-cancel-edit" style="display:none" onclick="cancelEdit()">❌ Annuleer wijziging</button>
 </div>
 <div id="edit-status" class="small" style="margin-top:8px;display:none"></div>
 <div id="nl-result" style="margin-top:12px"></div>
-<hr><h4>Huidige Nieuwsbrief items (10e bron feed) - met volledige tekst + Verwijder/Wijzig</h4><div id="nl-feed-list">Laden...</div><button class="btn btn-sec" onclick="loadNewsletterFeed()">🔄 Vernieuw feed (FIXED v271)</button>
+<hr><h4>Huidige Nieuwsbrief items (10e bron feed) - met volledige tekst + Verwijder/Wijzig</h4><div id="nl-feed-list">Laden...</div><button class="btn btn-sec" onclick="loadNewsletterFeed()">🔄 Vernieuw feed</button>
 </div>
 </div>
 
 <div id="tab-push" style="display:none">
 <div class="card" style="border:2px solid #7c3aed"><h3>🔔 Push testen - 10 bronnen + omlijnd</h3>
 <div class="alert alert-info"><b>Omlijnd testen + volledig lezen:</b> Kies Bron = <b>Nieuwsbrief</b> + vink <b>Echt artikel</b> aan -> groene rand + pulse bij klik. Dan ziet gebruiker het VOLLEDIGE Bericht-veld in de app.</div>
-<div class="grid"><div><label>Titel</label><input id="push-title" class="input" value="Nieuwsbrief - Test omlijnd artikel v271"></div><div><label>Bron (10)</label><select id="push-source" class="input" onchange="onSourceChange()"><option>De Stentor</option><option>Gemeente Ommen</option><option>Natuurlijk Ommen</option><option>Ommen City</option><option>OudOmmen</option><option>RondOmmen</option><option>RTV Oost</option><option>RTV Vechtdal</option><option>Vechtdal Centraal</option><option value="Nieuwsbrief" selected>📰 Nieuwsbrief (10e bron)</option></select></div></div><br>
+<div class="grid"><div><label>Titel</label><input id="push-title" class="input" value="Nieuwsbrief - Test omlijnd artikel"></div><div><label>Bron (10)</label><select id="push-source" class="input" onchange="onSourceChange()"><option>De Stentor</option><option>Gemeente Ommen</option><option>Natuurlijk Ommen</option><option>Ommen City</option><option>OudOmmen</option><option>RondOmmen</option><option>RTV Oost</option><option>RTV Vechtdal</option><option>Vechtdal Centraal</option><option value="Nieuwsbrief" selected>📰 Nieuwsbrief (10e bron)</option></select></div></div><br>
 <label>Link</label><input id="push-link" class="input" value="https://nieuwommen.leeuw008.nl/"><br><br>
-<label>Body</label><input id="push-body" class="input" value="Klik voor omlijnd artikel - v271 fix"><br><br>
+<label>Body</label><input id="push-body" class="input" value="Klik voor omlijnd artikel"><br><br>
 <div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="push-is-real" checked><label for="push-is-real"><b>Stuur als ECHT artikel (met omlijning) - dan volledig leesbaar</b></label></div><br>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
 <button class="btn btn-purple" onclick="sendTestPush(true)">🔔 Stuur als ECHT (omlijnd)</button>
@@ -104,8 +104,8 @@ body{background:#f5f7fb}
 </div>
 </div>
 
-<div id="tab-logs" style="display:none"><div class="card"><h3>Debug v271</h3><pre id="debug-pre" style="background:#111827;color:#e5e7eb;padding:16px;border-radius:8px;overflow:auto;max-height:500px"></pre><button class="btn btn-sec" onclick="loadDebug()">Vernieuwen</button></div></div>
-<div id="tab-settings" style="display:none"><div class="card"><h3>Instellingen v271</h3><p>Frontend: v271 - delete/edit + volledige tekst zichtbaar (zelfde opmaak als v266)</p><p>Backend: v271 - 2 nieuwe routes: /delete en /update (1 put elk) - blijft ultra low puts</p><p>Bronnen: 10 incl Nieuwsbrief</p><p>Feed: /newsletter/feed - <span id="newsletter-feed-status"></span></p><p id="resend-status"></p><p><b>Hoe gebruiker hele nieuwsbrief leest:</b> Gebruik paarse knop "Push als ECHT artikel (omlijnd!)" - dan opent hij in app met groene omlijning en volledige beschrijving. Als je alleen "Alleen feed" gebruikt, ziet gebruiker alleen snippet en opent hij alleen de Link.</p></div></div>
+<div id="tab-logs" style="display:none"><div class="card"><h3>Debug</h3><pre id="debug-pre" style="background:#111827;color:#e5e7eb;padding:16px;border-radius:8px;overflow:auto;max-height:500px"></pre><button class="btn btn-sec" onclick="loadDebug()">Vernieuwen</button></div></div>
+<div id="tab-settings" style="display:none"><div class="card"><h3>Instellingen</h3><p>Bronnen: 10 incl Nieuwsbrief</p><p>Feed: /newsletter/feed - <span id="newsletter-feed-status"></span></p><p id="resend-status"></p><p><b>Hoe gebruiker hele nieuwsbrief leest:</b> Gebruik paarse knop "Push als ECHT artikel (omlijnd!)" - dan opent hij in app met groene omlijning en volledige beschrijving. Als je alleen "Alleen feed" gebruikt, ziet gebruiker alleen snippet en opent hij alleen de Link.</p></div></div>
 </div>
 </div>
 
@@ -169,7 +169,7 @@ async function loadOverview(){
     const subsData = await api('/api/admin/subs').catch(()=>({subs:[]})); document.getElementById('stat-subs').textContent=subsData.count||0; document.getElementById('subs-count-side').textContent=(subsData.count||0)+' abonnementen'; const totalPush = (subsData.subs||[]).reduce((sum,x)=>sum+(x.pushCount||0),0); document.getElementById('stat-totalpush').textContent=totalPush;
     const usersData = await api('/api/admin/users').catch(()=>({count:'?'})); document.getElementById('stat-users').textContent=usersData.count||usersData.users?.length||'0';
     const me = await api('/auth/me'); if(me.email){ document.getElementById('adminEmail').textContent=me.email; document.getElementById('login-box').style.display='none'; }
-    const dbg=await api('/debug'); document.getElementById('resend-status').textContent = (dbg.version||'') + ' - v271'; document.getElementById('stat-newsletter').textContent = dbg.newsletterCount||0; document.getElementById('newsletter-feed-status').textContent = (dbg.newsletterCount||0)+' items'; document.getElementById('apiBase').textContent=API_BASE;
+    const dbg=await api('/debug'); document.getElementById('resend-status').textContent = (dbg.version||''); document.getElementById('stat-newsletter').textContent = dbg.newsletterCount||0; document.getElementById('newsletter-feed-status').textContent = (dbg.newsletterCount||0)+' items'; document.getElementById('apiBase').textContent=API_BASE;
   }catch(e){ console.log(e); }
 }
 async function loadSubs(){
@@ -188,7 +188,7 @@ async function loadSubs(){
 async function saveDesc(id){ const input=document.getElementById('desc-'+id); const val=input.value; const status=document.getElementById('save-'+id); status.textContent='Opslaan...'; try{ const res=await api('/api/admin/subs/update',{method:'POST', body:JSON.stringify({id, description:val})}); if(res.ok){ status.textContent='✅'; } else { status.textContent='❌ '+(res.error||''); } }catch(e){ status.textContent='❌ '+e.message; } }
 async function deleteSub(id){ if(!confirm('Wissen?')) return; const res=await api('/api/admin/subs/delete',{method:'POST', body:JSON.stringify({id})}); loadSubs(); }
 async function clearAllSubs(){ if(!confirm('ALLE wissen?')) return; const res=await api('/api/admin/clear-all-subs',{method:'POST'}); alert(JSON.stringify(res)); loadSubs(); }
-async function exportSubsCSV(){ const data=await api('/api/admin/subs'); let csv='id,description,pushCount,lastPush,lastPushSource,lastPushTitle,email,sources\n'; (data.subs||[]).forEach(s=>{ csv+=`"${s.id}","${(s.description||'').replace(/"/g,'""')}",${s.pushCount||0},"${s.lastPush||''}","${(s.lastPushSource||'').replace(/"/g,'""')}","${(s.lastPushTitle||'').replace(/"/g,'""')}","${s.email||''}","${(s.sources||[]).join(';')}"\n`; }); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='subs_v271.csv'; a.click(); }
+async function exportSubsCSV(){ const data=await api('/api/admin/subs'); let csv='id,description,pushCount,lastPush,lastPushSource,lastPushTitle,email,sources\n'; (data.subs||[]).forEach(s=>{ csv+=`"${s.id}","${(s.description||'').replace(/"/g,'""')}",${s.pushCount||0},"${s.lastPush||''}","${(s.lastPushSource||'').replace(/"/g,'""')}","${(s.lastPushTitle||'').replace(/"/g,'""')}","${s.email||''}","${(s.sources||[]).join(';')}"\n`; }); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='subs.csv'; a.click(); }
 async function loadUsers(){ const data=await api('/api/admin/users'); const tbody=document.getElementById('users-body'); tbody.innerHTML=''; (data.users||[]).forEach(u=>{ const aanKeys = u.sync? Object.keys(u.sync.state||{}).filter(k=>{const v=u.sync.state[k]; return v && typeof v==='object' && v.aan===true;}) : []; const tr=document.createElement('tr'); tr.innerHTML='<td>'+u.email+'</td><td>'+u.id.slice(0,20)+'</td><td>'+aanKeys.length+' aan<br><span class=small>'+aanKeys.join(', ')+'</span></td><td>'+(u.sync?.state?.__pushEnabled!==false?'ja':'nee')+'</td><td><button class=btn-sec onclick="viewSync(\''+u.id+'\')">SYNC</button></td>'; tbody.appendChild(tr); }); }
 async function viewSync(id){ const d=await api('/api/admin/sync/'+id); alert(JSON.stringify(d.sync||{},null,2)); }
 function onSourceChange(){ const sel=document.getElementById('push-source'); const link=sel.options[sel.selectedIndex]?.getAttribute('data-link'); if(link) document.getElementById('push-link').value=link; }
@@ -198,7 +198,7 @@ async function saveNewsletterFeed(){
   const subject=document.getElementById('nl-subject').value; const body=document.getElementById('nl-body').value; const link=document.getElementById('nl-link').value;
   if(!subject){ alert('Titel vereist'); return; }
   const isEdit = editingIndex!==null;
-  document.getElementById('nl-result').innerHTML= isEdit ? 'Wijzigen... (1 put)' : 'Opslaan als 10e bron... (v271 - 1 put)';
+  document.getElementById('nl-result').innerHTML= isEdit ? 'Wijzigen... (1 put)' : 'Opslaan als 10e bron...';
   try{
     let res;
     if(isEdit){
@@ -245,7 +245,7 @@ window.deleteNewsletterItem = async function(idx, pubDate){
     const res=await api('/api/admin/newsletter/delete',{method:'POST', body:JSON.stringify({index: idx, pubDate})});
     alert('Verwijderd: '+res.count+' over');
     loadNewsletterFeed(); loadOverview();
-  }catch(e){ alert('Delete fout: '+e.message+' - Worker v271 al gedeployed?'); }
+  }catch(e){ alert('Delete fout: '+e.message+' - Controleer de Worker-verbinding'); }
 }
 
 async function sendNewsletterAsRealPush(){
@@ -258,10 +258,10 @@ async function sendNewsletterAsRealPush(){
     const sep = link.includes('?')?'&':'?';
     link = link + sep + 'echt='+encodeURIComponent(echtId)+'&highlight='+encodeURIComponent(echtId);
   }
-  document.getElementById('nl-result').innerHTML='Pushen als ECHT (omlijnd) - FIX #8 v307 met titel+link...';
+  document.getElementById('nl-result').innerHTML='Pushen als ECHT (omlijnd) met titel en link...';
   try{
     const res=await api('/api/admin/newsletter/push-real',{method:'POST', body:JSON.stringify({title:subject, link:link, description:body, echtId:echtId})});
-    document.getElementById('nl-result').innerHTML='<div class=alert-ok>🔔 FIX #8 v307: ECHT omlijnd naar '+res.sent+'/'+res.total+' - titel: '+escapeHtml(subject)+'<br>Link: '+escapeHtml(link)+'<br><button class=btn onclick="window.open(\''+link.replace(/'/g,'')+'\',\'_blank\')">🔍 Test zelf bekijken (moet rood omlijnd tonen)</button></div>';
+    document.getElementById('nl-result').innerHTML='<div class=alert-ok>🔔 ECHT omlijnd naar '+res.sent+'/'+res.total+' - titel: '+escapeHtml(subject)+'<br>Link: '+escapeHtml(link)+'<br><button class=btn onclick="window.open(\''+link.replace(/'/g,'')+'\',\'_blank\')">🔍 Test zelf bekijken (moet rood omlijnd tonen)</button></div>';
   }catch(e){ document.getElementById('nl-result').innerHTML='<div style=color:#dc2626>Fout: '+e.message+'</div>'; }
 }
 
@@ -286,7 +286,7 @@ async function loadNewsletterFeed(){
         </div>
       </div>
     `).join('') || 'Geen items - nog geen nieuwsbrieven opgeslagen';
-  }catch(e){ document.getElementById('nl-feed-list').innerHTML='Fout: '+e.message+' - Worker v271 gedeployed?'; }
+  }catch(e){ document.getElementById('nl-feed-list').innerHTML='Fout: '+e.message+' - Controleer de Worker-verbinding'; }
 }
 async function sendTestPush(isReal){
   const title=document.getElementById('push-title').value; const source=document.getElementById('push-source').value; const link=document.getElementById('push-link').value; const body=document.getElementById('push-body').value;
