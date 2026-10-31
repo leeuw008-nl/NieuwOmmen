@@ -135,7 +135,7 @@ function parseNieuwsbriefECHT(json){
       let pubDate = new Date();
       if(it.pubDate || it.date || it.updated){ const d=new Date(it.pubDate||it.date||it.updated); if(!isNaN(d.getTime())) pubDate=d; }
       const desc = it.description || it.body || it.excerpt || title;
-      return {title: title.slice(0,120), link, pubDate, description: desc.slice(0,200)+' [...]', source:'Nieuwsbrief', id:'Nieuwsbrief'};
+      return {title: title.slice(0,120), link, pubDate, description: desc.length>200 ? desc.slice(0,200).trimEnd()+' […]' : desc, fullText: desc, source:'Nieuwsbrief', id:'Nieuwsbrief'};
     }).slice(0,10);
   }catch(e){ console.log('parse nieuwsbrief fail', e.message); return []; }
 }
@@ -1015,10 +1015,15 @@ function renderArticles(){
     else container.innerHTML = countHtml + '<div class="article">Geen artikelen</div>';
     return;
   }
+  window._newsletterVisibleArticles = filtered.filter(a=>a.id==='Nieuwsbrief' && !a.isFallback);
   const html = filtered.map(a=>{
     const cleanTitle = a.title.replace(/^\[[^\]]+\]\s*/,'').trim() || a.title;
     if(a.isFallback){
       return `<div class="article fallback" data-source="${a.id}"><h2><a href="${a.link}" target="_blank">${a.source}</a></h2><small>${a.source}${a.pubDate.getTime()?` - ${formatDate(a.pubDate, a.id)}`:''}</small><div style="margin-top:6px;color:#666;">${a.description}</div></div>`;
+    }
+    if(a.id==='Nieuwsbrief'){
+      const ni=window._newsletterVisibleArticles.indexOf(a);
+      return `<div class="article" data-source="Nieuwsbrief"><h2><a href="#" data-newsletter-index="${ni}">${cleanTitle}</a></h2><small>${a.source} - ${formatDate(a.pubDate,a.id)}</small>${a.description?`<div style="margin-top:6px;color:#555;">${a.description}</div>`:''}</div>`;
     }
     return `<div class="article" data-source="${a.id}"><h2><a href="${a.link}" target="_blank">${cleanTitle}</a></h2><small>${a.source} - ${formatDate(a.pubDate, a.id)}</small>${a.description?`<div style="margin-top:6px;color:#555;">${a.description}</div>`:''}</div>`;
   }).join('');
@@ -1028,6 +1033,26 @@ function renderArticles(){
   // v275 fix 0/0 - update filter counts after articles filtered
   try{ const list=document.getElementById('source-list'); if(list && list.children.length>0){ /* counts will be updated on next renderFilters */ } }catch{}
 }
+// Nieuwsbrief: volledig artikel schermvullend in de app; overige bronnen blijven ongewijzigd.
+(function(){
+  const style=document.createElement('style');
+  style.textContent='#newsletter-fullscreen{position:fixed;inset:0;z-index:99999;background:#f4f6f8;overflow-y:auto;overscroll-behavior:contain}#newsletter-fullscreen[hidden]{display:none!important}#newsletter-fullscreen .nl-toolbar{position:sticky;top:0;background:#0b5bd3;color:#fff;min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:8px 16px}#newsletter-fullscreen .nl-close{font-size:28px;line-height:1;background:#fff;color:#0b5bd3;border:0;border-radius:8px;min-width:42px;min-height:42px;cursor:pointer}#newsletter-fullscreen .nl-paper{max-width:640px;margin:12px auto;padding:20px;background:#fff;border:2px solid #0b5bd3;border-radius:12px;box-shadow:0 2px 12px #0001}#newsletter-fullscreen .nl-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:16px}#newsletter-fullscreen h2{overflow-wrap:anywhere}';
+  document.head.appendChild(style);
+  let previousFocus=null,previousOverflow='';
+  function close(){const panel=document.getElementById('newsletter-fullscreen');if(!panel||panel.hidden)return;panel.hidden=true;document.body.style.overflow=previousOverflow;previousFocus?.focus?.();}
+  window.openNewsletterArticle=function(index){
+    const item=(window._newsletterVisibleArticles||[])[index];if(!item)return;
+    let panel=document.getElementById('newsletter-fullscreen');
+    if(!panel){panel=document.createElement('section');panel.id='newsletter-fullscreen';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Nieuwsbrief lezen');panel.innerHTML='<div class="nl-toolbar"><strong>Nieuwsbrief</strong><button type="button" class="nl-close" aria-label="Sluiten en terug naar nieuwsoverzicht">×</button></div><article class="nl-paper"><h2 class="nl-title"></h2><div class="nl-date"></div><hr><div class="nl-body"></div></article>';document.body.appendChild(panel);panel.querySelector('.nl-close').addEventListener('click',close);}
+    previousFocus=document.activeElement;previousOverflow=document.body.style.overflow;
+    panel.querySelector('.nl-title').textContent=item.title;
+    panel.querySelector('.nl-date').textContent=item.pubDate instanceof Date?item.pubDate.toLocaleString('nl-NL'):'';
+    panel.querySelector('.nl-body').textContent=item.fullText||item.description||'';
+    panel.hidden=false;panel.scrollTop=0;document.body.style.overflow='hidden';panel.querySelector('.nl-close').focus();
+  };
+  document.addEventListener('click',function(e){const a=e.target.closest?.('a[data-newsletter-index]');if(!a)return;e.preventDefault();window.openNewsletterArticle(Number(a.dataset.newsletterIndex));});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+})();
 function filterNews(){ renderArticles(); }
 async function refreshNews(){
   const c=document.getElementById('news-container');
