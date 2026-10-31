@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nieuw(s)Ommen</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=300">
+<link rel="stylesheet" href="styles.css?v=301">
 <link rel="icon" href="icons/icon-192x192.png" type="image/png">
 <meta name="theme-color" content="#0b5bd3">
 <style>.search-box{position:relative;width:100%;}.search-box #search-input{width:100%;box-sizing:border-box;padding-right:34px;}.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:#64748b;font-size:22px;line-height:28px;padding:0;cursor:pointer;display:block}.search-clear:hover{color:#0b5bd3;}</style>
@@ -16,13 +16,12 @@
     <button type="button" id="nav-menu-button" class="nav-menu-button" aria-label="Menu openen" aria-expanded="false" aria-controls="nav-menu">☰</button>
     <span class="title-left">📰 Nieuw(s)Ommen</span>
     <span class="header-icons">
-      <a href="informatie.html" class="info-icon-btn" title="Info">i</a>
       <button id="user-icon-btn" class="user-icon-btn" title="Account" aria-label="Account">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
     </button>
     </span>
   </h1>
-  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html">Info</a><a href="admin.html" id="admin-menu-link" hidden>Admin</a></nav>
+  <nav id="nav-menu" class="nav-menu" aria-label="Hoofdmenu" hidden><a href="./">Nieuws</a><a href="informatie.html?tab=over">Over</a><a href="informatie.html?tab=bronnen">Bronnen</a><a href="informatie.html?tab=meldingen">Meldingen</a><a href="informatie.html?tab=tips">Filters &amp; Tips</a><a href="informatie.html?tab=privacy">Privacy &amp; Contact</a><a href="admin.html" id="admin-menu-link" hidden>Admin</a></nav>
   <div class="filter-header" id="filter-header">
     <div class="filter-header-center"><div class="search-row"><div class="search-box"><input type="text" id="search-input" placeholder="Zoek in nieuws..." autocomplete="off"><button type="button" id="search-clear" class="search-clear" aria-label="Zoekveld leegmaken" title="Zoekveld leegmaken">×</button></div></div></div>
     <div class="filter-header-right">
