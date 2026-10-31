@@ -28,7 +28,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 12px;border-bottom:
 .admin-header .admin-back{grid-column:1;grid-row:1}
 .admin-header h1{grid-column:2;grid-row:1;min-width:0;text-align:left}
 .admin-header .admin-switch-label{grid-column:1;grid-row:2;font-size:11px}
-.admin-header .admin-switch{grid-column:2;grid-row:2;width:100%;min-width:0;max-width:100%}
+.admin-header .admin-switch{grid-column:1 / -1;grid-row:2;width:100%;min-width:0;max-width:100%}
 
 .admin-switch-label{font-size:12px;color:white}
 .admin-switch{width:auto;max-width:100%;flex:1 1 180px;background:white;color:#0b5bd3;border:1px solid #bfdbfe;border-radius:8px;padding:9px 10px;font-size:15px;font-weight:600}
@@ -49,7 +49,7 @@ body{background:#f5f7fb}
 </head><body>
 <div id="admin-access" class="admin-access"><p id="admin-access-status">Beheerdersaccount controleren...</p><a href="./">Terug naar nieuws</a></div>
 <div id="admin-shell" hidden>
-<header class="admin-header"><a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a><h1 id="admin-section-title">Admin - Overzicht</h1><label class="admin-switch-label" for="admin-switch">Onderdeel</label><select id="admin-switch" class="admin-switch" aria-label="Ander Admin-onderdeel kiezen"><option value="overview">Overzicht</option><option value="subs">Abonnementen</option><option value="users">Gebruikers</option><option value="newsletter">Nieuwsbrief</option><option value="push">Push testen</option><option value="logs">Logs</option><option value="settings">Instellingen</option></select></header>
+<header class="admin-header"><a href="./" class="admin-back" title="Terug naar nieuws" aria-label="Terug naar nieuws"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></a><h1 id="admin-section-title">Admin - Overzicht</h1><select id="admin-switch" class="admin-switch" aria-label="Ander Admin-onderdeel kiezen"><option value="overview">Overzicht</option><option value="subs">Abonnementen</option><option value="users">Gebruikers</option><option value="newsletter">Nieuwsbrief</option><option value="push">Push testen</option><option value="logs">Logs</option><option value="settings">Instellingen</option></select></header>
 <div id="admin-runtime-meta" hidden><span id="adminEmail"></span><small id="apiBase"></small><span id="subs-count-side"></span></div>
 <div class="main">
 <div id="login-box" class="card" style="border:2px solid #dc2626"><h3 style="margin-top:0">Admin v307 FINAL FIX #1,2,3,6,7,8,9,10 nieuwsbrief delete/edit + omlijnd lezen</h3><p style="font-size:13px;color:#166534"><b>v271:</b> Zelfde opmaak/inhoud als v266, maar nu met 🗑️ Verwijderen en ✏️ Wijzigen. 1 KV write per actie (gratis tier safe). Deploy eerst Worker v271!</p><div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Email</label><input id="login-email" class="input" value="leeuw008@gmail.com"></div><div><label>Wachtwoord</label><input id="login-pw" type="password" class="input"></div></div><br><button class="btn btn-ok" onclick="doLogin()">Inloggen v271</button><span id="login-result" style="margin-left:12px;font-size:13px"></span></div>
