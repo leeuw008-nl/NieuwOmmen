@@ -120,3 +120,9 @@ header h1{position:relative;padding-left:38px}
 @media(max-width:400px){header h1{font-size:1.25em;padding-left:34px;gap:6px}.nav-menu-button{width:30px;height:30px}}
 
 .nav-menu a[hidden]{display:none!important}
+
+/* Header: menu links, account helemaal rechts en titel in het midden */
+header h1{position:relative;justify-content:center;padding-left:40px;padding-right:40px}
+.header-icons{position:absolute;right:0;top:50%;transform:translateY(-50%)}
+.title-left{text-align:center;min-width:0}
+@media(max-width:400px){header h1{padding-left:35px;padding-right:35px;font-size:1.25em}}
