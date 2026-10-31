@@ -126,3 +126,11 @@ header h1{position:relative;justify-content:center;padding-left:40px;padding-rig
 .header-icons{position:absolute;right:0;top:50%;transform:translateY(-50%)}
 .title-left{text-align:center;min-width:0}
 @media(max-width:400px){header h1{padding-left:35px;padding-right:35px;font-size:1.25em}}
+
+/* Licht en overzichtelijk admin-submenu */
+.nav-menu .admin-menu-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 18px;background:white;border:0;border-top:1px solid #e5e7eb;color:#0b5bd3;text-align:left;font:600 15px system-ui;cursor:pointer}
+.nav-menu .admin-menu-toggle:hover{background:#eff6ff}
+.nav-menu .admin-submenu{background:#f4f8ff;border-left:3px solid #0b5bd3}
+.nav-menu .admin-submenu[hidden],.nav-menu #admin-menu-group[hidden]{display:none!important}
+.nav-menu .admin-submenu a{font-size:14px;font-weight:500;padding:10px 20px 10px 27px}
+.nav-menu{max-height:calc(100dvh - 80px);overflow-y:auto}
