@@ -59,7 +59,6 @@ li{margin-bottom:6px}
 <button data-tab="meldingen">Meldingen</button>
 <button data-tab="tips">Filters & Tips</button>
 <button data-tab="privacy">Privacy & Contact</button>
-<button data-tab="beheer" class="admin-tab visible" id="adminTab" style="display:inline-flex;align-items:center;gap:6px">Beheer <span class="badge">ADMIN</span></button>
 </div></div>
 
 <div class="content">
@@ -133,36 +132,6 @@ li{margin-bottom:6px}
 <p>We horen graag van je!</p>
 </div>
 
-<div class="panel" id="panel-beheer">
-<h2>Beheer & Diagnose <span class="badge">ALLEEN VOOR ADMIN</span></h2>
-<div class="admin-only">
-<p><strong>Ingelogd als admin:</strong> <span id="adminEmail">-</span></p>
-<p id="adminStatus" style="font-size:13px;color:#6b7280">Controleren...</p>
-<h3>1. Push status</h3>
-<p id="pushStatus">Controleren...</p>
-<label for="pushTestSource" style="display:block;margin:8px 0 4px;font-weight:600">Bron voor testpush</label>
-<select id="pushTestSource" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:white;font-size:14px;margin-bottom:6px">
-<option value="De Stentor">De Stentor</option>
-<option value="Gemeente Ommen">Gemeente Ommen</option>
-<option value="Natuurlijk Ommen">Natuurlijk Ommen</option>
-<option value="Ommen City">Ommen City</option>
-<option value="OudOmmen">OudOmmen</option>
-<option value="RondOmmen">RondOmmen</option>
-<option value="RTV Oost">RTV Oost</option>
-<option value="RTV Vechtdal">RTV Vechtdal</option>
-<option value="Vechtdal Centraal">Vechtdal Centraal</option>
-<option value="Nieuwsbrief">Nieuwsbrief</option>
-</select>
-<button class="btn" id="btnLocal">Test lokale notificatie</button>
-<button class="btn orange" id="btnPush">Test echte push + bronfilter</button>
-<button class="btn secondary" id="btnCheckDebug">Check /debug</button>
-<h3 style="margin-top:20px">2. Service Worker</h3>
-<p id="swStatus">Controleren...</p>
-<h3>Resultaat</h3>
-<div class="result" id="result">Nog geen test uitgevoerd.</div>
-</div>
-</div>
-
 </div>
 
 <script>
@@ -176,104 +145,7 @@ tabs.forEach(btn=>{
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
   });
 });
-function getEmail(){
-  try{
-    const keys=['ommen_current_user_email','user_email','email','auth_email','leeuw008_email'];
-    for(const k of keys){
-      const v=localStorage.getItem(k)||sessionStorage.getItem(k);
-      if(v && v.toLowerCase().includes('@')) return v;
-    }
-    if(window.ommenCurrentUser && window.ommenCurrentUser.email) return window.ommenCurrentUser.email;
-  }catch(e){}
-  return null;
-}
-let authFailCount = 0;
-async function checkAdmin(){
-  const adminTab=document.getElementById('adminTab');
-  const adminEmailEl=document.getElementById('adminEmail');
-  const adminStatus=document.getElementById('adminStatus');
-  adminTab.classList.add('visible');
-  adminTab.style.display='inline-flex';
-  let email=getEmail();
-  if(authFailCount < 3){
-    try{
-      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
-      if(token){
-        const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/auth/me',{headers:{'Authorization':'Bearer '+token}});
-        if(r.status===401){authFailCount++;} 
-        else if(r.ok){
-          const j=await r.json();
-          if(j.email) email=j.email;
-          authFailCount=0;
-        }
-      }
-    }catch(e){ authFailCount++; }
-  }
-  adminEmailEl.textContent=email||'(geen email gevonden)';
-  if(email && email.toLowerCase()==='leeuw008@gmail.com'){
-    adminStatus.textContent='Admin toegang verleend ✓';
-  }else{
-    adminStatus.textContent='Tab blijft zichtbaar voor debug (email: '+(email||'onbekend')+') - auth fails: '+authFailCount;
-  }
-  initAdmin();
-}
-function initAdmin(){
-  const pushStatus=document.getElementById('pushStatus');
-  const swStatus=document.getElementById('swStatus');
-  const result=document.getElementById('result');
-  try{
-    pushStatus.textContent='Permission: '+Notification.permission;
-  }catch(e){pushStatus.textContent='Notification API niet beschikbaar';}
-  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-    swStatus.textContent='Service Worker actief ✓';
-  }else{
-    swStatus.textContent='Service Worker: controleren...';
-    navigator.serviceWorker.ready.then(()=>{swStatus.textContent='Service Worker actief ✓';}).catch(()=>{swStatus.textContent='Service Worker niet actief';});
-  }
-  document.getElementById('btnLocal').onclick=async()=>{
-    try{
-      const reg=await navigator.serviceWorker.ready;
-      await reg.showNotification('Nieuw(s)Ommen - Test',{body:'Lokale test melding werkt! ✓',icon:'./icons/icon-192x192.png',badge:'./icons/badge-lion-96x96.png'});
-      result.textContent='Lokale notificatie verstuurd ✓\n(Als je niets ziet, check browser toestemming)';
-    }catch(e){result.textContent='Fout lokale notificatie: '+e.message;}
-  };
-  document.getElementById('btnPush').onclick=async()=>{
-    result.textContent='Echte push versturen via worker...';
-    try{
-      const token=localStorage.getItem('ommen_auth_token')||localStorage.getItem('auth_token')||localStorage.getItem('token')||'';
-      if(!token){
-        result.textContent='Geen ingelogde admin-sessie gevonden. Log eerst in.';
-        return;
-      }
-      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/api/admin/test-push',{
-        method:'POST',
-        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({
-          title:'Test Ommen '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          source:(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          link:'https://nieuwommen.leeuw008.nl/',
-          body:'Dit is een echte push test via '+(document.getElementById('pushTestSource')?.value||'Nieuwsbrief'),
-          filter:true,
-          isReal:false
-        })
-      });
-      const txt=await r.text();
-      result.textContent='Response van /api/admin/test-push:\n'+txt;
-    }catch(e){result.textContent='Fout bij echte push: '+e.message;}
-  };
-  document.getElementById('btnCheckDebug').onclick=async()=>{
-    result.textContent='Debug ophalen...';
-    try{
-      const r=await fetch('https://ommen-push-v2.leeuw008.workers.dev/debug');
-      const j=await r.json();
-      result.textContent='Debug info:\n'+JSON.stringify(j,null,2);
-    }catch(e){result.textContent='Fout debug: '+e.message;}
-  };
-}
-document.addEventListener('DOMContentLoaded',()=>{
-  checkAdmin();
-  setTimeout(checkAdmin,1000);
-});
+
 </script>
 </body>
 </html>
