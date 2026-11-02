@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b5bd3"><link rel="manifest" href="./manifest.webmanifest">
+<title>Nieuw(s)Ommen – Pushproef</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#172033;background:#f3f6fb}body{margin:0}header{background:#0b5bd3;color:white;padding:18px max(18px,calc((100% - 680px)/2))}main{max-width:680px;margin:24px auto;padding:0 16px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 12px #10204012}button{border:0;border-radius:9px;padding:12px 16px;background:#0b5bd3;color:white;font-weight:650;font-size:15px;cursor:pointer}button:disabled{opacity:.45}button.secondary{background:#e8eef8;color:#172033}#status{white-space:pre-wrap;line-height:1.5}.muted{color:#64748b;font-size:14px}code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header><h1>Nieuw(s)Ommen – Pushproef</h1><div>Afzonderlijke testomgeving · geen koppeling met bestaande accounts</div></header>
+<main>
+<section class="card"><h2>1. Push aanmelden</h2><p class="muted">Geef toestemming voor meldingen en registreer dit apparaat uitsluitend voor deze test.</p><button id="subscribe">Push aanmelden</button> <button class="secondary" id="unsubscribe">Afmelden</button></section>
+<section class="card"><h2>2. Testbericht</h2><p class="muted">Een testbericht wordt straks vanuit de aparte test-Worker verzonden. Hiervoor is een beheerderssleutel nodig; die komt niet in deze webpagina.</p><p id="status">Status: nog niet gecontroleerd.</p></section>
+<section class="card"><h2>Testresultaat</h2><p id="result" class="muted">Nog geen test uitgevoerd.</p></section>
+</main>
+<script src="./app.js"></script>
+</body></html>
