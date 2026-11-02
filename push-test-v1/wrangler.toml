@@ -8,4 +8,4 @@ id = "REPLACE_WITH_NEW_KV_NAMESPACE_ID"
 
 [vars]
 VAPID_SUBJECT = "mailto:leeuw008@gmail.com"
-TEST_APP_URL = "https://leeuw008-nl.github.io/NieuwOmmen/push-test-v1/"
+TEST_APP_URL = "https://nieuwommen.leeuw008.nl/push-test-v1/"
