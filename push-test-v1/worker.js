@@ -3,7 +3,9 @@ const enc=new TextEncoder();
 const b64u=a=>btoa(String.fromCharCode(...a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const unb64=s=>{const x=(s+"=".repeat((4-s.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/");return Uint8Array.from(atob(x),c=>c.charCodeAt(0))};
 const join=(...p)=>{const n=p.reduce((s,x)=>s+x.length,0),o=new Uint8Array(n);let i=0;for(const x of p){o.set(x,i);i+=x.length}return o};
-const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{"content-type":"application/json","cache-control":"no-store","access-control-allow-origin":"*","access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"Content-Type,Authorization"}});
+const APP_ORIGIN="https://nieuwommen-push-test.pages.dev";
+const cors=(origin)=>origin===APP_ORIGIN?{"access-control-allow-origin":APP_ORIGIN,"access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"Content-Type,Authorization","vary":"Origin"}:{};
+const json=(x,s=200,origin="")=>new Response(JSON.stringify(x),{status:s,headers:{"content-type":"application/json","cache-control":"no-store",...cors(origin)}});
 async function hmac(k,d){const key=await crypto.subtle.importKey("raw",k,{name:"HMAC",hash:"SHA-256"},false,["sign"]);return new Uint8Array(await crypto.subtle.sign("HMAC",key,d))}
 async function vapid(endpoint,env){
  const pub=env.VAPID_PUBLIC_KEY.trim(),priv=env.VAPID_PRIVATE_KEY.trim(),u=new URL(endpoint);
@@ -37,24 +39,26 @@ async function send(sub,env){
  if(!r.ok)throw Error("Pushdienst HTTP "+r.status+" "+(await r.text()).slice(0,180));return r.status;
 }
 export default {async fetch(req,env){
- if(req.method==="OPTIONS")return new Response(null,{headers:{"access-control-allow-origin":"*","access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"Content-Type,Authorization"}});
+ const origin=req.headers.get("Origin")||"";
+ if(origin && origin!==APP_ORIGIN)return new Response("Origin not allowed",{status:403});
+ if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors(origin)});
  const u=new URL(req.url),p=u.pathname;
  try{
-  if(p==="/health")return json({ok:true,version:"push-test-v1"});
-  if(p==="/vapid"&&req.method==="GET"){if(!env.VAPID_PUBLIC_KEY)return json({error:"VAPID public key niet ingesteld"},503);return json({publicKey:env.VAPID_PUBLIC_KEY})}
+  if(p==="/health")return json({ok:true,version:"push-test-v1"},200,origin);
+  if(p==="/vapid"&&req.method==="GET"){if(!env.VAPID_PUBLIC_KEY)return json({error:"VAPID public key niet ingesteld"},503,origin);return json({publicKey:env.VAPID_PUBLIC_KEY},200,origin)}
   if(p==="/subscribe"&&req.method==="POST"){
-   const s=await req.json();if(!s.endpoint||!s.keys?.p256dh||!s.keys?.auth||!s.endpoint.startsWith("https://"))return json({error:"Ongeldig pushabonnement"},400);
+   const s=await req.json();if(!s.endpoint||!s.keys?.p256dh||!s.keys?.auth||!s.endpoint.startsWith("https://"))return json({error:"Ongeldig pushabonnement"},400,origin);
    const id=b64u(await crypto.subtle.digest("SHA-256",enc.encode(s.endpoint)));
    await env.PUSH_TEST_SUBS.put(id,JSON.stringify({endpoint:s.endpoint,keys:s.keys,created:Date.now()}));
-   const check=await env.PUSH_TEST_SUBS.get(id);if(!check)return json({error:"Opslagcontrole mislukt"},500);
-   return json({ok:true,saved:true,id});
+   const check=await env.PUSH_TEST_SUBS.get(id);if(!check)return json({error:"Opslagcontrole mislukt"},500,origin);
+   return json({ok:true,saved:true,id},200,origin);
   }
-  if(p==="/unsubscribe"&&req.method==="POST"){const {endpoint}=await req.json();if(!endpoint)return json({error:"endpoint ontbreekt"},400);const id=b64u(await crypto.subtle.digest("SHA-256",enc.encode(endpoint)));await env.PUSH_TEST_SUBS.delete(id);return json({ok:true})}
+  if(p==="/unsubscribe"&&req.method==="POST"){const {endpoint}=await req.json();if(!endpoint)return json({error:"endpoint ontbreekt"},400,origin);const id=b64u(await crypto.subtle.digest("SHA-256",enc.encode(endpoint)));await env.PUSH_TEST_SUBS.delete(id);return json({ok:true},200,origin)}
   if(p==="/test-send"&&req.method==="POST"){
-   if(!env.TEST_TOKEN||req.headers.get("Authorization")!=="Bearer "+env.TEST_TOKEN)return json({error:"Niet geautoriseerd"},401);
+   if(!env.TEST_TOKEN||req.headers.get("Authorization")!=="Bearer "+env.TEST_TOKEN)return json({error:"Niet geautoriseerd"},401,origin);
    const listed=await env.PUSH_TEST_SUBS.list(),results=[];for(const k of listed.keys){const s=JSON.parse(await env.PUSH_TEST_SUBS.get(k.name));try{const status=await send(s,env);results.push({id:k.name,status,ok:true})}catch(e){results.push({id:k.name,ok:false,error:e.message});if(e.expired)await env.PUSH_TEST_SUBS.delete(k.name)}}
-   return json({ok:results.length>0&&results.every(x=>x.ok),total:results.length,results});
+   return json({ok:results.length>0&&results.every(x=>x.ok),total:results.length,results},200,origin);
   }
-  return json({error:"Niet gevonden"},404);
- }catch(e){return json({error:e.message||String(e)},500)}
+  return json({error:"Niet gevonden"},404,origin);
+ }catch(e){return json({error:e.message||String(e)},500,origin)}
 }};
