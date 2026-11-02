@@ -26,8 +26,8 @@ async function encrypt(payload,sub){
  const shared=new Uint8Array(await crypto.subtle.deriveBits({name:"ECDH",public:recipient},server.privateKey,256));
  const prk=await hmac(auth,shared),info=join(enc.encode("WebPush: info"),new Uint8Array([0]),ua,serverPub);
  const ikm=await hmac(prk,join(info,new Uint8Array([1]))),salt=crypto.getRandomValues(new Uint8Array(16)),prk2=await hmac(salt,ikm);
- const cek=(await hmac(prk2,join(enc.encode("Content-Encoding: aes128gcm"),new Uint8Array([0,1])))).slice(0,16);
- const nonce=(await hmac(prk2,join(enc.encode("Content-Encoding: nonce"),new Uint8Array([0,1])))).slice(0,12);
+ const cek=(await hmac(prk2,join(enc.encode("Content-Encoding: aes128gcm"),new Uint8Array([1])))).slice(0,16);
+ const nonce=(await hmac(prk2,join(enc.encode("Content-Encoding: nonce"),new Uint8Array([1])))).slice(0,12);
  const key=await crypto.subtle.importKey("raw",cek,{name:"AES-GCM"},false,["encrypt"]);
  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:nonce},key,join(enc.encode(JSON.stringify(payload)),new Uint8Array([2]))));
  const header=new Uint8Array(86);header.set(salt);new DataView(header.buffer).setUint32(16,4096,false);header[20]=65;header.set(serverPub,21);return join(header,cipher);
