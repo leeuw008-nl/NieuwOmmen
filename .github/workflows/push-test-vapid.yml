@@ -1,0 +1,40 @@
+name: Generate isolated push-test VAPID keys
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate VAPID key pair
+        run: |
+          npm install --no-save web-push
+          node <<'NODE'
+          const fs = require('fs');
+          const webpush = require('web-push');
+          const keys = webpush.generateVAPIDKeys();
+          fs.writeFileSync('vapid-keys.txt',
+            'VAPID_PUBLIC_KEY=' + keys.publicKey + '\n' +
+            'VAPID_PRIVATE_KEY=' + keys.privateKey + '\n',
+            { mode: 0o600 }
+          );
+          console.log('VAPID key pair generated. Private key is stored only in the short-lived workflow artifact.');
+          console.log('Public key: ' + keys.publicKey);
+          NODE
+
+      - name: Upload short-lived key file
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-test-vapid-keys
+          path: vapid-keys.txt
+          retention-days: 1
+          if-no-files-found: error
