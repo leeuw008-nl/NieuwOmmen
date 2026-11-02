@@ -294,13 +294,13 @@ async function sendTestPush(isReal){
   document.getElementById('push-result').innerHTML=(finalIsReal?'🔔 ECHT (omlijnd) - volledig leesbaar...':'Test (zonder omlijning)...');
   try{
     const res=await api('/api/admin/test-push',{method:'POST', body:JSON.stringify({title, source, link, body, filter:true, isReal:finalIsReal})});
-    document.getElementById('push-result').innerHTML='<div class=alert-ok>✅ '+ (finalIsReal?'ECHT omlijnd - volledig leesbaar':'Test') +' naar '+res.sent+'/'+res.total+'<br>'+JSON.stringify(res.article)+'</div>'; loadSubs();
+    const details=(res.results||[]).map(x=>'<div style="font-size:12px;margin-top:4px;border-top:1px solid #ddd;padding-top:4px"><b>'+escapeHtml(String(x.id||'').slice(0,14))+'</b> — '+(x.skipped?'overgeslagen':(x.sent?'verzonden':'mislukt'))+(x.status?' · HTTP '+escapeHtml(String(x.status)):'')+(x.error?' · '+escapeHtml(String(x.error)):'')+'</div>').join(''); document.getElementById('push-result').innerHTML='<div class=alert-ok>Testresultaat: '+res.sent+'/'+res.total+'<br>'+JSON.stringify(res.article)+details+'</div>'; loadSubs();
   }catch(e){ document.getElementById('push-result').innerHTML='Fout: '+e.message; }
 }
 async function sendTestPushAll(){
   const title=document.getElementById('push-title').value; const source=document.getElementById('push-source').value; const link=document.getElementById('push-link').value; const body=document.getElementById('push-body').value; const isReal=document.getElementById('push-is-real').checked;
   const res=await api('/api/admin/test-push',{method:'POST', body:JSON.stringify({title, source, link, body, filter:false, isReal:isReal})});
-  document.getElementById('push-result').innerHTML='<div class=alert-ok>Naar alle: '+res.sent+'/'+res.total+'</div>';
+  const details=(res.results||[]).map(x=>'<div style="font-size:12px;margin-top:4px;border-top:1px solid #ddd;padding-top:4px"><b>'+escapeHtml(String(x.id||'').slice(0,14))+'</b> — '+(x.skipped?'overgeslagen':(x.sent?'verzonden':'mislukt'))+(x.status?' · HTTP '+escapeHtml(String(x.status)):'')+(x.error?' · '+escapeHtml(String(x.error)):'')+'</div>').join(''); document.getElementById('push-result').innerHTML='<div class=alert-ok>Naar alle: '+res.sent+'/'+res.total+details+'</div>';
 }
 async function loadDebug(){ const d=await api('/debug'); document.getElementById('debug-pre').textContent=typeof d==='string'? d : JSON.stringify(d,null,2); }
 verifyAdminSession();
