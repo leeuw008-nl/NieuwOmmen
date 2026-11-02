@@ -1,0 +1,11 @@
+name = "nieuwommen-push-test"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[kv_namespaces]]
+binding = "PUSH_TEST_SUBS"
+id = "REPLACE_WITH_NEW_KV_NAMESPACE_ID"
+
+[vars]
+VAPID_SUBJECT = "mailto:leeuw008@gmail.com"
+TEST_APP_URL = "https://leeuw008-nl.github.io/NieuwOmmen/push-test-v1/"
