@@ -1,6 +1,7 @@
 name = "nieuwommen-push-test"
 main = "worker.js"
 compatibility_date = "2026-10-01"
+account_id = "5218d013ac30f1f7c006890eb67f349f"
 
 [[kv_namespaces]]
 binding = "PUSH_TEST_SUBS"
