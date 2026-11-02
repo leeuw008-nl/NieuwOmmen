@@ -12,8 +12,7 @@ async function subscribe(){
   const permission=await Notification.requestPermission();if(permission!=="granted")throw new Error("Meldingentoestemming: "+permission);
   const reg=await navigator.serviceWorker.register("./service-worker.js",{scope:"./"});await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
-  if(sub)await sub.unsubscribe();
-  sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64url(cfg.publicKey)});
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64url(cfg.publicKey)});
   const saved=await api("/subscribe",{method:"POST",body:JSON.stringify(sub.toJSON())});
   if(!saved.ok||!saved.saved)throw new Error("Server heeft registratie niet bevestigd.");
   say("Aangemeld. Serverbevestiging ontvangen. Registratie-ID: "+saved.id);
