@@ -8,4 +8,4 @@ id = "dc6d012dfcf547e38e270d1ff010f012"
 
 [vars]
 VAPID_SUBJECT = "mailto:leeuw008@gmail.com"
-TEST_APP_URL = "https://nieuwommen.leeuw008.nl/push-test-v1/"
+TEST_APP_URL = "https://nieuwommen-push-test.pages.dev/"
