@@ -1,6 +1,6 @@
 // Nieuw(s)Ommen Pushproef Worker v1 – aparte KV, VAPID en testtoken vereist.
 const enc=new TextEncoder();
-const b64u=a=>btoa(String.fromCharCode(...a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const b64u=a=>{const bytes=a instanceof ArrayBuffer?new Uint8Array(a):ArrayBuffer.isView(a)?new Uint8Array(a.buffer,a.byteOffset,a.byteLength):Uint8Array.from(a);return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
 const unb64=s=>{const x=(s+"=".repeat((4-s.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/");return Uint8Array.from(atob(x),c=>c.charCodeAt(0))};
 const join=(...p)=>{const n=p.reduce((s,x)=>s+x.length,0),o=new Uint8Array(n);let i=0;for(const x of p){o.set(x,i);i+=x.length}return o};
 const APP_ORIGIN="https://nieuwommen-push-test.pages.dev";
