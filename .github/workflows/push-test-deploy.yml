@@ -1,0 +1,32 @@
+name: Deploy isolated NieuwOmmen push test Worker
+
+on:
+  push:
+    branches:
+      - rebuild/push-test-foundation-2026-11
+    paths:
+      - "push-test-v1/**"
+      - ".github/workflows/push-test-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy test Worker only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Deploy isolated Worker with Wrangler
+        working-directory: push-test-v1
+        run: npx --yes wrangler@4 deploy --config wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
