@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nieuw(s)Ommen</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="icons/icon-192x192.png" type="image/png">
+<meta name="theme-color" content="#0b5bd3">
+</head>
+<body>
+<header>
+  <h1><span class="title-left">📰 Nieuw(s)Ommen</span><a href="informatie.html" class="info-icon-btn" title="Info">i</a></h1>
+  <div class="search-row"><input type="text" id="search-input" placeholder="Zoek in nieuws..."></div>
+  <div class="filter-header" id="filter-header">
+    <div class="filter-header-center"><span class="filter-header-count" id="header-count">9 v/d 9 bronnen</span></div>
+    <div class="filter-header-right">
+      <div class="bell-slot" id="bell-slot"></div>
+      <button class="btn-all-toets" id="btn-all">Alles aan</button>
+      <span class="filter-header-arrow">▼</span>
+    </div>
+  </div>
+  <div id="source-panel">
+    <div class="panel-hint">
+      <div><b>VANDAAG</b> &lt;-&gt; <b>MEER</b> = alleen vandaag of meerdere dagen</div>
+      <div><b>GEMEENTE</b> &lt;-&gt; <b>REGIO</b> = alleen gemeente Ommen of ook regio</div>
+      <div><b>AAN</b> &lt;-&gt; <b>UIT</b> = aan/uit</div>
+    </div>
+    <div class="source-list" id="source-list"></div>
+    <div class="panel-footer">
+      <button onclick="resetFilters()">Reset</button>
+      <button class="primary" onclick="closePanel()">Sluiten ▲</button>
+    </div>
+  </div>
+  <div id="news-container-anchor"></div>
+  <div id="compat-hidden" style="display:none">
+    <input type="checkbox" id="only-ommen" checked>
+    <div id="compat-sources"></div>
+  </div>
+</header>
+<main><div id="news-container">Bezig met laden...</div></main>
+<footer><button onclick="refreshNews()">🔄 Vernieuwen</button></footer>
+
+<script src="app.js"></script>
+<script src="news.js"></script>
+<script src="push.js"></script>
+<script src="article-focus.js"></script>
+</body>
+</html>

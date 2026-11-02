@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Info - Nieuw(s)Ommen</title>
+<link rel="icon" href="icon-192x192.png">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f5f7fb;color:#111;line-height:1.6}
+.header{background:#0b5bd3;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0}
+.header a{color:#fff;text-decoration:none}
+.header h1{margin:0;font-size:23px;font-weight:800;flex:1}
+.container{max-width:800px;margin:0 auto;padding:16px;display:block}
+.card{background:#fff;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,.08);display:block}
+h2{margin-top:0;color:#0b5bd3;font-size:18px}
+h3{margin:12px 0 6px;font-size:15px}
+ul{margin:6px 0;padding-left:20px}
+.badge{display:inline-block;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:20px;font-size:12px;margin:2px}
+a.link{color:#0b5bd3}
+.footer{padding:20px;text-align:center;color:#6b7280;font-size:12px}
+.btn{display:inline-block;background:#0b5bd3;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px}
+
+/* TERUG - kleiner + dikke gecentreerde SVG pijl */
+.back-btn{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 2px 6px rgba(0,0,0,0.22);
+  text-decoration:none;
+}
+.back-btn svg{
+  width:20px;
+  height:20px;
+  display:block;
+}
+.back-btn:active{transform:scale(0.92)}
+
+/* INFO icoon zelfde maat */
+.info-icon{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.22);
+  border:2px solid #fff;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  font-weight:900;
+  flex-shrink:0;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="index.html" class="back-btn" aria-label="Terug">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#0b5bd3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  </a>
+  <div class="info-icon">i</div>
+  <h1>Informatie</h1>
+  <span style="width:34px"></span>
+</div>
+<div class="container">
+  <div class="card">
+    <h2>📰 Over Nieuw(s)Ommen</h2>
+    <p><b>Nieuw(s)Ommen</b> – met een knipoog naar <b>OudOmmen.nl</b>. Oud voor de historie, Nieuw(s) voor het nieuws van vandaag.</p>
+    <p><b>Nieuw(s)Ommen</b> bundelt (ca. 95% van) het laatste nieuws uit de gemeente Ommen op één plek. Geen gedoe met meerdere websites, maar alle actuele berichten automatisch verzameld en elke 10 minuten ververst.</p>
+    <p><span class="badge">Gratis</span> <span class="badge">Geen account nodig</span> <span class="badge">Geen advertenties</span></p>
+  </div>
+  <div class="card">
+    <h2>📡 Bronnen</h2>
+    <ul>
+      <li><b>De Stentor</b> – regionaal nieuws (Ommen)</li>
+      <li><b>Gemeente Ommen</b> – officiële berichten</li>
+      <li><b>Natuurlijk Ommen</b> - evenementen & toerisme</li>
+      <li><b>Ommen City</b> – lokaal nieuws</li>
+      <li><b>OudOmmen</b> – artikelen over historie</li>
+      <li><b>RondOmmen</b> - lokaal nieuws</li>
+      <li><b>RTV Oost</b> – regionaal nieuws Overijssel</li>
+      <li><b>RTV Vechtdal</b> – lokaal nieuws Vechtdal</li>
+      <li><b>Vechtdal Centraal</b> – 112 & dorpsnieuws</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>🔔 Push-meldingen</h2>
+    <ul>
+      <li>Tik op 🔔 in de header om meldingen aan/uit te zetten.</li>
+      <li>Selecteer in het filter de gewenste bronnen.</li>
+      <li>Door het klikken op een melding wordt het betreffende artikel direct in de app weergegeven.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>🔒 Privacy</h2>
+    <ul>
+      <li>Er worden <b>geen persoonsgegevens</b> opgeslagen.</li>
+      <li>Alleen het technische push-abonnement wordt bewaard.</li>
+      <li>Er worden geen trackingcookies gebruikt.</li>
+      <li>Er worden geen advertentienetwerken toegepast.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>🛠️ Techniek & beheer</h2>
+    <p>App gebouwd door <b>leeuw008</b> – leeuw008.nl</p>
+    <p>Hosting: GitHub Pages + Cloudflare Workers</p>
+    <p><a class="link" href="mailto:leeuw008@gmail.com">leeuw008@gmail.com</a></p>
+    <a class="btn" href="index.html">Terug naar nieuws</a>
+  </div>
+  <div class="footer">Nieuws Ommen v10.3 • aug 2026 • Gemaakt met ❤️ voor Ommen</div>
+</div>
+</body>
+</html>
