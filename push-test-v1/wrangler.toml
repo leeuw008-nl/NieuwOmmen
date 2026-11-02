@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [[kv_namespaces]]
 binding = "PUSH_TEST_SUBS"
-id = "REPLACE_WITH_NEW_KV_NAMESPACE_ID"
+id = "dc6d012dfcf547e38e270d1ff010f012"
 
 [vars]
 VAPID_SUBJECT = "mailto:leeuw008@gmail.com"
