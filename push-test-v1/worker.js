@@ -34,7 +34,7 @@ async function encrypt(payload,sub){
  const header=new Uint8Array(86);header.set(salt);new DataView(header.buffer).setUint32(16,4096,false);header[20]=65;header.set(serverPub,21);return join(header,cipher);
 }
 async function send(sub,env){
- const headers=await vapid(sub.endpoint,env),body=await encrypt({title:"Nieuw(s)Ommen – pushproef",body:"Dit testbericht is via de nieuwe testserver verzonden.",url:env.TEST_APP_URL||"https://nieuwommen-push-test.pages.dev/"},sub);
+ const headers=await vapid(sub.endpoint,env),body=await encrypt({title:"Nieuw(s)Ommen – pushproef",body:"Dit testbericht is via de nieuwe testserver verzonden.",url:env.TEST_APP_URL||"https://leeuw008-nl.github.io/NieuwOmmen/push-test-v1/"},sub);
  const r=await fetch(sub.endpoint,{method:"POST",headers:{"TTL":"60","Content-Type":"application/octet-stream","Content-Encoding":"aes128gcm","Urgency":"high",...headers},body});
  if(r.status===404||r.status===410)throw Object.assign(Error("Abonnement verlopen"),{expired:true});
  if(!r.ok)throw Error("Pushdienst HTTP "+r.status+" "+(await r.text()).slice(0,180));return r.status;
