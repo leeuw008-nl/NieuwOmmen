@@ -56,13 +56,21 @@ jobs:
     name: Delete and verify dedicated test KV namespace
     runs-on: ubuntu-latest
     steps:
-      - name: Delete only the dedicated test namespace
+      - name: Delete only the dedicated test namespace via Cloudflare API
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4 kv namespace delete --namespace-id dc6d012dfcf547e38e270d1ff010f012 --skip-confirmation
+          url="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces/dc6d012dfcf547e38e270d1ff010f012"
+          status="$(curl -sS -o /tmp/kv-delete.json -w '%{http_code}' -X DELETE \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url")"
+          cat /tmp/kv-delete.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "KV deletion API returned HTTP $status."
+            exit 1
+          fi
+          node -e 'const b=require("/tmp/kv-delete.json"); if(b.success!==true) process.exit(1); console.log("Cloudflare accepted deletion of the dedicated test KV namespace.");'
 
       - name: Verify dedicated test namespace is gone
         env:
@@ -70,45 +78,43 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          response="$(curl -fsS \
+          status="$(curl -sS -o /tmp/kv-list.json -w '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces")"
-          printf '%s' "$response" | node -e '
-            let s = "";
-            process.stdin.on("data", d => s += d).on("end", () => {
-              let body;
-              try { body = JSON.parse(s); } catch { console.error(s); process.exit(2); }
-              const a = body.result;
-              if (!Array.isArray(a)) { console.error(s); process.exit(2); }
-              if (a.some(x => x.id === "dc6d012dfcf547e38e270d1ff010f012")) {
-                console.error("Test KV namespace still exists.");
-                process.exit(1);
-              }
-              console.log("Verified: dedicated test KV namespace is absent.");
-            });
-          '
+          cat /tmp/kv-list.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "KV verification API returned HTTP $status."
+            exit 1
+          fi
+          node -e 'const b=require("/tmp/kv-list.json"); const a=b.result; if(!Array.isArray(a)) process.exit(2); if(a.some(x=>x.id==="dc6d012dfcf547e38e270d1ff010f012")) process.exit(1); console.log("Verified: dedicated test KV namespace is absent.");'
 
   delete-test-pages:
     name: Delete and verify test Pages project
     runs-on: ubuntu-latest
     steps:
-      - name: Delete only nieuwommen-push-test if present
+      - name: Delete only nieuwommen-push-test via Cloudflare API
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          projects="$(npx --yes wrangler@4 pages project list --json)"
-          if printf '%s' "$projects" | node -e '
-            let s = "";
-            process.stdin.on("data", d => s += d).on("end", () => {
-              try {
-                const a = JSON.parse(s);
-                process.exit(Array.isArray(a) && a.some(p => p.name === "nieuwommen-push-test") ? 0 : 1);
-              } catch { process.exit(2); }
-            });
-          '; then
-            npx --yes wrangler@4 pages project delete nieuwommen-push-test --yes
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          status="$(curl -sS -o /tmp/pages-list.json -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base")"
+          cat /tmp/pages-list.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Pages list API returned HTTP $status."
+            exit 1
+          fi
+          node -e 'const b=require("/tmp/pages-list.json"); const a=b.result; if(!Array.isArray(a)) process.exit(2); process.exit(a.some(p=>p.name==="nieuwommen-push-test")?0:1);' && found=1 || found=0
+          if [ "$found" = "1" ]; then
+            delete_status="$(curl -sS -o /tmp/pages-delete.json -w '%{http_code}' -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$base/nieuwommen-push-test")"
+            cat /tmp/pages-delete.json
+            if [ "$delete_status" -lt 200 ] || [ "$delete_status" -ge 300 ]; then
+              echo "Pages deletion API returned HTTP $delete_status."
+              exit 1
+            fi
+            node -e 'const b=require("/tmp/pages-delete.json"); if(b.success!==true) process.exit(1);'
+            echo "Cloudflare accepted deletion of Pages project nieuwommen-push-test."
           else
             echo "Dedicated Pages project nieuwommen-push-test is already absent."
           fi
@@ -119,20 +125,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          response="$(curl -fsS \
+          status="$(curl -sS -o /tmp/pages-verify.json -w '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects")"
-          printf '%s' "$response" | node -e '
-            let s = "";
-            process.stdin.on("data", d => s += d).on("end", () => {
-              let body;
-              try { body = JSON.parse(s); } catch { console.error(s); process.exit(2); }
-              const a = body.result;
-              if (!Array.isArray(a)) { console.error(s); process.exit(2); }
-              if (a.some(p => p.name === "nieuwommen-push-test")) {
-                console.error("Test Pages project still exists.");
-                process.exit(1);
-              }
-              console.log("Verified: Pages project nieuwommen-push-test is absent.");
-            });
-          '
+          cat /tmp/pages-verify.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Pages verification API returned HTTP $status."
+            exit 1
+          fi
+          node -e 'const b=require("/tmp/pages-verify.json"); const a=b.result; if(!Array.isArray(a)) process.exit(2); if(a.some(p=>p.name==="nieuwommen-push-test")) process.exit(1); console.log("Verified: Pages project nieuwommen-push-test is absent.");'
