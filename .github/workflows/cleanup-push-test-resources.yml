@@ -22,8 +22,18 @@ jobs:
           set -euo pipefail
           echo "Target is exactly: nieuwommen"
           echo "Production Worker ommen-push-v2 is not targeted."
-          npx --yes wrangler@4 delete --name nieuwommen --dry-run
-          yes | npx --yes wrangler@4 delete --name nieuwommen
+          response="$(curl -fsS -X DELETE \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/nieuwommen")"
+          printf '%s' "$response" | node -e '
+            let s = "";
+            process.stdin.on("data", d => s += d).on("end", () => {
+              let body;
+              try { body = JSON.parse(s); } catch { console.error(s); process.exit(2); }
+              if (body.success !== true) { console.error(s); process.exit(1); }
+              console.log("Cloudflare accepted deletion of Worker nieuwommen.");
+            });
+          '
 
       - name: Verify temporary Worker is gone
         env:
