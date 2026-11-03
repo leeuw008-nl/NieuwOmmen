@@ -1,6 +1,9 @@
 name: Export complete NieuwOmmen backup
 
 on:
+  push:
+    branches:
+      - backup/export-full-repo-2026-11-03
   workflow_dispatch:
 
 permissions:
