@@ -60,17 +60,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          namespaces="$(npx --yes wrangler@4 kv namespace list)"
-          printf '%s' "$namespaces" | node -e '
+          response="$(curl -fsS \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces")"
+          printf '%s' "$response" | node -e '
             let s = "";
             process.stdin.on("data", d => s += d).on("end", () => {
-              let a;
-              try { a = JSON.parse(s); } catch { console.error(s); process.exit(2); }
-              if (Array.isArray(a) && a.some(x => x.id === "dc6d012dfcf547e38e270d1ff010f012")) {
+              let body;
+              try { body = JSON.parse(s); } catch { console.error(s); process.exit(2); }
+              const a = body.result;
+              if (!Array.isArray(a)) { console.error(s); process.exit(2); }
+              if (a.some(x => x.id === "dc6d012dfcf547e38e270d1ff010f012")) {
                 console.error("Test KV namespace still exists.");
                 process.exit(1);
               }
-              console.log("Verified: dedicated test KV namespace is absent from the namespace list.");
+              console.log("Verified: dedicated test KV namespace is absent.");
             });
           '
 
@@ -105,13 +109,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          projects="$(npx --yes wrangler@4 pages project list --json)"
-          printf '%s' "$projects" | node -e '
+          response="$(curl -fsS \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects")"
+          printf '%s' "$response" | node -e '
             let s = "";
             process.stdin.on("data", d => s += d).on("end", () => {
-              let a;
-              try { a = JSON.parse(s); } catch { console.error(s); process.exit(2); }
-              if (!Array.isArray(a)) { console.error("Unexpected Pages project list."); process.exit(2); }
+              let body;
+              try { body = JSON.parse(s); } catch { console.error(s); process.exit(2); }
+              const a = body.result;
+              if (!Array.isArray(a)) { console.error(s); process.exit(2); }
               if (a.some(p => p.name === "nieuwommen-push-test")) {
                 console.error("Test Pages project still exists.");
                 process.exit(1);
