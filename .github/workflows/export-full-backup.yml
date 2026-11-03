@@ -1,0 +1,40 @@
+name: Export complete NieuwOmmen backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create source archive and Git history bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip HEAD -o NieuwOmmen-source.zip
+          git bundle create NieuwOmmen-history.bundle --all
+          {
+            echo "Repository: leeuw008-nl/NieuwOmmen"
+            echo "Branch: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Created: ${GITHUB_RUN_ID}"
+            echo "Contents: complete source snapshot plus Git refs/history bundle"
+            echo "Note: GitHub secrets and external Cloudflare/Resend resources are not included."
+          } > BACKUP-INFO.txt
+          zip NieuwOmmen-complete-backup.zip NieuwOmmen-source.zip NieuwOmmen-history.bundle BACKUP-INFO.txt
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NieuwOmmen-complete-backup
+          path: NieuwOmmen-complete-backup.zip
+          retention-days: 90
+          if-no-files-found: error
