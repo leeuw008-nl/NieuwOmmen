@@ -26,14 +26,15 @@ async function encrypt(payload,sub){
  const shared=new Uint8Array(await crypto.subtle.deriveBits({name:"ECDH",public:recipient},server.privateKey,256));
  const prk=await hmac(auth,shared),info=join(enc.encode("WebPush: info"),new Uint8Array([0]),ua,serverPub);
  const ikm=await hmac(prk,join(info,new Uint8Array([1]))),salt=crypto.getRandomValues(new Uint8Array(16)),prk2=await hmac(salt,ikm);
- const cek=(await hmac(prk2,join(enc.encode("Content-Encoding: aes128gcm"),new Uint8Array([1])))).slice(0,16);
- const nonce=(await hmac(prk2,join(enc.encode("Content-Encoding: nonce"),new Uint8Array([1])))).slice(0,12);
+ // RFC 8291: HKDF info values end with the two-byte sequence 0x00 0x01.
+ const cek=(await hmac(prk2,join(enc.encode("Content-Encoding: aes128gcm"),new Uint8Array([0,1])))).slice(0,16);
+ const nonce=(await hmac(prk2,join(enc.encode("Content-Encoding: nonce"),new Uint8Array([0,1])))).slice(0,12);
  const key=await crypto.subtle.importKey("raw",cek,{name:"AES-GCM"},false,["encrypt"]);
  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:nonce},key,join(enc.encode(JSON.stringify(payload)),new Uint8Array([2]))));
  const header=new Uint8Array(86);header.set(salt);new DataView(header.buffer).setUint32(16,4096,false);header[20]=65;header.set(serverPub,21);return join(header,cipher);
 }
 async function send(sub,env){
- const headers=await vapid(sub.endpoint,env),body=await encrypt({title:"Nieuw(s)Ommen – pushproef",body:"Dit testbericht is via de nieuwe testserver verzonden.",url:env.TEST_APP_URL||"https://leeuw008-nl.github.io/NieuwOmmen/push-test-v1/"},sub);
+ const headers=await vapid(sub.endpoint,env),body=await encrypt({title:"Nieuw(s)Ommen – pushproef",body:"Dit testbericht is via de nieuwe testserver verzonden.",url:env.TEST_APP_URL||"https://nieuwommen-push-test.pages.dev/"},sub);
  const r=await fetch(sub.endpoint,{method:"POST",headers:{"TTL":"60","Content-Type":"application/octet-stream","Content-Encoding":"aes128gcm","Urgency":"high",...headers},body});
  if(r.status===404||r.status===410)throw Object.assign(Error("Abonnement verlopen"),{expired:true});
  if(!r.ok)throw Error("Pushdienst HTTP "+r.status+" "+(await r.text()).slice(0,180));return r.status;
