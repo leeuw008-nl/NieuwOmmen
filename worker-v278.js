@@ -229,7 +229,7 @@ async function shouldSendToSub(sub,article,env,syncCache=null){
    if(syncData&&syncData.state){
     if(syncData.state.__pushEnabled===false||syncData.state.pushEnabled===false||syncData.state.push===false||syncData.state.pushDisabled===true)return false;
     const hasSyncSettings=BRONNEN.some(b=>syncData.state[b.id]&&typeof syncData.state[b.id]==='object'&&'aan' in syncData.state[b.id]);
-    if(hasSyncSettings&&(syncData.updated||0)>=(sub.updated||0))filterState=syncData.state;
+    if(hasSyncSettings&&(syncData.updated||0)>(sub.updated||0))filterState=syncData.state;
    }
   }
   if(!filterState&&sub.filters&&typeof sub.filters==='object')filterState=sub.filters;
