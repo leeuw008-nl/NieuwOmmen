@@ -237,7 +237,7 @@ function isGemeenteArtikel(art){
   return GEMEENTE_ZOEK.some(pl => txt.includes(pl));
 }
 
-let state = {}; let allArticles = []; let loadedSources = new Set();
+let state = {}; let allArticles = []; let loadedSources = new Set(); let failedSources = new Set();
 
 // LED STATUS CSS - injected via JS zodat styles.css niet vervangen hoeft te worden
 (function injectLedStyles(){
@@ -272,6 +272,10 @@ function updateSourceLeds(){
         led.classList.add('loading');
         led.style.background='#ef4444';
         led.title='Laden...';
+      } else if(failedSources.has(b.id)){
+        led.classList.add('fail');
+        led.style.background='#ef4444';
+        led.title='Bron tijdelijk offline - eventueel cache getoond';
       } else if(realArts.length>0){
         led.classList.add('ok');
         led.style.background='#16a34a';
@@ -1036,6 +1040,7 @@ function applyCanonicalPayload(payload){
  allArticles=rows.map(a=>({...a,pubDate:a.pubDate?new Date(a.pubDate):new Date(0),source:a.source||a.id,id:a.source||a.id,isFallback:false}));
  const statuses=Array.isArray(payload?.sourceStatus)?payload.sourceStatus:[];
  loadedSources=new Set(statuses.map(s=>s.id));
+ failedSources=new Set(statuses.filter(s=>!s.ok).map(s=>s.id));
  statuses.filter(s=>!s.ok).forEach(s=>{
   if(!allArticles.some(a=>a.id===s.id)){
    const b=BRONNEN.find(x=>x.id===s.id);
@@ -1069,7 +1074,7 @@ async function refreshNews(){
   console.log('[v334] centrale lijst niet bereikbaar',e.message);
   if(!hasCache){
    allArticles=BRONNEN.map(b=>({title:b.name,link:BRON_URLS[b.id].homepage,pubDate:new Date(0),description:'Centrale artikelenlijst tijdelijk niet bereikbaar [...]',source:b.name,id:b.id,isFallback:true}));
-   loadedSources=new Set();updateHeaderCount();renderArticles();renderFilters();updateSourceLeds();
+   loadedSources=new Set();failedSources=new Set(BRONNEN.map(b=>b.id));updateHeaderCount();renderArticles();renderFilters();updateSourceLeds();
   }else{const note=container?.querySelector('.canonical-cache-note');if(note)note.textContent='⚠ Verbinding met centrale lijst mislukt - cache wordt getoond';}
  }finally{clearTimeout(timer);}
 }
