@@ -411,7 +411,7 @@ async scheduled(event,env,ctx){
   try{
    console.log('[v279] Cron gestart - centrale artikelenlijst');
    const cache=await getCanonicalArticles(env,true),seen=await getSeenLinks(env),subs=await getAllSubs(env);
-   const SEEN=getKV(env,'SEEN'),syncCache=new Map();
+   const SEEN=getKV(env,'SEEN'),syncCache=new Map(),expiredSubIds=new Set();
    for(const sub of subs)if(sub.userId&&!syncCache.has(sub.userId))syncCache.set(sub.userId,await getKV(env,'SYNC').get(sub.userId,'json'));
    let deliveryState={pending:[]};
    try{deliveryState=await SEEN.get('push_delivery_state','json')||{pending:[]};}catch{}
@@ -432,7 +432,7 @@ async scheduled(event,env,ctx){
 
    for(const article of candidates){
     const eligible=[];
-    for(const sub of subs)if(await shouldSendToSub(sub,article,env,syncCache))eligible.push(sub);
+    for(const sub of subs)if(!expiredSubIds.has(sub._id)&&await shouldSendToSub(sub,article,env,syncCache))eligible.push(sub);
     if(!eligible.length){
      seen.add(article.link);
      if(pendingByLink.delete(article.link))stateChanged=true;
@@ -450,7 +450,7 @@ async scheduled(event,env,ctx){
      else if(result.status===404||result.status===410){
       // 404/410 betekent dat de pushdienst het endpoint definitief niet meer kent.
       // Verwijder uitsluitend deze ongeldige subscription; bij KV-fout blijft retry mogelijk.
-      try{await getKV(env,'SUBS').delete(subId);delivered.add(subId);deliveryChanged=true;console.log('[v279] Verlopen push-abonnement verwijderd',String(subId).slice(0,10),result.status);}
+      try{await getKV(env,'SUBS').delete(subId);expiredSubIds.add(subId);delivered.add(subId);deliveryChanged=true;console.log('[v279] Verlopen push-abonnement verwijderd',String(subId).slice(0,10),result.status);}
       catch(error){console.log('[v279] Verlopen abonnement kon niet worden verwijderd; volgende cron probeert opnieuw',error.message);}
      }else console.log('[v279] Push mislukt; volgende cron probeert opnieuw',article.link,String(subId).slice(0,10),result.status||'netwerkfout');
     }
