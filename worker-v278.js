@@ -31,7 +31,7 @@ catch{ let h=0; for(let i=0;i<endpoint.length;i++){ h=(h*31+endpoint.charCodeAt(
 }catch(e){ return 'sub_fallback_'+Date.now(); }
 }
 
-// v276: recursieve canonicalisatie; nested velden worden nu WEL vergeleken.
+// v278: recursieve canonicalisatie; nested velden worden nu WEL vergeleken.
 function stableStringify(obj){
 try{
 const sortObject = (value) => {
@@ -211,9 +211,9 @@ async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=awa
 async function setSeenLinksIfChanged(env,set){
 try{
 const SEEN=getKV(env,'SEEN'); const existing=await SEEN.get('seen_links','json'); const existingSet=new Set(existing||[]);
-if(existingSet.size===set.size){ let same=true; for(const v of set){ if(!existingSet.has(v)){same=false;break;} } if(same){console.log('[v276] seen_links unchanged, skip put');return false;} }
-await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`[v276] seen_links saved ${set.size}`); return true;
-}catch(e){ console.log('[v276] setSeenLinks fail',e.message); return false; }
+if(existingSet.size===set.size){ let same=true; for(const v of set){ if(!existingSet.has(v)){same=false;break;} } if(same){console.log('[v278] seen_links unchanged, skip put');return false;} }
+await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`[v278] seen_links saved ${set.size}`); return true;
+}catch(e){ console.log('[v278] setSeenLinks fail',e.message); return false; }
 }
 async function shouldSendToSub(sub,article,env){
  try{
@@ -257,7 +257,7 @@ const {email,password}=await request.json(); if(!email||!password)return json({e
 const USERS=getKV(env,'USERS'); const SESSIONS=getKV(env,'SESSIONS'); const user=await USERS.get(email.toLowerCase(),'json'); if(!user)return json({error:'Account niet gevonden'},401);
 if(await hashPassword(password)!==user.passwordHash)return json({error:'Wachtwoord onjuist'},401);
 const token=makeToken(); await SESSIONS.put(token,JSON.stringify({userId:user.id,email:user.email,created:Date.now()}),{expirationTtl:60*60*24*90});
-return json({token,id:user.id,email:user.email,user:{id:user.id,email:user.email},version:'v276'});
+return json({token,id:user.id,email:user.email,user:{id:user.id,email:user.email},version:'v278'});
 }
 if(path==='/auth/me'){const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);return json({user:{id:sess.userId,email:sess.email},id:sess.userId,email:sess.email});}
 if(path==='/auth/logout' && request.method==='POST'){
@@ -265,7 +265,7 @@ const SESSIONS=getKV(env,'SESSIONS');try{const {token}=await request.json();if(t
 const auth=request.headers.get('Authorization')||'';const m=auth.match(/Bearer\s+(.+)/);if(m)await SESSIONS.delete(m[1]);return json({ok:true});
 }
 
-// v276: sync/save vergelijkt de VOLLEDIGE geneste state en meldt of er echt geschreven is.
+// v278: sync/save vergelijkt de VOLLEDIGE geneste state en meldt of er echt geschreven is.
 if(path==='/sync/save' && request.method==='POST'){
 const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);
 const {state}=await request.json();if(!state)return json({error:'Geen state'},400);
@@ -273,14 +273,14 @@ const SYNC_KV=getKV(env,'SYNC');
 try{
 const existing=await SYNC_KV.get(sess.userId,'json');
 if(existing && existing.state && stableStringify(existing.state)===stableStringify(state)){
-console.log('[v276] sync/save skip - unchanged');
-return json({ok:true,changed:false,skipped:true,updated:existing.updated||Date.now(),version:'v276'});
+console.log('[v278] sync/save skip - unchanged');
+return json({ok:true,changed:false,skipped:true,updated:existing.updated||Date.now(),version:'v278'});
 }
-}catch(e){console.log('[v276] sync compare error:',e.message);}
+}catch(e){console.log('[v278] sync compare error:',e.message);}
 const updated=Date.now();
 await SYNC_KV.put(sess.userId,JSON.stringify({state,updated}));
-console.log('[v276] sync/save STORED',sess.userId,'updated=',updated,'keys=',Object.keys(state).length);
-return json({ok:true,changed:true,skipped:false,updated,version:'v276'});
+console.log('[v278] sync/save STORED',sess.userId,'updated=',updated,'keys=',Object.keys(state).length);
+return json({ok:true,changed:true,skipped:false,updated,version:'v278'});
 }
 
 if(path==='/sync/load'){
@@ -303,39 +303,39 @@ const sameSources=stableStringify(existing.sources||[])===stableStringify(finalS
 const sameFilters=stableStringify(existing.filters||{})===stableStringify(filters||existing.filters||{});
 const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null);
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
-if(sameSources&&sameFilters&&sameUser&&samePush){console.log('[v276] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,version:'v276',skipped:true});}
+if(sameSources&&sameFilters&&sameUser&&samePush){console.log('[v278] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,version:'v278',skipped:true});}
 }
 const now=Date.now();
 const newSub={endpoint,keys:keys||existing?.keys||{},sources:finalSources,filters:filters&&typeof filters==='object'?filters:(existing?.filters||null),userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||existing?.description||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,pushCount:existing?.pushCount||0};
-await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,version:'v276'});
+await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,version:'v278'});
 }catch(e){return json({error:'Subscribe crash: '+e.message,stack:e.stack},500);}
 }
 if(path==='/unsubscribe' && request.method==='POST'){try{const {endpoint}=await request.json();if(!endpoint)return json({error:'no endpoint'},400);await getKV(env,'SUBS').delete(safeId(endpoint));return json({ok:true});}catch(e){return json({error:'unsubscribe fail: '+e.message},500);}}
 if(path==='/push/off' && request.method==='POST'){
-const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);const SUBS=getKV(env,'SUBS');const all=await getAllSubs(env);let deleted=0;for(const sub of all){if(sub.userId===sess.userId){await SUBS.delete(sub._id);deleted++;}}const SYNC=getKV(env,'SYNC');const existing=await SYNC.get(sess.userId,'json')||{state:{}};const newState={...(existing.state||{}),__pushEnabled:false,pushEnabled:false};const updated=Date.now();await SYNC.put(sess.userId,JSON.stringify({state:newState,updated}));return json({ok:true,deleted,message:'Push uit - v276',updated});
+const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);const SUBS=getKV(env,'SUBS');const all=await getAllSubs(env);let deleted=0;for(const sub of all){if(sub.userId===sess.userId){await SUBS.delete(sub._id);deleted++;}}const SYNC=getKV(env,'SYNC');const existing=await SYNC.get(sess.userId,'json')||{state:{}};const newState={...(existing.state||{}),__pushEnabled:false,pushEnabled:false};const updated=Date.now();await SYNC.put(sess.userId,JSON.stringify({state:newState,updated}));return json({ok:true,deleted,message:'Push uit - v278',updated});
 }
 if(path==='/push/on' && request.method==='POST'){
-const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);const SYNC=getKV(env,'SYNC');const existing=await SYNC.get(sess.userId,'json')||{state:{}};const newState={...(existing.state||{}),__pushEnabled:true,pushEnabled:true};const updated=Date.now();await SYNC.put(sess.userId,JSON.stringify({state:newState,updated}));return json({ok:true,message:'Push aan - v276',updated});
+const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd'},401);const SYNC=getKV(env,'SYNC');const existing=await SYNC.get(sess.userId,'json')||{state:{}};const newState={...(existing.state||{}),__pushEnabled:true,pushEnabled:true};const updated=Date.now();await SYNC.put(sess.userId,JSON.stringify({state:newState,updated}));return json({ok:true,message:'Push aan - v278',updated});
 }
 if(path==='/last'){const last=await getKV(env,'SEEN').get('last_article','json')||{title:'Nieuw(s)Ommen',link:'/',source:'Ommen',id:'last'};return json(last);}
 if(path.startsWith('/proxy')){const target=url.searchParams.get('url');if(!target)return text('missing url',400);try{const r=await fetch(target,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});const txt=await r.text();return new Response(txt,{headers:{...ch,'Content-Type':r.headers.get('content-type')||'text/plain','Cache-Control':'no-store'}});}catch(e){return text('proxy error '+e.message,500);}}
 if(path==='/test' || path==='/test-push'){
 const q=url.searchParams;const srcParam=q.get('source')||'Nieuwsbrief';const testArticle={title:q.get('title')||'Test push '+srcParam,link:q.get('link')||'https://www.ommen.nl/actueel/',source:srcParam,id:q.get('id')||'test-'+Date.now(),isTest:q.get('real')!=='1'};
 const subs=await getAllSubs(env);let sent=0;let blocked=[];let failed=[];for(const sub of subs){if(!(await shouldSendToSub(sub,testArticle,env))){blocked.push(sub._id.slice(0,8));continue;}if(await sendPush(sub,testArticle,env))sent++;else failed.push(sub._id.slice(0,8));}
-return text(`Test push v276 naar ${sent}/${subs.length} - geblokkeerd ${blocked.length} - failed ${failed.length} - bron: ${testArticle.source} - dedup puts`);
+return text(`Test push v278 naar ${sent}/${subs.length} - geblokkeerd ${blocked.length} - failed ${failed.length} - bron: ${testArticle.source} - dedup puts`);
 }
 if(path==='/test-parser'){
 const bronId=url.searchParams.get('bron')||'RTV Vechtdal';const b=BRONNEN.find(x=>x.id===bronId);if(!b)return json({error:'bron niet gevonden',bronnen:BRONNEN.map(x=>x.id)});const arts=await fetchCanonicalBron(bronId,env);return json({bron:b,count:arts.length,articles:arts,version:'v278 canonical parser test'});
 }
 
-// Debug v276: bindings expliciet zichtbaar, zodat SYNC niet ongemerkt naar in-memory fallback kan verdwijnen.
+// Debug v278: bindings expliciet zichtbaar, zodat SYNC niet ongemerkt naar in-memory fallback kan verdwijnen.
 if(path==='/debug'){
 const subs=await getAllSubs(env);const seen=await getSeenLinks(env);const SEEN=getKV(env,'SEEN');const SYNC=getKV(env,'SYNC');const NL=getKV(env,'NEWSLETTER');const syncList=await SYNC.list();let syncs=[];
 for(const k of syncList.keys){const v=await SYNC.get(k.name,'json');if(v)syncs.push({userId:k.name,aanCount:v.state?Object.values(v.state).filter(x=>x&&typeof x==='object'&&x.aan===true).length:0,updated:v.updated||0});}
 const newsletterItems=await NL.get('items','json')||[];
-return json({time:new Date().toISOString(),version:'v276 - recursive sync dedup + binding diagnostics - cron 1x per uur',subs:subs.length,seen:seen.size,last:await SEEN.get('last_article','json'),syncs,newsletterCount:newsletterItems.length,putsPerDayEstimate:'<10',bindings:{USERS:!!env.USERS,SESSIONS:!!env.SESSIONS,SYNC:!!env.SYNC,SUBS:!!env.SUBS,NEWSLETTER:!!env.NEWSLETTER,SEEN:!!env.SEEN}});
+return json({time:new Date().toISOString(),version:'v278 - recursive sync dedup + binding diagnostics - cron 1x per uur',subs:subs.length,seen:seen.size,last:await SEEN.get('last_article','json'),syncs,newsletterCount:newsletterItems.length,putsPerDayEstimate:'<10',bindings:{USERS:!!env.USERS,SESSIONS:!!env.SESSIONS,SYNC:!!env.SYNC,SUBS:!!env.SUBS,NEWSLETTER:!!env.NEWSLETTER,SEEN:!!env.SEEN}});
 }
-if(path==='/stats'){const subs=await getAllSubs(env);const seen=await getSeenLinks(env);return json({subs:subs.length,seen:seen.size,last:await getKV(env,'SEEN').get('last_article','json'),version:'v276'});}
+if(path==='/stats'){const subs=await getAllSubs(env);const seen=await getSeenLinks(env);return json({subs:subs.length,seen:seen.size,last:await getKV(env,'SEEN').get('last_article','json'),version:'v278'});}
 
 if(path.startsWith('/api/admin/')){
 const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd - token verlopen, log opnieuw in'},401);if(!isAdminUser(sess))return json({error:'Geen admin rechten: '+sess.email},403);
@@ -350,9 +350,9 @@ try{const body=await request.json();const {id,description}=body;if(!id)return js
 }
 if(path==='/api/admin/subs/delete' && request.method==='POST'){const {id}=await request.json();if(!id)return json({error:'id vereist'},400);await getKV(env,'SUBS').delete(id);return json({ok:true,deleted:id});}
 if(path==='/api/admin/clear-all-subs' && request.method==='POST'){const SUBS=getKV(env,'SUBS');const all=await getAllSubs(env);for(const sub of all){await SUBS.delete(sub._id);}return json({ok:true,deleted:all.length});}
-if(path==='/api/admin/newsletter/feed'){try{const NL=getKV(env,'NEWSLETTER');const items=await NL.get('items','json')||[];return json({items,count:items.length,version:'v276'});}catch(e){return json({items:[],error:e.message});}}
+if(path==='/api/admin/newsletter/feed'){try{const NL=getKV(env,'NEWSLETTER');const items=await NL.get('items','json')||[];return json({items,count:items.length,version:'v278'});}catch(e){return json({items:[],error:e.message});}}
 if(path==='/api/admin/newsletter' && request.method==='POST'){
-try{const body=await request.json();const NL=getKV(env,'NEWSLETTER');const existing=await NL.get('items','json')||[];existing.unshift({title:body.subject,link:body.link||'https://nieuwommen.leeuw008.nl/',description:body.body||body.subject,pubDate:new Date().toISOString(),source:'Nieuwsbrief'});await NL.put('items',JSON.stringify(existing.slice(0,20)));return json({ok:true,message:'Nieuwsbrief opgeslagen',count:existing.length,version:'v276'});}catch(e){return json({error:'Newsletter fout: '+e.message},500);}
+try{const body=await request.json();const NL=getKV(env,'NEWSLETTER');const existing=await NL.get('items','json')||[];existing.unshift({title:body.subject,link:body.link||'https://nieuwommen.leeuw008.nl/',description:body.body||body.subject,pubDate:new Date().toISOString(),source:'Nieuwsbrief'});await NL.put('items',JSON.stringify(existing.slice(0,20)));return json({ok:true,message:'Nieuwsbrief opgeslagen',count:existing.length,version:'v278'});}catch(e){return json({error:'Newsletter fout: '+e.message},500);}
 }
 if(path==='/api/admin/newsletter/delete' && request.method==='POST'){
 try{
@@ -363,7 +363,7 @@ if(typeof body.index==='number'&&body.index>=0&&body.index<items.length)items.sp
 else if(body.pubDate)items=items.filter(i=>i.pubDate!==body.pubDate);
 else if(body.title&&body.link){const idx=items.findIndex(i=>i.title===body.title&&i.link===body.link);if(idx>=0)items.splice(idx,1);}
 else return json({error:'Geef index of pubDate mee'},400);
-await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,deleted:before-items.length,count:items.length,version:'v276'});
+await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,deleted:before-items.length,count:items.length,version:'v278'});
 }catch(e){return json({error:'Delete fout: '+e.message},500);}
 }
 if(path==='/api/admin/newsletter/update' && request.method==='POST'){
@@ -373,19 +373,19 @@ items=items.map(it=>{if(it.isEcht || (it.id && String(it.id).startsWith('echt-')
 let idx=-1;if(typeof body.index==='number')idx=body.index;else if(body.pubDate)idx=items.findIndex(i=>i.pubDate===body.pubDate);else if(body.oldPubDate)idx=items.findIndex(i=>i.pubDate===body.oldPubDate);
 if(idx<0||idx>=items.length)return json({error:'Item niet gevonden op index '+body.index},404);
 const old=items[idx];items[idx]={title:(body.subject||body.title||old.title||'').slice(0,200),link:(body.link||old.link||'https://nieuwommen.leeuw008.nl/'),description:(body.body||body.description||old.description||''),pubDate:old.pubDate,source:'Nieuwsbrief',updated:new Date().toISOString()};
-await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,item:items[idx],index:idx,version:'v276'});
+await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,item:items[idx],index:idx,version:'v278'});
 }catch(e){return json({error:'Update fout: '+e.message},500);}
 }
 if(path==='/api/admin/test-push' && request.method==='POST'){
 const {title,source,link,body,filter,isReal}=await request.json();const article={title:title||'Test push',source:source||'De Stentor',link:link||'https://www.ommen.nl/actueel/',id:(isReal?'real-':'test-')+Date.now(),isTest:!isReal};
-const subs=await getAllSubs(env);let sent=0,total=0,skipped=[];for(const sub of subs){if(filter){const ok=await shouldSendToSub(sub,article,env);if(!ok){skipped.push(sub._id);continue;}}total++;if(await sendPush(sub,article,env))sent++;}if(!filter)total=subs.length;return json({sent,total,skipped,filtered:filter,article,version:'v276'});
+const subs=await getAllSubs(env);let sent=0,total=0,skipped=[];for(const sub of subs){if(filter){const ok=await shouldSendToSub(sub,article,env);if(!ok){skipped.push(sub._id);continue;}}total++;if(await sendPush(sub,article,env))sent++;}if(!filter)total=subs.length;return json({sent,total,skipped,filtered:filter,article,version:'v278'});
 }
 if(path==='/api/admin/newsletter/push-real' && request.method==='POST'){
 const {title,link,description}=await request.json();if(!title)return json({error:'title vereist'},400);
 const article={title:title.slice(0,80),link:link||'https://nieuwommen.leeuw008.nl/',source:'Nieuwsbrief',id:'real-'+Date.now(),isTest:false,description:description||title};
 try{const NL=getKV(env,'NEWSLETTER');const existing=await NL.get('items','json')||[];existing.unshift({title:article.title,link:article.link,description:article.description,pubDate:new Date().toISOString(),source:'Nieuwsbrief'});await NL.put('items',JSON.stringify(existing.slice(0,20)));}catch{}
 const subs=await getAllSubs(env);let sent=0,skipped=[];for(const sub of subs){if(!(await shouldSendToSub(sub,article,env))){skipped.push(sub._id);continue;}if(await sendPush(sub,article,env))sent++;}
-return json({sent,total:subs.length,skipped,article,message:'Echt nieuwsbrief artikel gepusht - v276'});
+return json({sent,total:subs.length,skipped,article,message:'Echt nieuwsbrief artikel gepusht - v278'});
 }
 return json({error:'onbekende admin route: '+path},404);
 }
