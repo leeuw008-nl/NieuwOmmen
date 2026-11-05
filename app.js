@@ -1,4 +1,4 @@
-// app.js v293 - FIX echte tijd 11:27 via allorigins, geen fake 12:47 ipv middernacht teruggeven - LED rechts + telling 10/10 + SYNC RACE FIX + LION BADGE - terug naar vanavond werkend
+// app.js v334 - centrale artikelenlijst uit Worker, gedeelde brondata voor overzicht en push
 // app.js v275 - SYNC RACE FIX + LION BADGE alle bronnen + focus alleen artikel omlijnd
 // Gebaseerd op v226 + toegevoegd: SW kan filters opvragen voor notificatie filtering
 const BRONNEN = [
@@ -1029,62 +1029,48 @@ function renderArticles(){
   try{ const list=document.getElementById('source-list'); if(list && list.children.length>0){ /* counts will be updated on next renderFilters */ } }catch{}
 }
 function filterNews(){ renderArticles(); }
-async function refreshNews(){
-  const c=document.getElementById('news-container');
-  // PERF v239: 1. Direct stale cache tonen (<200ms)
-  let hasStale=false;
-  const initialArts=[];
-  try{
-    for(const b of BRONNEN){
-      const cfg=BRON_URLS[b.id];
-      const cachedData=getCachedSource(cfg.url) || getStaleSource(cfg.url);
-      if(cachedData){
-        try{
-          let arts=[];
-          if(cfg.type==='gemeente') arts=parseGemeenteOverview(cachedData);
-          else if(b.id==='Nieuwsbrief'){ const json=await fetchViaWorker(cfg.url); arts=parseNieuwsbriefECHT(json); }
-    else if(cfg.type==='oost') arts=parseOostFull(cachedData);
-          else if(b.id==='RTV Vechtdal'){ try{ arts=parseRTVVechtdalFull(cachedData); }catch{} if(arts.length===0) arts=parseRSSFull(cachedData,b.id); }
-          else if(b.id==='Vechtdal Centraal'){ if(cachedData.includes('<rss')||cachedData.includes('<item')) arts=parseRSSFull(cachedData,b.id); else arts=parseVechtdalCentraalFallback(cachedData); }
-          else arts=parseRSSFull(cachedData,b.id);
-          if(arts.length>0){ initialArts.push(...arts.map(a=>({...a, source:b.name, id:b.id, isFallback:false}))); hasStale=true; }
-        }catch(e){}
-      }
-    }
-  }catch(e){}
-  if(hasStale && initialArts.length>0){
-    allArticles=initialArts;
-    loadedSources=new Set(BRONNEN.map(b=>b.id));
-    updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-    if(c) c.querySelector('.articles-count')?.insertAdjacentHTML('afterend', '<div style="font-size:11px;color:#16a34a;padding:0 2px 6px">⚡ Uit cache - wordt ververst...</div>');
-    console.log('[perf v239] stale cache getoond', initialArts.length);
-  } else {
-    if(c) c.innerHTML='<div class="article">Bezig met laden... (9 bronnen) - eerste keer iets langer, daarna <1 sec</div>';
-    allArticles=[]; loadedSources=new Set(); updateHeaderCount();
+// v334 - overzicht gebruikt dezelfde genormaliseerde artikelenlijst als de push-Worker.
+const CANONICAL_CACHE_KEY='ommen_canonical_articles_v1';
+function applyCanonicalPayload(payload){
+ const rows=Array.isArray(payload?.articles)?payload.articles:[];
+ allArticles=rows.map(a=>({...a,pubDate:a.pubDate?new Date(a.pubDate):new Date(0),source:a.source||a.id,id:a.source||a.id,isFallback:false}));
+ const statuses=Array.isArray(payload?.sourceStatus)?payload.sourceStatus:[];
+ loadedSources=new Set(statuses.filter(s=>s.ok).map(s=>s.id));
+ statuses.filter(s=>!s.ok).forEach(s=>{
+  if(!allArticles.some(a=>a.id===s.id)){
+   const b=BRONNEN.find(x=>x.id===s.id);
+   if(b)allArticles.push({title:b.name,link:BRON_URLS[b.id].homepage,pubDate:new Date(0),description:'Bron tijdelijk offline - eerder opgehaalde artikelen worden waar mogelijk getoond [...]',source:b.name,id:b.id,isFallback:true});
   }
-  const loadWithTimeout = async (b) => {
-    try {
-      const timeout = new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout '+b.id)), 8000));
-      const arts = await Promise.race([loadOneSource(b), timeout]);
-      return {b, arts};
-    } catch(e){
-      console.log('load timeout/fail', b.id, e.message);
-      if(hasStale) return {b, arts:[]};
-      return {b, arts:[{title:b.name, link:BRON_URLS[b.id].homepage, pubDate:new Date(0), description:'Bron tijdelijk offline - '+e.message.slice(0,80)+' [...]', source:b.name, id:b.id, isFallback:true}]};
-    }
-  };
-  const results = await Promise.allSettled(BRONNEN.map(b=>loadWithTimeout(b)));
-  const freshArts=[];
-  results.forEach(r=>{
-    if(r.status==='fulfilled'){
-      const {b, arts}=r.value;
-      if(arts.length>0) freshArts.push(...arts);
-      loadedSources.add(b.id);
-    }
-  });
-  if(freshArts.length>0) allArticles=freshArts;
-  updateHeaderCount(); renderArticles(); renderFilters(); updateSourceLeds();
-  console.log('refreshNews klaar v275 FIX 0/0', allArticles.length, 'artikelen');
+ });
+ updateHeaderCount();renderArticles();renderFilters();updateSourceLeds();
+}
+async function refreshNews(){
+ const container=document.getElementById('news-container');
+ const showCache=(payload,label)=>{
+  if(!payload||!Array.isArray(payload.articles))return false;
+  applyCanonicalPayload(payload);
+  if(container&&label){const count=container.querySelector('.articles-count');if(count)count.insertAdjacentHTML('afterend','<div class="canonical-cache-note" style="font-size:11px;color:#a16207;padding:0 2px 6px">'+label+'</div>');}
+  return true;
+ };
+ let cached=null;try{cached=JSON.parse(localStorage.getItem(CANONICAL_CACHE_KEY)||'null');}catch{}
+ const hasCache=showCache(cached,'⚡ Eerder opgehaalde artikelen - wordt gecontroleerd...');
+ if(!hasCache&&container)container.innerHTML='<div class="article">Bezig met laden van de centrale artikelenlijst...</div>';
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+ try{
+  const response=await fetch(WORKER+'/api/articles',{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const payload=await response.json();
+  if(!Array.isArray(payload.articles))throw new Error('Ongeldige artikelenlijst');
+  localStorage.setItem(CANONICAL_CACHE_KEY,JSON.stringify(payload));
+  applyCanonicalPayload(payload);
+  console.log('[v334] centrale artikelenlijst geladen',payload.articles.length,'artikelen; bronnen',loadedSources.size);
+ }catch(e){
+  console.log('[v334] centrale lijst niet bereikbaar',e.message);
+  if(!hasCache){
+   allArticles=BRONNEN.map(b=>({title:b.name,link:BRON_URLS[b.id].homepage,pubDate:new Date(0),description:'Centrale artikelenlijst tijdelijk niet bereikbaar [...]',source:b.name,id:b.id,isFallback:true}));
+   loadedSources=new Set();updateHeaderCount();renderArticles();renderFilters();updateSourceLeds();
+  }else{const note=container?.querySelector('.canonical-cache-note');if(note)note.textContent='⚠ Verbinding met centrale lijst mislukt - cache wordt getoond';}
+ }finally{clearTimeout(timer);}
 }
 document.addEventListener('DOMContentLoaded', ()=>{
   loadState(); renderFilters(); restorePanelState(); setupFilterHeader();
