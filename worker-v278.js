@@ -1,4 +1,4 @@
-// Worker v276 - DEFINITIEVE FIX - betrouwbare account-sync
+// Worker v278 - DEFINITIEVE FIX - betrouwbare account-sync
 
 const BRONNEN = [
 {id:'De Stentor', name:'De Stentor', url:'https://www.destentor.nl/ommen/rss.xml', type:'rss'},
@@ -219,8 +219,9 @@ async function shouldSendToSub(sub,article,env){
  try{
   let filterState=null;
   if(sub.userId){const data=await getKV(env,'SYNC').get(sub.userId,'json');if(data&&data.state){filterState=data.state;if(filterState.__pushEnabled===false||filterState.pushEnabled===false||filterState.push===false||filterState.pushDisabled===true)return false;}}
-  if(!filterState)filterState=sub.filters||null;
-  if(filterState){if(!selectedForState(article,filterState))return false;}
+  const hasSyncedSettings=filterState&&BRONNEN.some(b=>filterState[b.id]&&typeof filterState[b.id]==='object'&&'aan' in filterState[b.id]);
+  if(!hasSyncedSettings)filterState=sub.filters||null;
+  if(filterState&&BRONNEN.some(b=>filterState[b.id]&&typeof filterState[b.id]==='object'&&'aan' in filterState[b.id])){if(!selectedForState(article,filterState))return false;}
   else if(!sub.sources||!Array.isArray(sub.sources)||!sub.sources.includes(article.source))return false;
  }catch(e){return false;}
  if(sub.sources&&Array.isArray(sub.sources)&&!sub.sources.includes(article.source))return false;
@@ -249,7 +250,7 @@ const USERS=getKV(env,'USERS'); const SESSIONS=getKV(env,'SESSIONS'); const key=
 const id='u_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); const pwHash=await hashPassword(password);
 await USERS.put(key,JSON.stringify({id,email,passwordHash:pwHash,created:Date.now()}));
 const token=makeToken(); await SESSIONS.put(token,JSON.stringify({userId:id,email,created:Date.now()}),{expirationTtl:60*60*24*90});
-return json({token,id,email,user:{id,email},version:'v276'});
+return json({token,id,email,user:{id,email},version:'v278'});
 }
 if(path==='/auth/login' && request.method==='POST'){
 const {email,password}=await request.json(); if(!email||!password)return json({error:'Email en wachtwoord vereist'},400);
@@ -324,7 +325,7 @@ const subs=await getAllSubs(env);let sent=0;let blocked=[];let failed=[];for(con
 return text(`Test push v276 naar ${sent}/${subs.length} - geblokkeerd ${blocked.length} - failed ${failed.length} - bron: ${testArticle.source} - dedup puts`);
 }
 if(path==='/test-parser'){
-const bronId=url.searchParams.get('bron')||'RTV Vechtdal';const b=BRONNEN.find(x=>x.id===bronId);if(!b)return json({error:'bron niet gevonden',bronnen:BRONNEN.map(x=>x.id)});const arts=await fetchBron(b);return json({bron:b,count:arts.length,articles:arts,version:'v276 parser test'});
+const bronId=url.searchParams.get('bron')||'RTV Vechtdal';const b=BRONNEN.find(x=>x.id===bronId);if(!b)return json({error:'bron niet gevonden',bronnen:BRONNEN.map(x=>x.id)});const arts=await fetchCanonicalBron(bronId,env);return json({bron:b,count:arts.length,articles:arts,version:'v278 canonical parser test'});
 }
 
 // Debug v276: bindings expliciet zichtbaar, zodat SYNC niet ongemerkt naar in-memory fallback kan verdwijnen.
