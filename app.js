@@ -390,7 +390,7 @@ function updateHeaderCount(){
   const countEl = document.getElementById('header-count');
   if(countEl){
     countEl.textContent = `${loadedSources.size || aan} v/d ${BRONNEN.length} bronnen`;
-    if(loadedSources.size>=BRONNEN.length) countEl.textContent = `9 v/d 9 bronnen`;
+    if(loadedSources.size>=BRONNEN.length) countEl.textContent = BRONNEN.length+' v/d '+BRONNEN.length+' bronnen';
   }
   const btn = document.getElementById('btn-all');
   if(btn){
@@ -1053,7 +1053,8 @@ async function refreshNews(){
   return true;
  };
  let cached=null;try{cached=JSON.parse(localStorage.getItem(CANONICAL_CACHE_KEY)||'null');}catch{}
- const hasCache=showCache(cached,'⚡ Eerder opgehaalde artikelen - wordt gecontroleerd...');
+ const cacheIsFresh=cached&&cached.generatedAt&&Date.now()-cached.generatedAt<SOURCE_CACHE_STALE;
+ const hasCache=cacheIsFresh&&showCache(cached,'⚡ Eerder opgehaalde artikelen - wordt gecontroleerd...');
  if(!hasCache&&container)container.innerHTML='<div class="article">Bezig met laden van de centrale artikelenlijst...</div>';
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{
