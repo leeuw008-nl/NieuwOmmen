@@ -102,13 +102,13 @@ return {Authorization:`vapid t=${jwt}, k=${pubRaw || VAPID_PUBLIC_FALLBACK}`};
 }catch(e){ return {_vapid_error:e.message}; }
 }
 
-async function sendPush(sub, article, env){
-if(!article) return false;
+async function sendPushResult(sub, article, env){
+if(!article) return {ok:false,status:null};
 const hasValidLink = article.link && typeof article.link === 'string' && article.link.startsWith('http') && article.link.length > 10;
 const hasEchtId = article.echtId || (article.id && String(article.id).startsWith('echt-'));
-if(!hasValidLink && !hasEchtId){ console.log('[v306 FIX #6] sendPush blocked - geen geldige link', article.title||article.id); return false; }
-if(!article.title || article.title.trim().length < 3){ console.log('[v306 FIX #6] blocked - geen titel'); return false; }
-if(article.isFallback) return false;
+if(!hasValidLink && !hasEchtId){ console.log('[v306 FIX #6] sendPush blocked - geen geldige link', article.title||article.id); return {ok:false,status:null}; }
+if(!article.title || article.title.trim().length < 3){ console.log('[v306 FIX #6] blocked - geen titel'); return {ok:false,status:null}; }
+if(article.isFallback) return {ok:false,status:null};
 try{
 const endpoint = sub.endpoint; const vapidHeaders = await createVapidHeaders(endpoint, env);
 const isTest = !!(article.isTest || (article.id && String(article.id).startsWith('test-')));
@@ -124,9 +124,11 @@ data:{url: article.link, link: article.link, source: article.source, isTest, isR
 const resp = await fetch(endpoint, {method:'POST', headers:{'TTL':'86400','Content-Type':'application/octet-stream','Urgency':'high',...vapidHeaders}, body: JSON.stringify(payloadObj)});
 const ok = resp.ok || resp.status===201 || resp.status===204;
 if(!ok)console.log('[v279] Web Push geweigerd',resp.status,resp.statusText||'');
-return ok;
-}catch(e){ return false; }
+return {ok,status:resp.status};
+}catch(e){ return {ok:false,status:null}; }
 }
+
+async function sendPush(sub,article,env){ return (await sendPushResult(sub,article,env)).ok; }
 
 function extractRssDate(itemXml){
 try{
@@ -442,10 +444,15 @@ async scheduled(event,env,ctx){
     for(const sub of eligible){
      const subId=sub._id;
      if(!subId||delivered.has(subId))continue;
-     let ok=false;
-     try{ok=await sendPush(sub,article,env);}catch(error){console.log('[v279] Push exception',error.message);}
-     if(ok){delivered.add(subId);deliveryChanged=true;}
-     else console.log('[v279] Push mislukt; volgende cron probeert opnieuw',article.link,String(subId).slice(0,10));
+     let result={ok:false,status:null};
+     try{result=await sendPushResult(sub,article,env);}catch(error){console.log('[v279] Push exception',error.message);}
+     if(result.ok){delivered.add(subId);deliveryChanged=true;}
+     else if(result.status===404||result.status===410){
+      // 404/410 betekent dat de pushdienst het endpoint definitief niet meer kent.
+      // Verwijder uitsluitend deze ongeldige subscription; bij KV-fout blijft retry mogelijk.
+      try{await getKV(env,'SUBS').delete(subId);delivered.add(subId);deliveryChanged=true;console.log('[v279] Verlopen push-abonnement verwijderd',String(subId).slice(0,10),result.status);}
+      catch(error){console.log('[v279] Verlopen abonnement kon niet worden verwijderd; volgende cron probeert opnieuw',error.message);}
+     }else console.log('[v279] Push mislukt; volgende cron probeert opnieuw',article.link,String(subId).slice(0,10),result.status||'netwerkfout');
     }
     if(deliveryChanged||!previous){
      pendingByLink.set(article.link,{article,delivered:[...delivered],updated:Date.now()});
