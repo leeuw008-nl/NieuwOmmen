@@ -121,9 +121,9 @@ isTest, _isTestPush: isTest, isReal: !isTest,
 icon: '/icons/icon-192x192.png', badge: '/icons/badge-lion-96x96.png',
 data:{url: article.link, link: article.link, source: article.source, isTest, isReal: !isTest, icon:'/icons/icon-192x192.png', badge:'/icons/badge-lion-96x96.png'}
 };
-let resp = await fetch(endpoint, {method:'POST', headers:{'TTL':'86400','Content-Type':'application/octet-stream','Urgency':'high',...vapidHeaders}, body: JSON.stringify(payloadObj)});
-if(!resp.ok){ resp = await fetch(endpoint, {method:'POST', headers:{'TTL':'86400','Urgency':'high',...vapidHeaders}}); }
+const resp = await fetch(endpoint, {method:'POST', headers:{'TTL':'86400','Content-Type':'application/octet-stream','Urgency':'high',...vapidHeaders}, body: JSON.stringify(payloadObj)});
 const ok = resp.ok || resp.status===201 || resp.status===204;
+if(!ok)console.log('[v279] Web Push geweigerd',resp.status,resp.statusText||'');
 return ok;
 }catch(e){ return false; }
 }
