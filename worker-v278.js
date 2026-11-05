@@ -332,7 +332,7 @@ const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Ni
 if(path==='/last'){const last=await getKV(env,'SEEN').get('last_article','json')||{title:'Nieuw(s)Ommen',link:'/',source:'Ommen',id:'last'};return json(last);}
 if(path.startsWith('/proxy')){const target=url.searchParams.get('url');if(!target)return text('missing url',400);try{const r=await fetch(target,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});const txt=await r.text();return new Response(txt,{headers:{...ch,'Content-Type':r.headers.get('content-type')||'text/plain','Cache-Control':'no-store'}});}catch(e){return text('proxy error '+e.message,500);}}
 if(path==='/test' || path==='/test-push'){
-const q=url.searchParams;const srcParam=q.get('source')||'Nieuwsbrief';const testArticle={title:q.get('title')||'Test push '+srcParam,link:q.get('link')||'https://www.ommen.nl/actueel/',source:srcParam,id:q.get('id')||'test-'+Date.now(),isTest:q.get('real')!=='1'};
+const q=url.searchParams;const srcParam=q.get('source')||'Nieuwsbrief';const testArticle={title:q.get('title')||'Test push '+srcParam,link:q.get('link')||'https://www.ommen.nl/actueel/',source:srcParam,pubDate:new Date().toISOString(),id:q.get('id')||'test-'+Date.now(),isTest:q.get('real')!=='1'};
 const subs=await getAllSubs(env);let sent=0;let blocked=[];let failed=[];for(const sub of subs){if(!(await shouldSendToSub(sub,testArticle,env))){blocked.push(sub._id.slice(0,8));continue;}if(await sendPush(sub,testArticle,env))sent++;else failed.push(sub._id.slice(0,8));}
 return text(`Test push v278 naar ${sent}/${subs.length} - geblokkeerd ${blocked.length} - failed ${failed.length} - bron: ${testArticle.source} - dedup puts`);
 }
@@ -389,12 +389,12 @@ await NL.put('items',JSON.stringify(items.slice(0,20)));return json({ok:true,ite
 }catch(e){return json({error:'Update fout: '+e.message},500);}
 }
 if(path==='/api/admin/test-push' && request.method==='POST'){
-const {title,source,link,body,filter,isReal}=await request.json();const article={title:title||'Test push',source:source||'De Stentor',link:link||'https://www.ommen.nl/actueel/',id:(isReal?'real-':'test-')+Date.now(),isTest:!isReal};
+const {title,source,link,body,filter,isReal}=await request.json();const article={title:title||'Test push',source:source||'De Stentor',link:link||'https://www.ommen.nl/actueel/',pubDate:new Date().toISOString(),id:(isReal?'real-':'test-')+Date.now(),isTest:!isReal};
 const subs=await getAllSubs(env);let sent=0,total=0,skipped=[];for(const sub of subs){if(filter){const ok=await shouldSendToSub(sub,article,env);if(!ok){skipped.push(sub._id);continue;}}total++;if(await sendPush(sub,article,env))sent++;}if(!filter)total=subs.length;return json({sent,total,skipped,filtered:filter,article,version:'v278'});
 }
 if(path==='/api/admin/newsletter/push-real' && request.method==='POST'){
 const {title,link,description}=await request.json();if(!title)return json({error:'title vereist'},400);
-const article={title:title.slice(0,80),link:link||'https://nieuwommen.leeuw008.nl/',source:'Nieuwsbrief',id:'real-'+Date.now(),isTest:false,description:description||title};
+const article={title:title.slice(0,80),link:link||'https://nieuwommen.leeuw008.nl/',source:'Nieuwsbrief',pubDate:new Date().toISOString(),id:'real-'+Date.now(),isTest:false,description:description||title};
 try{const NL=getKV(env,'NEWSLETTER');const existing=await NL.get('items','json')||[];existing.unshift({title:article.title,link:article.link,description:article.description,pubDate:new Date().toISOString(),source:'Nieuwsbrief'});await NL.put('items',JSON.stringify(existing.slice(0,20)));}catch{}
 const subs=await getAllSubs(env);let sent=0,skipped=[];for(const sub of subs){if(!(await shouldSendToSub(sub,article,env))){skipped.push(sub._id);continue;}if(await sendPush(sub,article,env))sent++;}
 return json({sent,total:subs.length,skipped,article,message:'Echt nieuwsbrief artikel gepusht - v278'});
@@ -410,8 +410,8 @@ async scheduled(event,env,ctx){
   const cache=await getCanonicalArticles(env,true),seen=await getSeenLinks(env),subs=await getAllSubs(env),newArticles=[];
   const syncCache=new Map(),syncKV=getKV(env,'SYNC');
   for(const sub of subs)if(sub.userId&&!syncCache.has(sub.userId))syncCache.set(sub.userId,await syncKV.get(sub.userId,'json'));
-  for(const a of cache.articles)if(!seen.has(a.link)){newArticles.push(a);seen.add(a.link);}
-  if(!newArticles.length){console.log('[v278] Geen nieuwe artikelen');return;}
+  for(const a of cache.articles)if(!seen.has(a.link)){if(a.source!=='Nieuwsbrief')newArticles.push(a);seen.add(a.link);}
+  if(!newArticles.length){await setSeenLinksIfChanged(env,seen);console.log('[v278] Geen nieuwe nieuwsartikelen voor push');return;}
   await setSeenLinksIfChanged(env,seen);
   try{await getKV(env,'SEEN').put('last_article',JSON.stringify(newArticles[0]));}catch{}
   if(!subs.length)return;
