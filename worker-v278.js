@@ -239,7 +239,7 @@ if(path==='/newsletter/feed' || path==='/api/newsletter/feed'){
 try{
 const NL=getKV(env,'NEWSLETTER'); let items=await NL.get('items','json')||[];
 items=items.map(it=>{if(it.isEcht || (it.id && String(it.id).startsWith('echt-'))){const echtId=it.echtId||it.id;if(!it.link || it.link==='https://nieuwommen.leeuw008.nl/' || !it.link.includes('echt=')) it.link='https://nieuwommen.leeuw008.nl/?echt='+encodeURIComponent(echtId)+'&highlight='+encodeURIComponent(echtId);}return it;});
-return json({items,count:items.length,source:'Nieuwsbrief',version:'v276'});
+return json({items,count:items.length,source:'Nieuwsbrief',version:'v278'});
 }catch(e){return json({items:[],error:e.message});}
 }
 
@@ -299,9 +299,10 @@ const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
 let finalSources=existing?.sources||[];if(Array.isArray(sources))finalSources=sources;
 if(existing){
 const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources);
+const sameFilters=stableStringify(existing.filters||{})===stableStringify(filters||existing.filters||{});
 const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null);
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
-if(sameSources&&sameUser&&samePush){console.log('[v276] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,version:'v276',skipped:true});}
+if(sameSources&&sameFilters&&sameUser&&samePush){console.log('[v276] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,version:'v276',skipped:true});}
 }
 const now=Date.now();
 const newSub={endpoint,keys:keys||existing?.keys||{},sources:finalSources,filters:filters&&typeof filters==='object'?filters:(existing?.filters||null),userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||existing?.description||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,pushCount:existing?.pushCount||0};
