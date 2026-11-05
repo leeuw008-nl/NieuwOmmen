@@ -417,37 +417,52 @@ async scheduled(event,env,ctx){
    const pendingByLink=new Map(deliveryState.pending.filter(x=>x&&x.article&&x.article.link).map(x=>[x.article.link,x]));
    let stateChanged=false;
    for(const link of [...pendingByLink.keys()])if(seen.has(link)){pendingByLink.delete(link);stateChanged=true;}
+
    const candidatesByLink=new Map();
    for(const article of cache.articles||[])if(article&&article.link){
     if(article.source==='Nieuwsbrief'){seen.add(article.link);continue;}
     if(!seen.has(article.link))candidatesByLink.set(article.link,article);
    }
+   // Alleen links die nog niet in de retryadministratie staan zijn echt nieuw.
+   const freshCandidates=[...candidatesByLink.values()].filter(article=>!pendingByLink.has(article.link));
    for(const [link,pending] of pendingByLink)if(!candidatesByLink.has(link))candidatesByLink.set(link,pending.article);
    const candidates=[...candidatesByLink.values()].sort((x,y)=>new Date(y.pubDate||0)-new Date(x.pubDate||0));
+
    for(const article of candidates){
     const eligible=[];
     for(const sub of subs)if(await shouldSendToSub(sub,article,env,syncCache))eligible.push(sub);
-    if(!eligible.length){seen.add(article.link);pendingByLink.delete(article.link);stateChanged=true;continue;}
+    if(!eligible.length){
+     seen.add(article.link);
+     if(pendingByLink.delete(article.link))stateChanged=true;
+     else stateChanged=true;
+     continue;
+    }
     const previous=pendingByLink.get(article.link);
     const delivered=new Set(previous&&Array.isArray(previous.delivered)?previous.delivered:[]);
+    let deliveryChanged=false;
     for(const sub of eligible){
      const subId=sub._id;
      if(!subId||delivered.has(subId))continue;
      let ok=false;
      try{ok=await sendPush(sub,article,env);}catch(error){console.log('[v279] Push exception',error.message);}
-     if(ok){delivered.add(subId);stateChanged=true;}
+     if(ok){delivered.add(subId);deliveryChanged=true;}
      else console.log('[v279] Push mislukt; volgende cron probeert opnieuw',article.link,String(subId).slice(0,10));
     }
-    pendingByLink.set(article.link,{article,delivered:[...delivered],updated:Date.now()});
-    stateChanged=true;
+    if(deliveryChanged||!previous){
+     pendingByLink.set(article.link,{article,delivered:[...delivered],updated:Date.now()});
+     stateChanged=true;
+    }
     if(eligible.every(sub=>sub._id&&delivered.has(sub._id)))seen.add(article.link);
    }
+
+   // Schrijf de retryadministratie alleen bij een echte wijziging: geen KV-put per uur bij een blijvend falende endpoint.
    if(stateChanged){
     try{await SEEN.put('push_delivery_state',JSON.stringify({pending:[...pendingByLink.values()].slice(-500)}));}
     catch(error){console.log('[v279] Delivery-state opslaan mislukt; artikelen blijven retrybaar',error.message);return;}
    }
    await setSeenLinksIfChanged(env,seen);
-   try{if(candidates.length)await SEEN.put('last_article',JSON.stringify(candidates[0]));}catch{}
+   // last_article is diagnostisch; alleen bij een nieuw artikel bijwerken, niet bij iedere retry.
+   if(freshCandidates.length)try{await SEEN.put('last_article',JSON.stringify(freshCandidates.sort((x,y)=>new Date(y.pubDate||0)-new Date(x.pubDate||0))[0]));}catch{}
    console.log('[v279] Cron klaar - '+candidates.length+' artikelen gecontroleerd');
   }catch(error){console.log('[v279] Cron error',error.message,error.stack);}
 }
