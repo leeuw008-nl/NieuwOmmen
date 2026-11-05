@@ -1,4 +1,4 @@
-// app.js v334 - centrale artikelenlijst uit Worker, gedeelde brondata voor overzicht en push
+// app.js v335 - centrale artikelenlijst uit Worker, gedeelde brondata voor overzicht en push
 // app.js v275 - SYNC RACE FIX + LION BADGE alle bronnen + focus alleen artikel omlijnd
 // Gebaseerd op v226 + toegevoegd: SW kan filters opvragen voor notificatie filtering
 const BRONNEN = [
