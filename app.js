@@ -1,4 +1,4 @@
-// app.js v336 - centrale artikelenlijst en bronstatus per bron
+// app.js v337 - centrale artikelenlijst en bronstatus per bron
 // app.js v275 - SYNC RACE FIX + LION BADGE alle bronnen + focus alleen artikel omlijnd
 // Gebaseerd op v226 + toegevoegd: SW kan filters opvragen voor notificatie filtering
 const BRONNEN = [
