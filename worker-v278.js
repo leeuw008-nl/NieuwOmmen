@@ -218,13 +218,19 @@ await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`
 async function shouldSendToSub(sub,article,env){
  try{
   let filterState=null;
-  if(sub.userId){const data=await getKV(env,'SYNC').get(sub.userId,'json');if(data&&data.state){filterState=data.state;if(filterState.__pushEnabled===false||filterState.pushEnabled===false||filterState.push===false||filterState.pushDisabled===true)return false;}}
-  const hasSyncedSettings=filterState&&BRONNEN.some(b=>filterState[b.id]&&typeof filterState[b.id]==='object'&&'aan' in filterState[b.id]);
-  if(!hasSyncedSettings)filterState=sub.filters||null;
-  if(filterState&&BRONNEN.some(b=>filterState[b.id]&&typeof filterState[b.id]==='object'&&'aan' in filterState[b.id])){if(!selectedForState(article,filterState))return false;}
+  if(sub.userId){
+   const syncData=await getKV(env,'SYNC').get(sub.userId,'json');
+   if(syncData&&syncData.state){
+    if(syncData.state.__pushEnabled===false||syncData.state.pushEnabled===false||syncData.state.push===false||syncData.state.pushDisabled===true)return false;
+    const hasSyncSettings=BRONNEN.some(b=>syncData.state[b.id]&&typeof syncData.state[b.id]==='object'&&'aan' in syncData.state[b.id]);
+    if(hasSyncSettings&&(syncData.updated||0)>=(sub.updated||0))filterState=syncData.state;
+   }
+  }
+  if(!filterState&&sub.filters&&typeof sub.filters==='object')filterState=sub.filters;
+  const hasSettings=filterState&&BRONNEN.some(b=>filterState[b.id]&&typeof filterState[b.id]==='object'&&'aan' in filterState[b.id]);
+  if(hasSettings){if(!selectedForState(article,filterState))return false;}
   else if(!sub.sources||!Array.isArray(sub.sources)||!sub.sources.includes(article.source))return false;
  }catch(e){return false;}
- if(sub.sources&&Array.isArray(sub.sources)&&!sub.sources.includes(article.source))return false;
  if(sub.pushEnabled===false)return false;
  return true;
 }
