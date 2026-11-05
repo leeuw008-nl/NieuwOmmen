@@ -434,7 +434,6 @@ async scheduled(event,env,ctx){
     if(!eligible.length){
      seen.add(article.link);
      if(pendingByLink.delete(article.link))stateChanged=true;
-     else stateChanged=true;
      continue;
     }
     const previous=pendingByLink.get(article.link);
