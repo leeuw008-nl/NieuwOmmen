@@ -1039,7 +1039,7 @@ function applyCanonicalPayload(payload){
  const rows=Array.isArray(payload?.articles)?payload.articles:[];
  allArticles=rows.map(a=>({...a,pubDate:a.pubDate?new Date(a.pubDate):new Date(0),source:a.source||a.id,id:a.source||a.id,isFallback:false}));
  const statuses=Array.isArray(payload?.sourceStatus)?payload.sourceStatus:[];
- loadedSources=new Set(statuses.map(s=>s.id));
+ loadedSources=new Set(statuses.filter(s=>s.ok).map(s=>s.id));
  failedSources=new Set(statuses.filter(s=>!s.ok).map(s=>s.id));
  statuses.filter(s=>!s.ok).forEach(s=>{
   if(!allArticles.some(a=>a.id===s.id)){
