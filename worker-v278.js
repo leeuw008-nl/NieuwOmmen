@@ -215,11 +215,11 @@ if(existingSet.size===set.size){ let same=true; for(const v of set){ if(!existin
 await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`[v278] seen_links saved ${set.size}`); return true;
 }catch(e){ console.log('[v278] setSeenLinks fail',e.message); return false; }
 }
-async function shouldSendToSub(sub,article,env){
+async function shouldSendToSub(sub,article,env,syncCache=null){
  try{
   let filterState=null;
   if(sub.userId){
-   const syncData=await getKV(env,'SYNC').get(sub.userId,'json');
+   const syncData=syncCache&&syncCache.has(sub.userId)?syncCache.get(sub.userId):await getKV(env,'SYNC').get(sub.userId,'json');
    if(syncData&&syncData.state){
     if(syncData.state.__pushEnabled===false||syncData.state.pushEnabled===false||syncData.state.push===false||syncData.state.pushDisabled===true)return false;
     const hasSyncSettings=BRONNEN.some(b=>syncData.state[b.id]&&typeof syncData.state[b.id]==='object'&&'aan' in syncData.state[b.id]);
@@ -402,13 +402,15 @@ async scheduled(event,env,ctx){
  try{
   console.log('[v278] Cron gestart - centrale artikelenlijst');
   const cache=await getCanonicalArticles(env,true),seen=await getSeenLinks(env),subs=await getAllSubs(env),newArticles=[];
+  const syncCache=new Map(),syncKV=getKV(env,'SYNC');
+  for(const sub of subs)if(sub.userId&&!syncCache.has(sub.userId))syncCache.set(sub.userId,await syncKV.get(sub.userId,'json'));
   for(const a of cache.articles)if(!seen.has(a.link)){newArticles.push(a);seen.add(a.link);}
   if(!newArticles.length){console.log('[v278] Geen nieuwe artikelen');return;}
   await setSeenLinksIfChanged(env,seen);
   try{await getKV(env,'SEEN').put('last_article',JSON.stringify(newArticles[0]));}catch{}
   if(!subs.length)return;
   newArticles.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-  for(const article of newArticles){const eligible=[];for(const sub of subs)if(await shouldSendToSub(sub,article,env))eligible.push(sub);for(let i=0;i<eligible.length;i+=20)await Promise.all(eligible.slice(i,i+20).map(sub=>sendPush(sub,article,env)));}
+  for(const article of newArticles){const eligible=[];for(const sub of subs)if(await shouldSendToSub(sub,article,env,syncCache))eligible.push(sub);for(let i=0;i<eligible.length;i+=20)await Promise.all(eligible.slice(i,i+20).map(sub=>sendPush(sub,article,env)));}
   console.log('[v278] Cron klaar - '+newArticles.length+' nieuwe artikelen');
  }catch(e){console.log('[v278] Cron error',e.message,e.stack);}
 }
