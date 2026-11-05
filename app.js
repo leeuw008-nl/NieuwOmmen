@@ -268,14 +268,14 @@ function updateSourceLeds(){
       const isLoaded = loadedSources.has(b.id);
       led.classList.remove('loading','ok','fail','empty');
       led.style.animation='';
-      if(!isLoaded){
-        led.classList.add('loading');
-        led.style.background='#ef4444';
-        led.title='Laden...';
-      } else if(failedSources.has(b.id)){
+      if(failedSources.has(b.id)){
         led.classList.add('fail');
         led.style.background='#ef4444';
         led.title='Bron tijdelijk offline - eventueel cache getoond';
+      } else if(!isLoaded){
+        led.classList.add('loading');
+        led.style.background='#ef4444';
+        led.title='Laden...';
       } else if(realArts.length>0){
         led.classList.add('ok');
         led.style.background='#16a34a';
