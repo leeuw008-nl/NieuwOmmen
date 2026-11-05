@@ -27,6 +27,7 @@ function getSources(){
   }
   return [];
 }
+function getFilterSettings(){ try{return JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');}catch{return {};}}
 function getAuthToken(){
   return localStorage.getItem('ommen_auth_token') || localStorage.getItem('ommen_token') || '';
 }
@@ -55,7 +56,7 @@ async function updateSourcesOnServer(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), pushEnabled:true, token: token||undefined})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), filters:getFilterSettings(), pushEnabled:true, token: token||undefined})
     });
     console.log('[push v270] Sources geupdate op server:', getSources(), 'met user?', !!token);
   }catch(e){ console.log('[push v270] update sources fail', e.message); }
@@ -73,7 +74,7 @@ async function linkAnonymousSubsToUser(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), pushEnabled:true})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(), filters:getFilterSettings(), pushEnabled:true})
     });
     console.log('[push v270] linkAnonymous - klaar, check admin Abonnementen voor email');
   }catch(e){ console.log('[push v270] linkAnonymous fail', e.message); }
