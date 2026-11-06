@@ -38,6 +38,15 @@ function getSourceScopes(){
   }catch(e){ return {}; }
 }
 
+function getSourceToday(){
+  try{
+    const v=JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');
+    const out={};
+    Object.keys(v).forEach(k=>{if(v[k]&&typeof v[k]==='object'&&v[k].aan)out[k]=!!v[k].vandaag;});
+    return out;
+  }catch(e){return {};}
+}
+
 function getAuthToken(){
   return localStorage.getItem('ommen_auth_token') || localStorage.getItem('ommen_token') || '';
 }
@@ -66,7 +75,7 @@ async function updateSourcesOnServer(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true, token: token||undefined})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(),sourceToday:getSourceToday(), pushEnabled:true, token: token||undefined})
     });
     console.log('[push v270] Sources geupdate op server:', getSources(), 'met user?', !!token);
   }catch(e){ console.log('[push v270] update sources fail', e.message); }
