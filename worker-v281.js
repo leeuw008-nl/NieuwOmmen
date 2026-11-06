@@ -293,11 +293,12 @@ async function getSubPushDecision(sub,article,env,syncCache=new Map()){
    if(sourceState.vandaag===true&&!isTodayAmsterdam(article.pubDate))return {ok:false,reason:'sync-alleen-vandaag'};
   }
  }
- if(Array.isArray(sub.sources)){
+ if(Array.isArray(sub.sources)&&!hasSettings){
   if(sub.sources.length>0&&!sub.sources.includes(article.source))return {ok:false,reason:'abonnement-bron uit'};
-  if(sub.sources.length===0&&!hasSettings)return {ok:false,reason:'abonnement-bronnen leeg'};
+  if(sub.sources.length===0)return {ok:false,reason:'abonnement-bronnen leeg'};
  }
  const sourceState=state&&state[article.source]&&typeof state[article.source]==='object'?state[article.source]:null;
+ if(!hasSettings&&sub.sourceToday&&sub.sourceToday[article.source]===true&&!isTodayAmsterdam(article.pubDate))return {ok:false,reason:'abonnement-alleen-vandaag'};
  const selectedScope=(sourceState&&sourceState.scope)||((sub.sourceScopes&&typeof sub.sourceScopes==='object')?sub.sourceScopes[article.source]:null);
  if(selectedScope==='gemeente'&&!isGemeenteArtikel(article))return {ok:false,reason:'gemeente-filter'};
  return {ok:true,reason:'geschikt'};
@@ -366,22 +367,23 @@ if(path==='/subscribe' && request.method==='POST'){
 try{
 let bodyText;try{bodyText=await request.text();}catch(e){return json({error:'Kon body niet lezen: '+e.message},400);}
 let body;try{body=JSON.parse(bodyText);}catch(e){return json({error:'Invalid JSON: '+e.message},400);}
-const {endpoint,keys,sources,sourceScopes,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
+const {endpoint,keys,sources,sourceScopes,sourceToday,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
 let sess=null;try{sess=await getUserFromRequest(request,env);}catch(e){}
 let id;try{id=safeId(endpoint);}catch(e){return json({error:'safeId fail: '+e.message},500);}
 const SUBS=getKV(env,'SUBS');let existing=null;try{existing=await SUBS.get(id,'json');}catch(e){existing=null;}
 const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
 let finalSources=existing?.sources||[];if(Array.isArray(sources))finalSources=sources;
 let finalSourceScopes=existing?.sourceScopes||{};if(sourceScopes && typeof sourceScopes==='object')finalSourceScopes=sourceScopes;
+let finalSourceToday=existing?.sourceToday||{};if(sourceToday && typeof sourceToday==='object')finalSourceToday=sourceToday;
 // Bewaar bestaande sleutels als het verzoek geen volledig sleutelpaar bevat.
 const incomingKeysValid=!!(keys&&typeof keys.p256dh==='string'&&keys.p256dh.length>0&&typeof keys.auth==='string'&&keys.auth.length>0);
 const effectiveKeys=incomingKeysValid?keys:(existing?.keys||{});
 if(existing){
-const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes);
+const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes); const sameSourceToday=stableStringify(existing.sourceToday||{})===stableStringify(finalSourceToday);
 const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null);
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
 const sameKeys=stableStringify(existing.keys||{})===stableStringify(effectiveKeys||{});
-if(sameSources&&sameSourceScopes&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280',skipped:true});}
+if(sameSources&&sameSourceScopes&&sameSourceToday&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,sourceToday:finalSourceToday,version:'v281',skipped:true});}
 }
 let preservedDescription=existing?.description||'';
 if(!preservedDescription && sess?.userId){
@@ -393,8 +395,8 @@ if(!preservedDescription && sess?.userId){
   }catch{}
 }
 const now=Date.now();
-const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
-await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280'});
+const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,sourceToday:finalSourceToday,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
+await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,sourceToday:finalSourceToday,version:'v281'});
 }catch(e){return json({error:'Subscribe crash: '+e.message,stack:e.stack},500);}
 }
 if(path==='/unsubscribe' && request.method==='POST'){try{const {endpoint}=await request.json();if(!endpoint)return json({error:'no endpoint'},400);await getKV(env,'SUBS').delete(safeId(endpoint));return json({ok:true});}catch(e){return json({error:'unsubscribe fail: '+e.message},500);}}
