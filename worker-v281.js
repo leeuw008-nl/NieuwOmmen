@@ -1,4 +1,4 @@
-// Worker v281 - betrouwbare cron-pushwachtrij, polltijdfallback en dry-run
+// Worker v282 - betrouwbare cron-pushwachtrij, polltijdfallback en dry-run
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -285,9 +285,9 @@ async function setSeenLinksIfChanged(env,set){
  const SEEN=getKV(env,'SEEN');const existing=await SEEN.get('seen_links','json');
  if(existing!==null&&!Array.isArray(existing))throw new Error('SEEN/seen_links bevat geen geldige array');
  const existingSet=new Set(existing||[]);
- if(existingSet.size===set.size){let same=true;for(const v of set){if(!existingSet.has(v)){same=false;break;}}if(same){console.log('[v281] seen_links unchanged, skip put');return false;}}
+ if(existingSet.size===set.size){let same=true;for(const v of set){if(!existingSet.has(v)){same=false;break;}}if(same){console.log('[v282] seen_links unchanged, skip put');return false;}}
  await SEEN.put('seen_links',JSON.stringify([...set].slice(-500)));
- console.log('[v281] seen_links saved '+set.size);return true;
+ console.log('[v282] seen_links saved '+set.size);return true;
 }
 // v278: voorkom dat oude feed-items alsnog als push worden verzonden.
 // RSS-artikelen met een echte tijd mogen maximaal 6 uur oud zijn.
@@ -296,7 +296,11 @@ function isRecentPushArticle(article){
   if(!article || !article.pubDate) return false;
   const d=new Date(article.pubDate);
   if(isNaN(d.getTime())) return false;
-  if(article._pollDateFallback) return true;
+  if(article._pollDateFallback){
+    const firstSeen=article.firstSeenAt?new Date(article.firstSeenAt):d;
+    const ageMs=Date.now()-firstSeen.getTime();
+    return ageMs>=-60*60*1000 && ageMs<=6*60*60*1000;
+  }
   if(article._dateOnly){
     try{
       const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});
@@ -479,11 +483,11 @@ if(path==='/api/admin/push-dry-run'){
  const candidates=[...pending,...fresh].slice(0,100);
  const results=[];
  for(const a of candidates){
-  const recent=!!(a.pendingSubIds&&a.pendingSubIds.length)||isRecentPushArticle(a),decisions=[];
+  const recent=isRecentPushArticle(a),decisions=[];
   if(recent){for(const sub of subs){const d=await getSubPushDecision(sub,a,env,syncCache);decisions.push({subscription:sub._id,eligible:d.ok,reason:d.reason,pending:!!(a.pendingSubIds&&a.pendingSubIds.includes(sub._id))});}}
   results.push({source:a.source,title:a.title,link:a.link,pubDate:a.pubDate||null,pollTimeFallback:!!a._pollDateFallback,alreadySeen:seen.has(a.link),alreadyPending:pending.some(p=>p.link===a.link),recent,reason:recent?'datum akkoord':'datum buiten venster',subscriptions:decisions});
  }
- return json({dryRun:true,writes:0,pushesSent:0,checkedSources:BRONNEN.filter(b=>b.type!=='nieuwsbrief').length,seen:seen.size,pending:pending.length,newCandidates:fresh.length,articles:results,version:'v281-dry-run'});
+ return json({dryRun:true,writes:0,pushesSent:0,checkedSources:BRONNEN.filter(b=>b.type!=='nieuwsbrief').length,seen:seen.size,pending:pending.length,newCandidates:fresh.length,articles:results,version:'v282-dry-run'});
 }
 if(path==='/api/admin/users'){const USERS=getKV(env,'USERS');const SYNC=getKV(env,'SYNC');const list=await USERS.list();const users=[];for(const k of list.keys){const u=await USERS.get(k.name,'json');if(!u)continue;const sync=await SYNC.get(u.id,'json');users.push({email:u.email||k.name,id:u.id,sync});}return json({users,count:users.length});}
 if(path.startsWith('/api/admin/sync/')){const userId=path.split('/').pop();return json({userId,sync:await getKV(env,'SYNC').get(userId,'json')});}
@@ -548,12 +552,12 @@ return json({sent,total:subs.length,skipped,article,message:'Echt nieuwsbrief ar
 }
 return json({error:'onbekende admin route: '+path},404);
 }
-return text('Nieuw(s)Ommen Worker v281 - queued cron push + dry-run - cron 0 */1 * * *',200);
+return text('Nieuw(s)Ommen Worker v282 - queued cron push + dry-run - cron 0 */1 * * *',200);
 }catch(e){return json({error:'Worker crash: '+e.message,stack:e.stack},500);}
 },
 async scheduled(event,env,ctx){
 try{
- console.log('[v281] Cron gestart; cron='+((event&&event.cron)||'onbekend')+'; scheduledTime='+((event&&event.scheduledTime)||'onbekend'));
+ console.log('[v282] Cron gestart; cron='+((event&&event.cron)||'onbekend')+'; scheduledTime='+((event&&event.scheduledTime)||'onbekend'));
  const seen=await getSeenLinksStrict(env), subs=await getAllSubsStrict(env), queue=await getPushQueueStrict(env);
  const queueByLink=new Map(queue.map(a=>[a.link,a]));
  let discovered=0;
@@ -565,7 +569,7 @@ try{
     // Eerst duurzaam in de queue plaatsen; pas daarna als gezien markeren.
     // Bij volle queue blijft de link bewust ongelezen en volgt een retry in de volgende cron.
     if(queue.length>=500){
-     console.log('[v281] queue vol; artikel blijft ongelezen voor volgende cron: '+art.link);
+     console.log('[v282] queue vol; artikel blijft ongelezen voor volgende cron: '+art.link);
      continue;
     }
     const queued={...art,firstSeenAt:Date.now(),pendingSubIds:null,attempts:{}};
@@ -573,25 +577,31 @@ try{
     seen.add(art.link);discovered++;
    }
   }
-  console.log('[v281] bron verwerkt: '+bron.id+'; opgehaald='+arts.length);
+  console.log('[v282] bron verwerkt: '+bron.id+'; opgehaald='+arts.length);
   await new Promise(r=>setTimeout(r,800));
  }
  if(discovered)await setPushQueue(env,queue);
  await setSeenLinksIfChanged(env,seen);
- if(discovered)console.log('[v281] nieuw ontdekt='+discovered+'; queue eerst opgeslagen; seen bijgewerkt; queue='+queue.length);
- if(queue.length===0){console.log('[v281] Geen openstaande pushartikelen');return;}
+ if(discovered)console.log('[v282] nieuw ontdekt='+discovered+'; queue eerst opgeslagen; seen bijgewerkt; queue='+queue.length);
+ if(queue.length===0){console.log('[v282] Geen openstaande pushartikelen');return;}
  const syncCache=new Map();let attemptsThisCron=0,success=0,failed=0,dateRejected=0,filterRejected=0;
  const MAX_CRON_PUSHES=35;let processedSinceCheckpoint=0;
  for(let qi=0;qi<queue.length;qi++){
   if(attemptsThisCron>=MAX_CRON_PUSHES)break;
   const article=queue[qi];
+  // Ook retries moeten binnen hetzelfde maximale tijdvenster blijven.
+  if(!isRecentPushArticle(article)){dateRejected++;console.log('[v282] definitief afgewezen/verlopen artikel: '+article.source+' '+article.link);queue[qi]=null;processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}continue;}
   if(!article.pendingSubIds){
-   if(!isRecentPushArticle(article)){dateRejected++;console.log('[v281] definitief afgewezen datum: '+article.source+' '+article.link);queue[qi]=null;processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}continue;}
    const eligible=[];
    for(const sub of subs){
     const d=await getSubPushDecision(sub,article,env,syncCache);
+    if(d.reason==='sync-lezen-mislukt'){
+     // Bewaar eerdere voortgang en laat dit artikel voor de volgende cron staan.
+     await setPushQueue(env,queue.filter(Boolean));
+     throw new Error('SYNC tijdelijk niet leesbaar; artikel blijft in push_pending');
+    }
     if(d.ok)eligible.push(sub._id);
-    else console.log('[v281] filter: '+article.source+' -> '+sub._id+' : '+d.reason);
+    else console.log('[v282] filter: '+article.source+' -> '+sub._id+' : '+d.reason);
    }
    article.pendingSubIds=eligible;
    if(eligible.length===0){filterRejected++;queue[qi]=null;processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}continue;}
@@ -602,13 +612,17 @@ try{
    const sub=subs.find(s=>s._id===subId);
    if(!sub)continue;
    const decision=await getSubPushDecision(sub,article,env,syncCache);
-   if(!decision.ok){console.log('[v281] retry vervalt door gewijzigde instellingen: '+subId+' '+decision.reason);continue;}
+   if(!decision.ok){
+    if(decision.reason==='sync-lezen-mislukt'){pending.push(subId);console.log('[v282] SYNC tijdelijk niet leesbaar; retry blijft staan: '+subId);}
+    else console.log('[v282] retry vervalt door gewijzigde instellingen: '+subId+' '+decision.reason);
+    continue;
+   }
    attemptsThisCron++;
    const result=await sendPush(sub,article,env);
    article.attempts=article.attempts||{};
    article.attempts[subId]=(article.attempts[subId]||0)+1;
-   if(result.ok){success++;console.log('[v281] push OK: '+article.source+' -> '+subId);}
-   else{failed++;pending.push(subId);console.log('[v281] push mislukt; blijft in wachtrij: '+article.source+' -> '+subId+'; poging='+article.attempts[subId]+'; fout='+(result.error||'onbekend'));}
+   if(result.ok){success++;console.log('[v282] push OK: '+article.source+' -> '+subId);}
+   else{failed++;pending.push(subId);console.log('[v282] push mislukt; blijft in wachtrij: '+article.source+' -> '+subId+'; poging='+article.attempts[subId]+'; fout='+(result.error||'onbekend'));}
    await new Promise(r=>setTimeout(r,150));
   }
   article.pendingSubIds=pending;
@@ -618,7 +632,7 @@ try{
  }
  await setPushQueue(env,queue.filter(Boolean));
  const remaining=(await getPushQueue(env)).length;
- console.log('[v281] Cron afgerond: ontdekt='+discovered+'; datum-afgekeurd='+dateRejected+'; filter-afgekeurd='+filterRejected+'; pogingen='+attemptsThisCron+'; succesvol='+success+'; mislukt='+failed+'; queue-rest='+remaining);
-}catch(e){console.log('[v281] Cron exception: '+(e.message||String(e))+'; '+(e.stack||''));}
+ console.log('[v282] Cron afgerond: ontdekt='+discovered+'; datum-afgekeurd='+dateRejected+'; filter-afgekeurd='+filterRejected+'; pogingen='+attemptsThisCron+'; succesvol='+success+'; mislukt='+failed+'; queue-rest='+remaining);
+}catch(e){console.log('[v282] Cron exception: '+(e.message||String(e))+'; '+(e.stack||''));}
 }
 };
