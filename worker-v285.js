@@ -1,7 +1,7 @@
 // Worker v285 - betrouwbare cron-pushwachtrij, polltijdfallback en dry-run
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
-const GEMEENTE_ZOEK_REGEX=GEMEENTE_ZOEK.map(pl=>new RegExp('(^|[^\\p{L}\\p{N}])'+pl.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
+const GEMEENTE_ZOEK_REGEX=GEMEENTE_ZOEK.map(pl=>new RegExp('(^|[^\\p{L}\\p{N}])'+pl+'(?=$|[^\\p{L}\\p{N}])','u'));
 function isGemeenteArtikel(article){
  const txt=((article?.title||'')+' '+(article?.description||'')).toLowerCase();
  return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
