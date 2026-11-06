@@ -533,7 +533,7 @@ try{
  if(discovered)console.log('[v281] nieuw ontdekt='+discovered+'; queue eerst opgeslagen; seen bijgewerkt; queue='+queue.length);
  if(queue.length===0){console.log('[v281] Geen openstaande pushartikelen');return;}
  const syncCache=new Map();let attemptsThisCron=0,success=0,failed=0,dateRejected=0,filterRejected=0;
- const MAX_CRON_PUSHES=35;
+ const MAX_CRON_PUSHES=35;let processedSinceCheckpoint=0;
  for(let qi=0;qi<queue.length;qi++){
   if(attemptsThisCron>=MAX_CRON_PUSHES)break;
   const article=queue[qi];
