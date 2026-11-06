@@ -223,11 +223,38 @@ let parsed=[];
 if(b.type==='rss') parsed=parseRSS(txt,b.id,5);
 else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0) parsed=parseRSS(txt,b.id,5); }
 else if(b.type==='oost'){
-const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;
 const out=[]; let m;
-while((m=generic.exec(txt))!==null && out.length<5){ const link='https://www.oost.nl'+m[1], title=m[2].trim().slice(0,120); if(title.length>10) out.push({title,link,source:b.id,pubDate:null}); }
-parsed=out;
-}else parsed=parseRSS(txt,b.id,5);
+const reReal=/<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\s\S]*?<a[^>]+href=["'](\/nieuws\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>[\s\S]*?<div[^>]*class="[^"]*name-label[^"]*"[^>]*>([^<]{2,20})<\/div>[\s\S]*?<h[2-3][^>]*>([^<]{12,200})<\/h3>/gi;
+while((m=reReal.exec(txt))!==null&&out.length<25){
+ const dateStr=m[1],link='https://www.oost.nl'+m[2],category=m[3].trim().toUpperCase(),title=m[4].trim();
+ if(['ALLE NIEUWS','ZWOLLE','TWENTE'].includes(title.toUpperCase()))continue;
+ const d=new Date(dateStr),pubDate=isNaN(d.getTime())?null:d.toISOString();
+ const finalTitle=['NIEUWS','112','ECONOMIE','SPORT'].includes(category)?category+': '+title:title;
+ if(!out.some(x=>x.link===link))out.push({title:finalTitle,link,source:b.id,pubDate,description:title+' [...]'});
+}
+if(out.length===0){
+ const re2=/<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\s\S]*?<a[^>]+href=["'](\/nieuws\/[^"']{10,150})["'][^>]*>[\s\S]*?<h[2-3][^>]*>([^<]{12,200})<\/h3>/gi;
+ while((m=re2.exec(txt))!==null&&out.length<25){
+  const d=new Date(m[1]);if(isNaN(d.getTime()))continue;
+  const link='https://www.oost.nl'+m[2],title=m[3].trim();
+  if(title.toLowerCase().includes('alle nieuws'))continue;
+  if(!out.some(x=>x.link===link))out.push({title,link,source:b.id,pubDate:d.toISOString(),description:title+' [...]'});
+ }
+}
+if(out.length===0){
+ const reBlock=/<a[^>]+href=["'](\/nieuws\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>([\s\S]*?)<\/a>/gi;
+ while((m=reBlock.exec(txt))!==null&&out.length<20){
+  const link='https://www.oost.nl'+m[1],inner=m[3];
+  const catMatch=inner.match(/<(?:span|div)[^>]*>\s*(NIEUWS|112|ECONOMIE|SPORT)\s*<\/(?:span|div)>/i);
+  const category=catMatch?catMatch[1].toUpperCase():'';
+  const titleMatch=inner.match(/<h[23][^>]*>([^<]{12,180})<\/h[23]>/i);
+  const title=titleMatch?titleMatch[1].trim():'';
+  if(!title||['alle nieuws','zwolle','twente','enschede','vechtdal','salland','kop van overijssel'].includes(title.toLowerCase()))continue;
+  const finalTitle=category?category+': '+title:title;
+  if(!out.some(x=>x.link===link))out.push({title:finalTitle,link,source:b.id,pubDate:null,description:title+' [...]'});
+ }
+}
+parsed=out;}else parsed=parseRSS(txt,b.id,5);
 parsed=parsed.map(a=>a.pubDate?a:{...a,pubDate:polledAt,_pollDateFallback:true});
 if(diagnostic) console.log(`[v281-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; artikelen=${parsed.length}; polltijdfallback=${parsed.filter(a=>a._pollDateFallback).length}`);
 return parsed;
