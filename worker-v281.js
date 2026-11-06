@@ -405,13 +405,9 @@ let sess=null;try{sess=await getUserFromRequest(request,env);}catch(e){}
 let id;try{id=safeId(endpoint);}catch(e){return json({error:'safeId fail: '+e.message},500);}
 const SUBS=getKV(env,'SUBS');let existing=null;try{existing=await SUBS.get(id,'json');}catch(e){existing=null;}
 const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
+// Een lege bronnenlijst betekent hier bewust: geen bron geselecteerd.
 let finalSources=existing?.sources||[];
-if(Array.isArray(sources)){
-  // Een lege clientpayload mag een eerder vastgelegde bronselectie niet onbedoeld wissen.
-  // Bewust alles uitzetten blijft mogelijk via de expliciete SYNC-broninstellingen.
-  finalSources=(sources.length===0 && (existing?.sources||[]).length>0 && !body.explicitEmptySources)
-    ? existing.sources : sources;
-}
+if(Array.isArray(sources))finalSources=sources;
 let finalSourceScopes=existing?.sourceScopes||{};if(sourceScopes && typeof sourceScopes==='object')finalSourceScopes=sourceScopes;
 let finalSourceToday=existing?.sourceToday||{};if(sourceToday && typeof sourceToday==='object')finalSourceToday=sourceToday;
 // Bewaar bestaande sleutels als het verzoek geen volledig sleutelpaar bevat.
