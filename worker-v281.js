@@ -264,8 +264,12 @@ return [];
 }
 }
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
+// Strikte varianten voor cron en dry-run: een KV-leesfout mag nooit als lege dataset gelden.
+async function getAllSubsStrict(env){const SUBS=getKV(env,'SUBS');const list=await SUBS.list();const subs=[];for(const k of list.keys){const v=await SUBS.get(k.name,'json');if(v)subs.push({...v,_id:k.name});}return subs;}
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
+async function getSeenLinksStrict(env){const j=await getKV(env,'SEEN').get('seen_links','json');if(j!==null&&!Array.isArray(j))throw new Error('SEEN/seen_links bevat geen geldige array');return new Set(j||[]);}
 async function getPushQueue(env){try{const q=await getKV(env,'SEEN').get('push_pending','json');return Array.isArray(q)?q:[];}catch{return [];}}
+async function getPushQueueStrict(env){const q=await getKV(env,'SEEN').get('push_pending','json');if(q!==null&&!Array.isArray(q))throw new Error('SEEN/push_pending bevat geen geldige array');return q||[];}
 async function setPushQueue(env,queue){
 // Nooit stilzwijgend afkappen: elk artikel in de wachtrij moet behouden blijven.
 if(!Array.isArray(queue)) throw new Error('push_pending moet een array zijn');
@@ -467,7 +471,7 @@ if(path==='/stats'){const subs=await getAllSubs(env);const seen=await getSeenLin
 if(path.startsWith('/api/admin/')){
 const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd - token verlopen, log opnieuw in'},401);if(!isAdminUser(sess))return json({error:'Geen admin rechten: '+sess.email},403);
 if(path==='/api/admin/push-dry-run'){
- const seen=await getSeenLinks(env),pending=await getPushQueue(env),subs=await getAllSubs(env),syncCache=new Map();
+ const seen=await getSeenLinksStrict(env),pending=await getPushQueueStrict(env),subs=await getAllSubsStrict(env),syncCache=new Map();
  const byLink=new Map(pending.map(a=>[a.link,a]));
  let fresh=[];
  for(const bron of BRONNEN){if(bron.type==='nieuwsbrief')continue;const arts=await fetchBron(bron,true);for(const a of arts)if(!seen.has(a.link)&&!byLink.has(a.link)){const item={...a,firstSeenAt:Date.now()};fresh.push(item);byLink.set(a.link,item);}}
@@ -549,7 +553,7 @@ return text('Nieuw(s)Ommen Worker v281 - queued cron push + dry-run - cron 0 */1
 async scheduled(event,env,ctx){
 try{
  console.log('[v281] Cron gestart; cron='+((event&&event.cron)||'onbekend')+'; scheduledTime='+((event&&event.scheduledTime)||'onbekend'));
- const seen=await getSeenLinks(env), subs=await getAllSubs(env), queue=await getPushQueue(env);
+ const seen=await getSeenLinksStrict(env), subs=await getAllSubsStrict(env), queue=await getPushQueueStrict(env);
  const queueByLink=new Map(queue.map(a=>[a.link,a]));
  let discovered=0;
  for(const bron of BRONNEN){
