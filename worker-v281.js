@@ -186,9 +186,9 @@ if(!link || !link.includes('http')){ const hrefMatch = it.match(/<link[^>]+href=
 link=link.replace(/<!\[CDATA\[|\]\]>/g,'').trim();
 if(!link.startsWith('http')){ const mm=it.match(/https?:\/\/[^\s<"]+/); if(mm) link=mm[0]; }
 const realDate = extractRssDate(it);
-let description=(it.match(/<(description|summary)[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/(description|summary)>/i)||[])[2]||'';
-if(!description) description=(it.match(/<content:encoded[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/content:encoded>/i)||[])[1]||'';
-description=description.replace(/<!\\[CDATA\\[|\\]\\]>/g,'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/g,"'").replace(/\\s+/g,' ').trim().slice(0,1200);
+let description=(it.match(/<(description|summary)[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/(description|summary)>/i)||[])[2]||'';
+if(!description) description=(it.match(/<content:encoded[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content:encoded>/i)||[])[1]||'';
+description=description.replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/\s+/g,' ').trim().slice(0,1200);
 return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), description, link, source:bronId, pubDate: realDate, _realDate: !!realDate};
 }).filter(x=>x.link && x.title);
 }
@@ -239,7 +239,7 @@ return [];
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
 async function getPushQueue(env){try{const q=await getKV(env,'SEEN').get('push_pending','json');return Array.isArray(q)?q:[];}catch{return [];}}
-async function setPushQueue(env,queue){const bounded=queue.slice(-100);await getKV(env,'SEEN').put('push_pending',JSON.stringify(bounded));return bounded.length;}
+async function setPushQueue(env,queue){const bounded=queue.slice(-500);await getKV(env,'SEEN').put('push_pending',JSON.stringify(bounded));return bounded.length;}
 function isTodayAmsterdam(value){
  try{const d=new Date(value);if(isNaN(d.getTime()))return false;const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});return fmt.format(d)===fmt.format(new Date());}
  catch{return false;}
@@ -528,8 +528,9 @@ try{
   console.log('[v281] bron verwerkt: '+bron.id+'; opgehaald='+arts.length);
   await new Promise(r=>setTimeout(r,800));
  }
+ if(discovered)await setPushQueue(env,queue);
  await setSeenLinksIfChanged(env,seen);
- if(discovered)console.log('[v281] nieuw ontdekt='+discovered+'; seen bijgewerkt; queue='+queue.length);
+ if(discovered)console.log('[v281] nieuw ontdekt='+discovered+'; queue eerst opgeslagen; seen bijgewerkt; queue='+queue.length);
  if(queue.length===0){console.log('[v281] Geen openstaande pushartikelen');return;}
  const syncCache=new Map();let attemptsThisCron=0,success=0,failed=0,dateRejected=0,filterRejected=0;
  const MAX_CRON_PUSHES=35;
@@ -537,7 +538,7 @@ try{
   if(attemptsThisCron>=MAX_CRON_PUSHES)break;
   const article=queue[qi];
   if(!article.pendingSubIds){
-   if(!isRecentPushArticle(article)){dateRejected++;console.log('[v281] definitief afgewezen datum: '+article.source+' '+article.link);queue[qi]=null;await setPushQueue(env,queue.filter(Boolean));continue;}
+   if(!isRecentPushArticle(article)){dateRejected++;console.log('[v281] definitief afgewezen datum: '+article.source+' '+article.link);queue[qi]=null;processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}continue;}
    const eligible=[];
    for(const sub of subs){
     const d=await getSubPushDecision(sub,article,env,syncCache);
@@ -545,7 +546,7 @@ try{
     else console.log('[v281] filter: '+article.source+' -> '+sub._id+' : '+d.reason);
    }
    article.pendingSubIds=eligible;
-   if(eligible.length===0){filterRejected++;queue[qi]=null;await setPushQueue(env,queue.filter(Boolean));continue;}
+   if(eligible.length===0){filterRejected++;queue[qi]=null;processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}continue;}
   }
   const pending=[];
   for(const subId of article.pendingSubIds){
@@ -565,8 +566,9 @@ try{
   article.pendingSubIds=pending;
   if(pending.length===0)queue[qi]=null;
   // Na elk artikel de voortgang opslaan: mislukte verzendingen blijven retrybaar.
-  await setPushQueue(env,queue.filter(Boolean));
+  processedSinceCheckpoint++;if(processedSinceCheckpoint>=5){await setPushQueue(env,queue.filter(Boolean));processedSinceCheckpoint=0;}
  }
+ await setPushQueue(env,queue.filter(Boolean));
  const remaining=(await getPushQueue(env)).length;
  console.log('[v281] Cron afgerond: ontdekt='+discovered+'; datum-afgekeurd='+dateRejected+'; filter-afgekeurd='+filterRejected+'; pogingen='+attemptsThisCron+'; succesvol='+success+'; mislukt='+failed+'; queue-rest='+remaining);
 }catch(e){console.log('[v281] Cron exception: '+(e.message||String(e))+'; '+(e.stack||''));}
