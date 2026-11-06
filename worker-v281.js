@@ -504,7 +504,7 @@ return json({sent,total:subs.length,skipped,article,message:'Echt nieuwsbrief ar
 }
 return json({error:'onbekende admin route: '+path},404);
 }
-return text('Nieuw(s)Ommen Worker v277 - betrouwbare sync, recursive state comparison - cron 0 */1 * * *',200);
+return text('Nieuw(s)Ommen Worker v281 - queued cron push + dry-run - cron 0 */1 * * *',200);
 }catch(e){return json({error:'Worker crash: '+e.message,stack:e.stack},500);}
 },
 async scheduled(event,env,ctx){
@@ -537,7 +537,7 @@ try{
   if(attemptsThisCron>=MAX_CRON_PUSHES)break;
   const article=queue[qi];
   if(!article.pendingSubIds){
-   if(!isRecentPushArticle(article)){dateRejected++;console.log('[v281] definitief afgewezen datum: '+article.source+' '+article.link);article.pendingSubIds=[];continue;}
+   if(!isRecentPushArticle(article)){dateRejected++;console.log('[v281] definitief afgewezen datum: '+article.source+' '+article.link);queue[qi]=null;await setPushQueue(env,queue.filter(Boolean));continue;}
    const eligible=[];
    for(const sub of subs){
     const d=await getSubPushDecision(sub,article,env,syncCache);
@@ -545,7 +545,7 @@ try{
     else console.log('[v281] filter: '+article.source+' -> '+sub._id+' : '+d.reason);
    }
    article.pendingSubIds=eligible;
-   if(eligible.length===0){filterRejected++;continue;}
+   if(eligible.length===0){filterRejected++;queue[qi]=null;await setPushQueue(env,queue.filter(Boolean));continue;}
   }
   const pending=[];
   for(const subId of article.pendingSubIds){
