@@ -4,10 +4,6 @@ const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Withar
 const GEMEENTE_ZOEK_REGEX=GEMEENTE_ZOEK.map(pl=>new RegExp('(^|[^\\p{L}\\p{N}])'+pl+'(?=$|[^\\p{L}\\p{N}])','u'));
 function isGemeenteArtikel(article){
  const txt=((article?.title||'')+' '+(article?.description||'')).toLowerCase();
- return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
-}')+'(?=$|[^\\p{L}\\p{N}])','u'));
-function isGemeenteArtikel(article){
- const txt=((article?.title||'')+' '+(article?.description||'')).toLowerCase();
  return GEMEENTE_ZOEK_REGEX.some(re=>re.test(txt));
 }
 const BRONNEN = [
