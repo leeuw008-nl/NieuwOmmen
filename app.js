@@ -232,7 +232,8 @@ const GEMEENTE_PLAATSEN = [
 ];
 const GEMEENTE_ZOEK = GEMEENTE_PLAATSEN.map(p=>p.toLowerCase());
 const GEMEENTE_ZOEK_REGEX = GEMEENTE_ZOEK.map(pl =>
-  new RegExp('(^|[^\\p{L}\\p{N}])'+pl.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\const GEMEENTE_ZOEK = GEMEENTE_PLAATSEN.map(p=>p.toLowerCase());
+  new RegExp('(^|[^\\p{L}\\p{N}])'+pl+'(?=$|[^\\p{L}\\p{N}])','u')
+);
 
 function isGemeenteArtikel(art){
   const txt = (art.title + ' ' + (art.description||'')).toLowerCase();
