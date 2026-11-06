@@ -282,11 +282,12 @@ function isTodayAmsterdam(value){
  catch{return false;}
 }
 async function setSeenLinksIfChanged(env,set){
-try{
-const SEEN=getKV(env,'SEEN'); const existing=await SEEN.get('seen_links','json'); const existingSet=new Set(existing||[]);
-if(existingSet.size===set.size){ let same=true; for(const v of set){ if(!existingSet.has(v)){same=false;break;} } if(same){console.log('[v277] seen_links unchanged, skip put');return false;} }
-await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`[v277] seen_links saved ${set.size}`); return true;
-}catch(e){ console.log('[v277] setSeenLinks fail',e.message); return false; }
+ const SEEN=getKV(env,'SEEN');const existing=await SEEN.get('seen_links','json');
+ if(existing!==null&&!Array.isArray(existing))throw new Error('SEEN/seen_links bevat geen geldige array');
+ const existingSet=new Set(existing||[]);
+ if(existingSet.size===set.size){let same=true;for(const v of set){if(!existingSet.has(v)){same=false;break;}}if(same){console.log('[v281] seen_links unchanged, skip put');return false;}}
+ await SEEN.put('seen_links',JSON.stringify([...set].slice(-500)));
+ console.log('[v281] seen_links saved '+set.size);return true;
 }
 // v278: voorkom dat oude feed-items alsnog als push worden verzonden.
 // RSS-artikelen met een echte tijd mogen maximaal 6 uur oud zijn.
