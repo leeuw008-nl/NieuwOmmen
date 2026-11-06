@@ -349,7 +349,7 @@ async function getSubPushDecision(sub,article,env,syncCache=new Map()){
  }
  const sourceState=state&&state[article.source]&&typeof state[article.source]==='object'?state[article.source]:null;
  if(!hasSettings&&sub.sourceToday&&sub.sourceToday[article.source]===true&&!isTodayAmsterdam(article.pubDate))return {ok:false,reason:'abonnement-alleen-vandaag'};
- const selectedScope=(sourceState&&sourceState.scope)||((sub.sourceScopes&&typeof sub.sourceScopes==='object')?sub.sourceScopes[article.source]:null);
+ const selectedScope=(sourceState&&sourceState.scope)||((sub.sourceScopes&&typeof sub.sourceScopes==='object')?sub.sourceScopes[article.source]:null)||'gemeente';
  if(selectedScope==='gemeente'&&!isGemeenteArtikel(article))return {ok:false,reason:'gemeente-filter'};
  return {ok:true,reason:'geschikt'};
 }
