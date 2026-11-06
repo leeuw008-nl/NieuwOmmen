@@ -266,7 +266,13 @@ return [];
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
 async function getPushQueue(env){try{const q=await getKV(env,'SEEN').get('push_pending','json');return Array.isArray(q)?q:[];}catch{return [];}}
-async function setPushQueue(env,queue){const bounded=queue.slice(0,500);await getKV(env,'SEEN').put('push_pending',JSON.stringify(bounded));return bounded.length;}
+async function setPushQueue(env,queue){
+// Nooit stilzwijgend afkappen: elk artikel in de wachtrij moet behouden blijven.
+if(!Array.isArray(queue)) throw new Error('push_pending moet een array zijn');
+if(queue.length>500) throw new Error('push_pending-capaciteit bereikt; nieuwe artikelen blijven ongelezen');
+await getKV(env,'SEEN').put('push_pending',JSON.stringify(queue));
+return queue.length;
+}
 function isTodayAmsterdam(value){
  try{const d=new Date(value);if(isNaN(d.getTime()))return false;const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});return fmt.format(d)===fmt.format(new Date());}
  catch{return false;}
@@ -399,7 +405,13 @@ let sess=null;try{sess=await getUserFromRequest(request,env);}catch(e){}
 let id;try{id=safeId(endpoint);}catch(e){return json({error:'safeId fail: '+e.message},500);}
 const SUBS=getKV(env,'SUBS');let existing=null;try{existing=await SUBS.get(id,'json');}catch(e){existing=null;}
 const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
-let finalSources=existing?.sources||[];if(Array.isArray(sources))finalSources=sources;
+let finalSources=existing?.sources||[];
+if(Array.isArray(sources)){
+  // Een lege clientpayload mag een eerder vastgelegde bronselectie niet onbedoeld wissen.
+  // Bewust alles uitzetten blijft mogelijk via de expliciete SYNC-broninstellingen.
+  finalSources=(sources.length===0 && (existing?.sources||[]).length>0 && !body.explicitEmptySources)
+    ? existing.sources : sources;
+}
 let finalSourceScopes=existing?.sourceScopes||{};if(sourceScopes && typeof sourceScopes==='object')finalSourceScopes=sourceScopes;
 let finalSourceToday=existing?.sourceToday||{};if(sourceToday && typeof sourceToday==='object')finalSourceToday=sourceToday;
 // Bewaar bestaande sleutels als het verzoek geen volledig sleutelpaar bevat.
@@ -548,12 +560,16 @@ try{
   if(bron.type==='nieuwsbrief')continue;
   const arts=await fetchBron(bron,true);
   for(const art of arts){
-   if(!seen.has(art.link)){
-    seen.add(art.link);discovered++;
-    if(!queueByLink.has(art.link)){
-     const queued={...art,firstSeenAt:Date.now(),pendingSubIds:null,attempts:{}};
-     queue.push(queued);queueByLink.set(art.link,queued);
+   if(!seen.has(art.link) && !queueByLink.has(art.link)){
+    // Eerst duurzaam in de queue plaatsen; pas daarna als gezien markeren.
+    // Bij volle queue blijft de link bewust ongelezen en volgt een retry in de volgende cron.
+    if(queue.length>=500){
+     console.log('[v281] queue vol; artikel blijft ongelezen voor volgende cron: '+art.link);
+     continue;
     }
+    const queued={...art,firstSeenAt:Date.now(),pendingSubIds:null,attempts:{}};
+    queue.push(queued);queueByLink.set(art.link,queued);
+    seen.add(art.link);discovered++;
    }
   }
   console.log('[v281] bron verwerkt: '+bron.id+'; opgehaald='+arts.length);
