@@ -231,10 +231,19 @@ const GEMEENTE_PLAATSEN = [
   'Varsen','Vinkenbuurt','Zeesse','Stegeren','Beerzerpoort','Ommerschans'
 ];
 const GEMEENTE_ZOEK = GEMEENTE_PLAATSEN.map(p=>p.toLowerCase());
+const GEMEENTE_ZOEK_REGEX = GEMEENTE_ZOEK.map(pl =>
+  new RegExp('(^|[^\\p{L}\\p{N}])'+pl+'(?=$|[^\\p{L}\\p{N}])','u')
+);
 
 function isGemeenteArtikel(art){
   const txt = (art.title + ' ' + (art.description||'')).toLowerCase();
   return GEMEENTE_ZOEK.some(pl => txt.includes(pl));
+}')+'(?=$|[^\\p{L}\\p{N}])','u')
+);
+
+function isGemeenteArtikel(art){
+  const txt = (art.title + ' ' + (art.description||'')).toLowerCase();
+  return GEMEENTE_ZOEK_REGEX.some(re => re.test(txt));
 }
 
 let state = {}; let allArticles = []; let loadedSources = new Set();
