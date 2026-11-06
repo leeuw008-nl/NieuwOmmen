@@ -273,32 +273,34 @@ function isRecentPushArticle(article){
 }
 
 async function getSubPushDecision(sub,article,env,syncCache=new Map()){
-if(sub.pushEnabled===false)return {ok:false,reason:'push-uit'};
-let state=null,hasSettings=false;
-if(sub.userId){
- let syncData;
- if(syncCache.has(sub.userId)) syncData=await syncCache.get(sub.userId);
- else {const p=getKV(env,'SYNC').get(sub.userId,'json');syncCache.set(sub.userId,p);syncData=await p;}
- state=syncData&&syncData.state?syncData.state:null;
-}
-if(state){
- if(state.__pushEnabled===false||state.pushEnabled===false||state.push===false||state.pushDisabled===true)return {ok:false,reason:'sync-push-uit'};
- for(const key of BRONNEN.map(b=>b.id)){const v=state[key];if(v&&typeof v==='object'&&'aan' in v){hasSettings=true;break;}}
- const sourceState=state[article.source];
- if(hasSettings){
-  if(!sourceState||typeof sourceState!=='object'||!('aan' in sourceState))return {ok:false,reason:'sync-bron ontbreekt'};
-  if(sourceState.aan===false)return {ok:false,reason:'sync-bron uit'};
-  if(sourceState.vandaag===true&&!isTodayAmsterdam(article.pubDate))return {ok:false,reason:'sync-alleen-vandaag'};
+ if(sub.pushEnabled===false)return {ok:false,reason:'push-uit'};
+ let state=null,hasSettings=false;
+ if(sub.userId){
+  try{
+   let syncData;
+   if(syncCache.has(sub.userId))syncData=await syncCache.get(sub.userId);
+   else{const p=getKV(env,'SYNC').get(sub.userId,'json');syncCache.set(sub.userId,p);syncData=await p;}
+   state=syncData&&syncData.state?syncData.state:null;
+  }catch(e){return {ok:false,reason:'sync-lezen-mislukt'};}
  }
-}
-if(Array.isArray(sub.sources)){
- if(sub.sources.length>0&&!sub.sources.includes(article.source))return {ok:false,reason:'abonnement-bron uit'};
- if(sub.sources.length===0&&!hasSettings)return {ok:false,reason:'abonnement-bronnen leeg'};
-}
-const sourceState=state&&state[article.source]&&typeof state[article.source]==='object'?state[article.source]:null;
-const selectedScope=(sourceState&&sourceState.scope)||((sub.sourceScopes&&typeof sub.sourceScopes==='object')?sub.sourceScopes[article.source]:null);
-if(selectedScope==='gemeente'&&!isGemeenteArtikel(article))return {ok:false,reason:'gemeente-filter'};
-return {ok:true,reason:'geschikt'};
+ if(state){
+  if(state.__pushEnabled===false||state.pushEnabled===false||state.push===false||state.pushDisabled===true)return {ok:false,reason:'sync-push-uit'};
+  for(const key of BRONNEN.map(b=>b.id)){const v=state[key];if(v&&typeof v==='object'&&'aan' in v){hasSettings=true;break;}}
+  const sourceState=state[article.source];
+  if(hasSettings){
+   if(!sourceState||typeof sourceState!=='object'||!('aan' in sourceState))return {ok:false,reason:'sync-bron ontbreekt'};
+   if(sourceState.aan===false)return {ok:false,reason:'sync-bron uit'};
+   if(sourceState.vandaag===true&&!isTodayAmsterdam(article.pubDate))return {ok:false,reason:'sync-alleen-vandaag'};
+  }
+ }
+ if(Array.isArray(sub.sources)){
+  if(sub.sources.length>0&&!sub.sources.includes(article.source))return {ok:false,reason:'abonnement-bron uit'};
+  if(sub.sources.length===0&&!hasSettings)return {ok:false,reason:'abonnement-bronnen leeg'};
+ }
+ const sourceState=state&&state[article.source]&&typeof state[article.source]==='object'?state[article.source]:null;
+ const selectedScope=(sourceState&&sourceState.scope)||((sub.sourceScopes&&typeof sub.sourceScopes==='object')?sub.sourceScopes[article.source]:null);
+ if(selectedScope==='gemeente'&&!isGemeenteArtikel(article))return {ok:false,reason:'gemeente-filter'};
+ return {ok:true,reason:'geschikt'};
 }
 async function shouldSendToSub(sub,article,env){return (await getSubPushDecision(sub,article,env)).ok;}
 
@@ -423,7 +425,7 @@ for(const k of syncList.keys){const v=await SYNC.get(k.name,'json');if(v)syncs.p
 const newsletterItems=await NL.get('items','json')||[];const pushReady=subs.filter(s=>s.keys&&s.keys.p256dh&&s.keys.auth).length;
 return json({time:new Date().toISOString(),version:'v281 - queued cron push',subs:subs.length,pushKeys:{ready:pushReady,missing:subs.length-pushReady},seen:seen.size,pendingPush:(await getPushQueue(env)).length,last:await SEEN.get('last_article','json'),syncs,newsletterCount:newsletterItems.length,putsPerDayEstimate:'<10 bij huidig gebruik',freePlan:{cron:'1x per uur behouden',maxExternalSubrequests:50,cronPushSafetyCap:35},bindings:{USERS:!!env.USERS,SESSIONS:!!env.SESSIONS,SYNC:!!env.SYNC,SUBS:!!env.SUBS,NEWSLETTER:!!env.NEWSLETTER,SEEN:!!env.SEEN}});
 }
-if(path==='/stats'){const subs=await getAllSubs(env);const seen=await getSeenLinks(env);return json({subs:subs.length,seen:seen.size,last:await getKV(env,'SEEN').get('last_article','json'),version:'v277'});}
+if(path==='/stats'){const subs=await getAllSubs(env);const seen=await getSeenLinks(env);return json({subs:subs.length,seen:seen.size,last:await getKV(env,'SEEN').get('last_article','json'),version:'v281'});}
 
 if(path.startsWith('/api/admin/')){
 const sess=await getUserFromRequest(request,env);if(!sess)return json({error:'Niet ingelogd - token verlopen, log opnieuw in'},401);if(!isAdminUser(sess))return json({error:'Geen admin rechten: '+sess.email},403);
@@ -435,7 +437,7 @@ if(path==='/api/admin/push-dry-run'){
  const candidates=[...pending,...fresh].slice(0,100);
  const results=[];
  for(const a of candidates){
-  const recent=isRecentPushArticle(a),decisions=[];
+  const recent=!!(a.pendingSubIds&&a.pendingSubIds.length)||isRecentPushArticle(a),decisions=[];
   if(recent){for(const sub of subs){const d=await getSubPushDecision(sub,a,env,syncCache);decisions.push({subscription:sub._id,eligible:d.ok,reason:d.reason,pending:!!(a.pendingSubIds&&a.pendingSubIds.includes(sub._id))});}}
   results.push({source:a.source,title:a.title,link:a.link,pubDate:a.pubDate||null,pollTimeFallback:!!a._pollDateFallback,alreadySeen:seen.has(a.link),alreadyPending:pending.some(p=>p.link===a.link),recent,reason:recent?'datum akkoord':'datum buiten venster',subscriptions:decisions});
  }
