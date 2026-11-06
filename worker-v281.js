@@ -239,7 +239,7 @@ return [];
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
 async function getPushQueue(env){try{const q=await getKV(env,'SEEN').get('push_pending','json');return Array.isArray(q)?q:[];}catch{return [];}}
-async function setPushQueue(env,queue){const bounded=queue.slice(-500);await getKV(env,'SEEN').put('push_pending',JSON.stringify(bounded));return bounded.length;}
+async function setPushQueue(env,queue){const bounded=queue.slice(0,500);await getKV(env,'SEEN').put('push_pending',JSON.stringify(bounded));return bounded.length;}
 function isTodayAmsterdam(value){
  try{const d=new Date(value);if(isNaN(d.getTime()))return false;const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});return fmt.format(d)===fmt.format(new Date());}
  catch{return false;}
