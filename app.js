@@ -37,7 +37,7 @@ function parseVechtdalCentraalECHT(html){
     let link=m[1]; if(link.startsWith('/')) link='https://www.vechtdalcentraal.nl'+link;
     if(seen.has(link)) continue; seen.add(link);
     const title=m[2].replace(/&#8217;/g,"'").replace(/&amp;/g,"&").trim();
-    if(title.length>4) items.push({title, link, pubDate:new Date(), description:title+' [...]'});
+    if(title.length>4) items.push({title, link, pubDate:new Date(), _dateOrigin:'polling', description:title+' [...]'});
   }
   if(items.length>0) return items;
   // FIX 25-08-2026: nieuwe thema varianten - vechtdalcentraal gebruikt nu ook <h2><a> en article
@@ -54,7 +54,7 @@ function parseVechtdalCentraalECHT(html){
       if(link.startsWith('/')) link='https://www.vechtdalcentraal.nl'+link;
       if(!link.includes('vechtdalcentraal.nl')) continue;
       if(seen.has(link)) continue; seen.add(link);
-      if(title.length>8) items.push({title, link, pubDate:new Date(), description:title+' [...]'});
+      if(title.length>8) items.push({title, link, pubDate:new Date(), _dateOrigin:'polling', description:title+' [...]'});
     }
     if(items.length>5) break;
   }
@@ -135,7 +135,7 @@ function parseNieuwsbriefECHT(json){
       let pubDate = new Date();
       if(it.pubDate || it.date || it.updated){ const d=new Date(it.pubDate||it.date||it.updated); if(!isNaN(d.getTime())) pubDate=d; }
       const desc = it.description || it.body || it.excerpt || title;
-      return {title: title.slice(0,120), link, pubDate, description: desc.length>200 ? desc.slice(0,200).trimEnd()+' […]' : desc, fullText: desc, source:'Nieuwsbrief', id:'Nieuwsbrief'};
+      return {title: title.slice(0,120), link, pubDate, articleType:'newsletter', _dateOrigin:(it.pubDate||it.date||it.updated)?'newsletter':'polling', description: desc.length>200 ? desc.slice(0,200).trimEnd()+' […]' : desc, fullText: desc, source:'Nieuwsbrief', id:'Nieuwsbrief'};
     }).slice(0,10);
   }catch(e){ console.log('parse nieuwsbrief fail', e.message); return []; }
 }
@@ -193,7 +193,7 @@ function parseOostFull_OLD(html){
       if(!uniqMap.has(full)) uniqMap.set(full, text);
     }
   }
-  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), description:'[...]'}));
+  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), _dateOrigin:'polling', description:'[...]'}));
 }
 function parseVechtdalCentraalFallback_OLD(html){
   const max = MAX_PER_BRON['Vechtdal Centraal'];
@@ -207,7 +207,7 @@ function parseVechtdalCentraalFallback_OLD(html){
     if(href.includes('/category/') || href.includes('/tag/') || href.includes('#')) continue;
     if(!map.has(href)) map.set(href, title);
   }
-  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), description:'[...]'}));
+  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), _dateOrigin:'polling', description:'[...]'}));
 }
 function parseOostFull(html){
   const echt = parseRTVOostECHT(html);
@@ -527,7 +527,7 @@ function parseRSSFull(xml, bronId){
     let useDesc = (content || desc || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if(useDesc.length>180) useDesc=useDesc.slice(0,177)+' [...]';
     else if(useDesc) useDesc=useDesc+' [...]';
-    return {title, link, pubDate:pub?new Date(pub):new Date(), description:useDesc};
+    return {title, link, pubDate:pub?new Date(pub):new Date(), _realDate:!!pub, _dateOrigin:pub?'rss':'polling', description:useDesc};
   }).filter(x=>x.link && x.title);
 }
 function extractGemeenteDate(html){
@@ -901,7 +901,7 @@ async function loadOneSource(b){
               arts = j.items.slice(0,10).map(it=>({
                 title: it.title.replace(/<[^>]*>/g,'').trim(),
                 link: it.link,
-                pubDate: it.pubDate ? new Date(it.pubDate) : new Date(),
+                pubDate: it.pubDate ? new Date(it.pubDate) : new Date(), _dateOrigin:it.pubDate?'newsletter':'polling', articleType:'newsletter',
                 description: (it.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]'
               }));
             }
@@ -982,10 +982,11 @@ function renderArticles(){
   let filtered = allArticles.filter(a=>{
     const s=state[a.id];
     if(!s || !s.aan) return false;
+    // Fallbackmeldingen blijven als bronstatus zichtbaar; inhoudsitems moeten de gedeelde validatie passeren.
+    if(!a.isFallback && !globalThis.NieuwOmmenArticleFilter.isValidArticle(a)) return false;
     if(s.vandaag){
       if(a.isFallback) return false;
-      if(!a.pubDate || isNaN(a.pubDate.getTime())) return false;
-      if(!isSameDay(a.pubDate, today)) return false;
+      if(!globalThis.NieuwOmmenArticleFilter.isToday(a, today)) return false;
     }
     if(s.scope==='gemeente'){
       if(!isGemeenteArtikel(a)) return false;
