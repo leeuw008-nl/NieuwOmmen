@@ -37,3 +37,12 @@ Branch: test/push-rebuild-2026-11-08
 
 ## Veiligheidsstatus
 Geen live Worker, cron-trigger, abonnement, KV-data of productie-push gewijzigd. Deze bevindingen zijn alleen documentatie op de testbranch.
+
+
+## 6. Verificatie bronparser (testbranch, 8 november 2026)
+- De geïsoleerde dry-run is afgestemd op de productieparser: maximaal vijf RSS/Atom-items per bron, dezelfde User-Agent als `fetchBron()`, dezelfde gespecialiseerde parser voor RTV Oost en RTV Vechtdal, en dezelfde prioriteitsvolgorde voor publicatiedatumvelden.
+- Laatste gecontroleerde run vóór de laatste datumparser-afstemming: GitHub Actions run 42484093153, geslaagd. Acht reguliere bronnen gaven HTTP 200; Ommen City gaf HTTP 403; de nieuwsbrief is bewust overgeslagen. Er werden 33 artikelen uitgelezen, 33 unieke canonieke URL's en nul dubbele URL's gevonden.
+- De HTTP 403 voor Ommen City bleef bestaan met dezelfde User-Agent als productie. De oorzaak is niet vastgesteld; dit kan een server-/botfilter of netwerkafhankelijk toegangsbeleid zijn. Niet omzeilen en niet als geslaagde bron tellen.
+- De nieuwsbriefroute is in `worker-v280.js` gedefinieerd als `/newsletter/feed` en `/api/newsletter/feed` op de Worker. Deze route leest `NEWSLETTER`-KV. De eerdere test-URL op het website-domein was daarom onjuist. De dry-run slaat de nieuwsbrief bewust over om productie-KV niet te lezen; de cron slaat deze bron eveneens over.
+- De 33/33-uitkomst is slechts een momentopname van de eerste vijf items per bereikbare reguliere bron. Zij bewijst geen volledigheid over alle feeditems en nul URL-duplicaten bewijst niet dat inhoudelijk identieke artikelen met verschillende URL's ontbreken.
+- Na de laatste kleine aanpassing van de datumparser is een nieuwe Actions-run vereist; run 42484093153 hoort bij commit `d63c5d81503d1764b91055ff3eeb2e88f41ebb71`, niet bij de huidige branch-head.
