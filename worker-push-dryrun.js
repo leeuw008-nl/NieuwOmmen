@@ -62,7 +62,7 @@ async function collect(s){
  if(s.type==="newsletter")return {source:s.id,status:"not_tested_production_kv",httpStatus:null,count:0,articles:[],error:"Bewust overgeslagen: de feedroute leest productie-KV; alleen route en responsvorm zijn in worker-v280.js geverifieerd.",durationMs:0};
  try{
   const r=await fetch(s.url,{headers:{"User-Agent":"NieuwOmmenBot/1.0"},redirect:"follow",signal:AbortSignal.timeout(15000)});
-  if(!r.ok)return {source:s.id,status:"http_error",httpStatus:r.status,count:0,articles:[],durationMs:Date.now()-started};
+  if(!r.ok){let errorBody="";try{errorBody=(await r.text()).slice(0,300);}catch(e){errorBody="response body unavailable";}return {source:s.id,status:"http_error",httpStatus:r.status,count:0,articles:[],response:{server:r.headers.get("server"),contentType:r.headers.get("content-type"),cfMitigated:r.headers.get("cf-mitigated"),cfRay:r.headers.get("cf-ray"),retryAfter:r.headers.get("retry-after")},error:clean(errorBody),durationMs:Date.now()-started};}
   const body=await r.text();let articles=[];
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
   else if(s.type==="rss")articles=parseRSS(body,s.id,5);
