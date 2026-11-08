@@ -1,5 +1,8 @@
 // Geïsoleerde push-dry-run. Geen KV-bindings, geen scheduled-handler, geen pushcode.
 // Alleen handmatige GET /__dry-run. Haalt openbare feeds op en geeft diagnostiek terug.
+// Dezelfde filterbron als app en productie-Worker.
+import "./article-filter.js";
+
 const SOURCES = [
 {id:"De Stentor",url:"https://www.destentor.nl/ommen/rss.xml",type:"rss"},
 {id:"Gemeente Ommen",url:"https://www.ommen.nl/feed/",type:"rss"},
@@ -56,10 +59,8 @@ if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso
 return out;
 }catch(e){ return []; }
 }
-const GEMEENTE_ZOEK=["Ommen","Lemele","Vilsteren","Beerze","Beerzerveld","Witharen","Archem","Arriën","Arriërveld","Besthmen","Dalmsholte","Eerde","Emsland","Giethmen","Hoogengraven","Junne","Nieuwebrug","Ommerbosch","Ommerkanaal","Ommerschans","Ommerveld","Rotbrink","Stegeren","Stegerveld","Varsen","Vinkenbuurt","Zeesse","Beerzerpoort"].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
- const txt=((article?.title||"")+" "+(article?.description||"")).toLowerCase();
- return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
+ return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(article);
 }
 function isRecentPushArticle(article,now=new Date()){
  if(!article||!article.pubDate)return false;
