@@ -197,3 +197,12 @@ Alle stappen blijven op `test/push-rebuild-2026-11-08`. Geen productiecode, KV, 
 
 ### Inhoudelijke bevestiging plaatsnamen
 De gebruiker heeft bevestigd: Emsland hoort bij de plaatsnamen die voor de filter 'Gemeente Ommen' meetellen. De gedeelde lijst bevat Emsland.
+
+
+## 14. Eerste gedeelde filter getest (8 november 2026)
+- GitHub Actions-run [42488675070](https://github.com/leeuw008-nl/NieuwOmmen/actions/runs/42488675070), commit `1e91d46f6b64894f1c769849dde42ef8e55bf28a`, is geslaagd.
+- De JavaScript-syntaxchecks voor `worker-push-dryrun.js`, `worker-v280.js`, `article-filter.js` en `app.js` zijn geslaagd.
+- De vijf regressietests voor de gedeelde gemeentefilter zijn geslaagd (5 passed, 0 failed).
+- De read-only feeddiagnostiek is geslaagd en de veiligheidsasserties bevestigen: `pushAttempts=0`, `pushSent=0`, `kvReads=0`, `kvWrites=0`; de dry-run heeft geen `scheduled()`-handler.
+- Ommen City bleef in deze run HTTP 403 / Cloudflare challenge; de nieuwsbrief bleef bewust overgeslagen omdat die route productie-KV zou lezen.
+- De run valideert de code op commit `1e91d46`; de latere commit `1849c98` heeft alleen de bevindingendocumentatie bijgewerkt. Er is geen deployment of wijziging aan `main` uitgevoerd.
