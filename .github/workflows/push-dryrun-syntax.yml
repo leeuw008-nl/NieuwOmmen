@@ -43,6 +43,7 @@ jobs:
             uniqueCanonicalArticles: report.uniqueCanonicalArticles,
             duplicateCount: report.duplicateCount,
             duplicates: report.duplicates,
+            filterSimulation: report.filterSimulation,
             articleDetails: report.articleDetails
           }, null, 2));
           if (report.mode !== 'DRY_RUN_ONLY' || report.pushAttempts !== 0 || report.pushSent !== 0 || report.kvReads !== 0 || report.kvWrites !== 0) {
