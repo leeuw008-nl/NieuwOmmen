@@ -1,9 +1,9 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
+// Exact dezelfde filterbron als de browserapp en de regressietests.
+import "./article-filter.js";
 
-const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
- const txt=((article?.title||'')+' '+(article?.description||'')).toLowerCase();
- return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
+ return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(article);
 }
 const BRONNEN = [
 {id:'De Stentor', name:'De Stentor', url:'https://www.destentor.nl/ommen/rss.xml', type:'rss'},
