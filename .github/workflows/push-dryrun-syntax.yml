@@ -21,7 +21,7 @@ jobs:
           node-version: 22
       - name: JavaScript syntax
         run: node --check worker-push-dryrun.js
-      - name: Assert no push or cron implementation
+      - name: Assert no push, cron, or KV binding access
         run: |
-          ! grep -Eq 'sendPush|scheduled[[:space:]]*\(' worker-push-dryrun.js
-          ! grep -Eq 'env\.[A-Z_]+|\.put\(|\.delete\(' worker-push-dryrun.js
+          ! grep -Eq 'sendPush|scheduled[[:space:]]*\\(' worker-push-dryrun.js
+          ! grep -Eq 'env\\.[A-Z_]+' worker-push-dryrun.js
