@@ -179,3 +179,16 @@ Deze gevallen moeten identiek door app en push door de gedeelde inhoudelijke fil
 5. Pas na groene regressietests wordt de module in de app en test-Worker geïntegreerd.
 6. De gedeelde inhoudelijke filter bepaalt artikelgeldigheid en relevantie; gebruikersvoorkeuren, accountstatus, push-toestemming, deduplicatie en aflevering blijven aparte vervolgstappen.
 Alle stappen blijven op `test/push-rebuild-2026-11-08`. Geen productiecode, KV, abonnementen, cron of pushverzending is gewijzigd of gebruikt.
+
+
+## 13. Technische integratiekeuze en open inhoudelijke beslissing (8 november 2026)
+### Browser/Worker-compatibiliteit
+- `index.html` laadt `app.js` met een gewone klassieke `<script>`; dit is geen ES-module.
+- `worker-v280.js` is een ES-module Worker.
+- Er is geen package/build-configuratie in de root die de app momenteel bundelt.
+- Voorkeursontwerp voor één fysieke implementatie: een kleine zelfstandige, browser- en Worker-compatibele shared file zonder DOM- of Cloudflare-afhankelijkheden. De app laadt die vóór `app.js` als klassiek script; de module-Worker laadt exact hetzelfde bestand als side-effect import. De gedeelde API wordt via één gecontroleerde globale namespace beschikbaar gemaakt. Node-tests kunnen dezelfde bronfile rechtstreeks laden.
+- Dit ontwerp voorkomt twee handmatig bijgehouden filterkopieën en vermijdt een brede migratie van de bestaande app naar ES-modules.
+- Dit is nog een ontwerpkeuze; er is nog geen shared module toegevoegd en geen app-/Worker-runtime aangepast.
+
+### Open beslissing: gemeentelijke plaatsnamen
+De huidige app bevat `Emsland` in `GEMEENTE_PLAATSEN`; de Worker bevat die term niet. Omdat deze lijst de inhoudelijke grens bepaalt voor de scope 'gemeente Ommen', wordt deze discrepantie niet automatisch opgelost door de lijsten samen te voegen. De definitieve canonieke lijst moet eerst inhoudelijk worden bevestigd. Tot die tijd blijft de bestaande code ongewijzigd.
