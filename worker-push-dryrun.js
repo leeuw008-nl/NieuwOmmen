@@ -67,7 +67,19 @@ async function collect(s){
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
   else if(s.type==="rss")articles=parseRSS(body,s.id,5);
   else if(s.type==="rtv-vechtdal"){articles=parseRTVVechtdal(body,s.id);if(!articles.length)articles=parseRSS(body,s.id,5);}
-  else {const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;let m;while((m=generic.exec(body))!==null&&articles.length<5){const link="https://www.oost.nl"+m[1],title=m[2].trim().slice(0,120);if(title.length>10)articles.push({title,link,source:s.id,pubDate:null});}}
+  else {
+   const generic=/<a\\b[^>]*href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi;
+   let m;const candidates=[];
+   while((m=generic.exec(body))!==null){
+     const href=m[1].trim();if(!href.includes("/nieuws/"))continue;
+     const title=clean(m[2]).slice(0,140);if(title)candidates.push({href,title});
+     if(articles.length<5&&title.length>15&&!/^https?:/i.test(href)){
+       const link=new URL(href,"https://www.oost.nl").toString();
+       if(new URL(link).pathname!=="/nieuws/vechtdal")articles.push({title,link,source:s.id,pubDate:null});
+     }
+   }
+   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,debugCandidates:candidates.slice(0,40),durationMs:Date.now()-started};
+ }
   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }catch(e){return {source:s.id,status:"error",error:String(e.message||e),count:0,articles:[],durationMs:Date.now()-started};}
 }
