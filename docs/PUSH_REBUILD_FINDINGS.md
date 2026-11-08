@@ -116,3 +116,66 @@ De verschillen zijn bevestigd. Het ontwerp wordt daarom uitgebreid tot één ged
 - Eerst worden alle bronparsers, datumsemantiek en gemeentelijke trefwoorden vergeleken en als fixtures vastgelegd.
 - Daarna wordt de gedeelde module ontworpen en getest in isolatie; pas vervolgens worden app.js en Worker op de testbranch aangesloten.
 - Geen productiecode, productie-KV, abonnementen, cron of pushverzending is bij deze inventarisatie gewijzigd of gebruikt.
+
+
+## 12. Verdiepte inventarisatie parsers, datums en gemeenteclassificatie (8 november 2026)
+
+### 12.1 Gemeenteclassificatie is aantoonbaar niet identiek
+De app in `app.js` gebruikt `GEMEENTE_PLAATSEN` met onder meer `Emsland` en een dubbele vermelding van `Stegeren`. De Worker in `worker-v280.js` gebruikt een kortere lijst zonder `Emsland`. Beide implementaties doen een eenvoudige substring-match op `title + description`.
+Gevolg: dezelfde tekst kan door de app en Worker verschillend worden geclassificeerd. Substring-match kan bovendien toevallige deelwoordmatches opleveren; dit moet in fixtures worden getest voordat een betere token-/plaatsnaamherkenning wordt gekozen.
+
+### 12.2 Datumsemantiek per bron (huidige code)
+| Bron / route | App-gedrag | Worker-gedrag | Geconstateerd risico |
+|---|---|---|---|
+| Algemene RSS/Atom | `parseRSSFull()` gebruikt `new Date()` als datum ontbreekt of niet wordt gevonden | `extractRssDate()` geeft `null`; `parseRSS()` bewaart dit als null | App kan een artikel zonder publicatiedatum als zojuist gepubliceerd behandelen; push weigert het |
+| Gemeente Ommen | Overzicht parseert datum; detailverrijking kan bij ontbrekende echte tijd de pollingtijd invullen en opslaan | Worker gebruikt RSS `/feed/` en RSS-datum; geen overeenkomstige HTML-detailverrijking | Andere bronroute en andere datumkwaliteit; huidige app kan onbekende datum als actueel presenteren |
+| RTV Oost | Eerst `publishedAt`; bij parserfallback wordt pollingtijd uit localStorage gebruikt | Worker generieke linkparser maakt artikelen met `pubDate:null` | App kan fallback-artikelen als recent tonen; Worker weigert ze |
+| RTV Vechtdal | Homepage-parser kent `new Date()` toe; RSS-parser kent ook huidige datum toe als pubDate ontbreekt | Homepage-parser zet kalenderdatum op ISO-middernacht en `_dateOnly:true`; RSS zonder datum wordt null | App behandelt datumloze/alleen-datum-items als exact nu; Worker behandelt datum-only als kalenderdag en onbekend als ongeldig |
+| Vechtdal Centraal | HTML-fallback kent `new Date()` toe; RSS gebruikt huidige datum bij ontbrekende pubDate | Worker gebruikt RSS-parser en kan geen RSS-datum als null bewaren | App-fallback kan oude of onbekende artikelen als nieuw sorteren/tonen; Worker weigert ontbrekende datum |
+| Nieuwsbrief | Parser zet standaard `new Date()` en vervangt die alleen bij geldige datum | Nieuwsbrief is aparte KV-route; scheduled-bronloop slaat nieuwsbrief over | Niet in de gewone bronpipeline; aparte contract-/filterintegratie vereist |
+
+### 12.3 Parserarchitectuur en bronconfiguratie
+- De actieve app-parsers staan grotendeels inline in `app.js`. De map `parsing/` bevat losse exports met oudere of afwijkende varianten. Deze map mag niet zonder verificatie als de runtime-parser van de app worden beschouwd.
+- De app en Worker hebben verschillende bronconfiguraties. Voorbeeld: Gemeente Ommen gebruikt in de app `https://www.ommen.nl/actueel/` als HTML-overzicht, maar de Worker gebruikt `https://www.ommen.nl/feed/` als RSS.
+- RTV Oost gebruikt in de app een parser op `publishedAt` en een lokale pollingcache; de Worker gebruikt een eenvoudige generieke linkparser.
+- RTV Vechtdal gebruikt in de app de homepage en heeft RSS als fallback; de Worker probeert de homepage en valt daarna terug op RSS.
+- Vechtdal Centraal heeft in de app meerdere routes: feed, homepage en rss2json-fallback. De Worker gebruikt alleen de feed.
+- De bronconfiguratie en parserkeuze moeten dus eerst als één expliciet bronregister worden vastgelegd. Een gedeelde filter bovenop twee verschillende bronroutes is niet voldoende.
+
+### 12.4 Voorgesteld canoniek artikelcontract
+De gedeelde pipeline moet per artikel ten minste de volgende velden opleveren:
+- `id`: stabiele canonical artikelidentificatie;
+- `sourceId`: één vaste bron-ID uit centraal bronregister;
+- `title`, `description`, `link`: opgeschoonde tekst en canonical URL;
+- `publishedAt`: ISO-8601 UTC-timestamp of `null`;
+- `datePrecision`: `instant`, `date` of `unknown`;
+- `dateOrigin`: bijvoorbeeld `rss`, `jsonld`, `publishedAt`, `detail` of `unknown`;
+- `articleType`: `article`, `newsletter`, `category`, `navigation` of `unknown`;
+- `isFallback`: expliciete indicatie van fallback-/storingsitems;
+- `filterVersion`: versie van normalisatie/classificatie.
+Pollingtijd mag nooit worden opgeslagen als publicatietijd. Als de bron geen publicatiedatum geeft, blijft `publishedAt=null` en `datePrecision='unknown'`; een eventuele sorteerfallback is presentatiegedrag en mag geen actualiteitsbeslissing beïnvloeden.
+
+### 12.5 Eerste regressie-fixturematrix
+Deze gevallen moeten identiek door app en push door de gedeelde inhoudelijke filter lopen:
+1. Exact dezelfde titel/description met plaatsnaam Emsland: classificatie mag niet verschillen.
+2. Plaatsnaam als volledig woord versus als deel van een ander woord: geen onbedoelde substringmatch.
+3. Plaatsnaam in titel, alleen in description, en in geen van beide.
+4. Geldige RSS-timestamp binnen 6 uur, exact op 6 uur, ouder dan 6 uur en 1 uur in de toekomst.
+5. Datum-only artikel vandaag, gisteren en rond middernacht Europe/Amsterdam.
+6. Ontbrekende, lege en ongeldige datum: nooit automatisch `new Date()` als publicatiedatum.
+7. RTV Oost artikelkaart met echte `publishedAt`, zonder datum, en een categorielink zoals `/nieuws/vechtdal`.
+8. RTV Vechtdal HTML-kaart met kalenderdatum versus RSS-item met tijd.
+9. Vechtdal Centraal feedartikel versus HTML-fallback; dezelfde canonical URL moet dezelfde artikelidentiteit opleveren.
+10. Gemeente Ommen HTML-overzicht versus RSS-item; dezelfde publicatie mag niet twee verschillende classificaties of datums krijgen.
+11. Category-/tag-/navigation-links, lege titels, fallback-storingsmeldingen en ongeldige links worden niet als nieuwsartikel geaccepteerd.
+12. Trackingparameters en URL-fragmenten veranderen de artikelidentiteit niet.
+13. Nieuwsbrief krijgt een expliciet apart artikeltype en wordt niet per ongeluk als reguliere bron behandeld.
+
+### 12.6 Besluit voor implementatievolgorde
+1. Maak eerst het centrale bronregister en documenteer per bron de gewenste primaire route, toegestane fallback en parser.
+2. Leg vervolgens datumextractie en datumprecisie vast; verwijder impliciete pollingtijd als publicatiedatum.
+3. Maak pure normalisatie- en filterfuncties plus fixtures, zonder app- of Worker-koppeling.
+4. Laat de bestaande app-artikelen en Worker-diagnostiek als invoer door deze testmodule lopen en rapporteer verschillen; nog geen live selectie vervangen.
+5. Pas na groene regressietests wordt de module in de app en test-Worker geïntegreerd.
+6. De gedeelde inhoudelijke filter bepaalt artikelgeldigheid en relevantie; gebruikersvoorkeuren, accountstatus, push-toestemming, deduplicatie en aflevering blijven aparte vervolgstappen.
+Alle stappen blijven op `test/push-rebuild-2026-11-08`. Geen productiecode, KV, abonnementen, cron of pushverzending is gewijzigd of gebruikt.
