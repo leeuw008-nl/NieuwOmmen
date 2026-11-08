@@ -13,7 +13,7 @@ const SOURCES = [
 {id:"Nieuwsbrief",url:null,type:"newsletter"}
 ];
 function clean(s){return (s||"").replace(/<!\[CDATA\[|\]\]>/g,"").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();}
-function parseDate(xml){const m=xml.match(/<(?:pubDate|published|updated|dc:date|date)[^>]*>([^<]+)<\//i);if(!m)return null;const d=new Date(clean(m[1]));return Number.isNaN(d.getTime())?null:d.toISOString();}
+function parseDate(xml){const patterns=[/<pubDate[^>]*>([^<]+)<\\/i,/<published[^>]*>([^<]+)<\\/i,/<updated[^>]*>([^<]+)<\\/i,/<dc:date[^>]*>([^<]+)<\\/i,/<date[^>]*>([^<]+)<\\/i];for(const p of patterns){const m=xml.match(p);if(m){const d=new Date(clean(m[1]));if(!Number.isNaN(d.getTime()))return d.toISOString();}}return null;}
 function parseRss(xml,source,max=5){
  const blocks=[...xml.matchAll(/<(item|entry)[^>]*>([\s\S]*?)<\/\1>/gi)].slice(0,max);
  return blocks.map(x=>{const b=x[2];const title=clean((b.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||"");
