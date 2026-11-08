@@ -61,7 +61,8 @@
     if (explicit === "article") return "article";
     const p = url.pathname.toLowerCase().replace(/\/+$/, "");
     const parts = p.split("/").filter(Boolean);
-    if (!parts.length) return "navigation";
+    // RTV Vechtdal publiceert nieuwsdetailpagina's als homepage-query met type=detail en asset-ID.
+    if (!parts.length) return url.searchParams.get("type") === "detail" && url.searchParams.has("asset") ? "article" : "navigation";
     if (parts.some(part => NON_ARTICLE_SEGMENTS.has(part))) return "navigation";
     // RTV Oost uses /nieuws/vechtdal for its section and /nieuws/{id}/{slug} for stories.
     if (url.hostname.endsWith("oost.nl") && p === "/nieuws/vechtdal") return "category";
