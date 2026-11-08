@@ -10,7 +10,7 @@ const SOURCES = [
 {id:"RTV Oost",url:"https://www.oost.nl/nieuws/vechtdal",type:"oost"},
 {id:"RTV Vechtdal",url:"https://rtvvechtdal.nl/",type:"vechtdal"},
 {id:"Vechtdal Centraal",url:"https://www.vechtdalcentraal.nl/feed/",type:"rss"},
-{id:"Nieuwsbrief",url:"https://nieuwommen.leeuw008.nl/",type:"newsletter"}
+{id:"Nieuwsbrief",url:"https://nieuwommen.leeuw008.nl/api/newsletter/feed",type:"newsletter"}
 ];
 function clean(s){return (s||"").replace(/<!\[CDATA\[|\]\]>/g,"").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();}
 function parseDate(xml){const m=xml.match(/<(?:pubDate|published|updated|dc:date|date)[^>]*>([^<]+)<\//i);if(!m)return null;const d=new Date(clean(m[1]));return Number.isNaN(d.getTime())?null:d.toISOString();}
