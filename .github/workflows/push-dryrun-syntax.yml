@@ -5,6 +5,11 @@ on:
       - test/push-rebuild-2026-11-08
     paths:
       - worker-push-dryrun.js
+      - worker-v280.js
+      - article-filter.js
+      - app.js
+      - index.html
+      - tests/**
       - .github/workflows/push-dryrun-syntax.yml
   workflow_dispatch:
 permissions:
@@ -19,8 +24,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: JavaScript syntax
-        run: node --check worker-push-dryrun.js
+      - name: JavaScript syntax and shared-filter regression tests
+        run: |
+          node --check worker-push-dryrun.js
+          node --check worker-v280.js
+          node --check article-filter.js
+          node --check app.js
+          node --test tests/article-filter.test.mjs
       - name: Read-only live feed diagnostics
         timeout-minutes: 2
         run: |
