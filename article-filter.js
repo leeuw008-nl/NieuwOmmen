@@ -42,7 +42,7 @@
     const explicitOrigin = typeof article?.dateOrigin === "string" ? article.dateOrigin : "";
     const legacyPolling = article?._dateOrigin === "polling" || article?.isPollingDate === true;
     const dateOnly = article?.datePrecision === "date" || article?._dateOnly === true;
-    const fallbackDate = article?.isFallback === true || legacyPolling || explicitOrigin === "polling";
+    const fallbackDate = article?.isFallback === true || legacyPolling || explicitOrigin === "polling" || article?._realDate === false || explicitOrigin === "unknown";
     const precision = fallbackDate || !d ? "unknown" : (dateOnly ? "date" : (article?.datePrecision === "instant" ? "instant" : "instant"));
     const origin = fallbackDate ? "polling" : (explicitOrigin || (dateOnly ? "source-date" : (d ? (article?._realDate === false ? "unknown" : "source-timestamp") : "unknown")));
     return { date: d, datePrecision: precision, dateOrigin: origin, reliable: !!d && !fallbackDate };
