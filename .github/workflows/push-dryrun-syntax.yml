@@ -21,6 +21,33 @@ jobs:
           node-version: 22
       - name: JavaScript syntax
         run: node --check worker-push-dryrun.js
+      - name: Read-only live feed diagnostics
+        timeout-minutes: 2
+        run: |
+          cp worker-push-dryrun.js /tmp/worker-push-dryrun.mjs
+          node --input-type=module <<'NODE'
+          import worker from 'file:///tmp/worker-push-dryrun.mjs';
+          const response = await worker.fetch(new Request('https://local.invalid/__dry-run'));
+          const report = await response.json();
+          console.log(JSON.stringify({
+            mode: report.mode,
+            pushAttempts: report.pushAttempts,
+            pushSent: report.pushSent,
+            kvReads: report.kvReads,
+            kvWrites: report.kvWrites,
+            sources: report.results.map(x => ({
+              source: x.source, status: x.status, httpStatus: x.httpStatus ?? null,
+              count: x.count, error: x.error ?? null
+            })),
+            articleCount: report.articleCount,
+            uniqueCanonicalArticles: report.uniqueCanonicalArticles,
+            duplicateCount: report.duplicateCount,
+            duplicates: report.duplicates
+          }, null, 2));
+          if (report.mode !== 'DRY_RUN_ONLY' || report.pushAttempts !== 0 || report.pushSent !== 0 || report.kvReads !== 0 || report.kvWrites !== 0) {
+            throw new Error('Dry-run safety invariants failed');
+          }
+          NODE
       - name: Assert no push, cron, or KV binding access
         run: |
           ! grep -Eq 'sendPush|scheduled[[:space:]]*\\(' worker-push-dryrun.js
