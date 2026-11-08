@@ -72,7 +72,7 @@ async function collect(s){
    let m;const candidates=[];
    while((m=generic.exec(body))!==null){
      const href=m[1].trim();if(!href.includes("/nieuws/"))continue;
-     const title=clean(m[2]).slice(0,140);if(title)candidates.push({href,title});
+     const title=clean(m[2]).slice(0,140);if(title)candidates.push({href,title,context:body.slice(Math.max(0,m.index-350),Math.min(body.length,m.index+850))});
      if(articles.length<5&&title.length>15&&!/^https?:/i.test(href)){
        const link=new URL(href,"https://www.oost.nl").toString();
        if(new URL(link).pathname!=="/nieuws/vechtdal")articles.push({title,link,source:s.id,pubDate:null});
