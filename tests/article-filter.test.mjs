@@ -59,9 +59,13 @@ test("ongeldige titels, links, fallback-items en navigatiepagina's worden geweig
   }
 });
 
-test("RTV Oost artikelroute en expliciet nieuwsbriefartikel blijven geldig", () => {
+test("RTV Oost en query-gebaseerde RTV Vechtdal-artikelroutes blijven geldig", () => {
   assert.equal(filter.isValidArticle(article({
     link: "https://www.oost.nl/nieuws/3715461/een-echt-artikel"
+  })), true);
+  assert.equal(filter.isValidArticle(article({
+    link: "https://rtvvechtdal.nl/?&type=detail&asset=9689",
+    _dateOnly: true
   })), true);
   assert.equal(filter.isValidArticle(article({
     articleType: "newsletter",
