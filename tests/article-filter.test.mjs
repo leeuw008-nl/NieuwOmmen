@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const sandbox = {};
+const sandbox = { URL };
 vm.runInNewContext(readFileSync(new URL("../article-filter.js", import.meta.url), "utf8"), sandbox);
 const filter = sandbox.NieuwOmmenArticleFilter;
 const now = new Date("2026-11-08T12:00:00.000Z");
