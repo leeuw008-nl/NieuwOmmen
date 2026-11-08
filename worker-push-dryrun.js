@@ -31,7 +31,7 @@ function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...
 async function collect(s){
  const started=Date.now();
  try{
-  const r=await fetch(s.url,{headers:{"User-Agent":"NieuwOmmen-DryRun/1.0"},redirect:"follow"});
+  const r=await fetch(s.url,{headers:{"User-Agent":"NieuwOmmen-DryRun/1.0"},redirect:"follow",signal:AbortSignal.timeout(15000)});
   if(!r.ok)return {source:s.id,status:"http_error",httpStatus:r.status,count:0,articles:[],durationMs:Date.now()-started};
   const body=await r.text();let articles=[];
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
