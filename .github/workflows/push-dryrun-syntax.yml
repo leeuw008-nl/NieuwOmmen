@@ -37,7 +37,7 @@ jobs:
             kvWrites: report.kvWrites,
             sources: report.results.map(x => ({
               source: x.source, status: x.status, httpStatus: x.httpStatus ?? null,
-              count: x.count, error: x.error ?? null, response: x.response ?? null, debugCandidates: x.debugCandidates ?? null
+              count: x.count, error: x.error ?? null, response: x.response ?? null
             })),
             articleCount: report.articleCount,
             uniqueCanonicalArticles: report.uniqueCanonicalArticles,
