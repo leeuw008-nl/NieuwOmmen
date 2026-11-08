@@ -89,7 +89,7 @@ function parseRTVVechtdalECHT(html){
     let link=m[2].replace(/&amp;/g,'&'); if(!link.startsWith('http')) link='https://www.rtvvechtdal.nl'+link;
     let intro=m[4].replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     if(intro.length>200) intro=intro.slice(0,200)+' [...]'; else if(intro) intro=intro+' [...]'; else intro=m[3].trim()+' [...]';
-    if(pollCache[link]==null){pollCache[link]=pd.toISOString(); dirty=true;} else if(pd.getHours()!=0 || pd.getMinutes()!=0){pd=new Date(pollCache[link]);} if(dirty) setVechtdalCache(pollCache); items.push({title:m[3].trim(), link, pubDate:pd, description:intro});
+    if(pollCache[link]==null){pollCache[link]=pd.toISOString(); dirty=true;} else if(pd.getHours()!=0 || pd.getMinutes()!=0){pd=new Date(pollCache[link]);} if(dirty) setVechtdalCache(pollCache); items.push({title:m[3].trim(), link, pubDate:pd, _dateOnly:dparts.length===3, _dateOrigin:dparts.length===3?'source-date':'polling', description:intro});
   }
   if(items.length===0){
     const re=/<div class="allmode_date">([^<]+)<\/div>[\s\S]{0,500}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\/a>/gi;
@@ -111,7 +111,7 @@ function parseRTVVechtdalECHT(html){
         pd = new Date(pollingMoment);
       }
       let link=m[2].replace(/&amp;/g,'&'); if(!link.startsWith('http')) link='https://www.rtvvechtdal.nl'+link;
-      items.push({title:m[3].trim(), link, pubDate:pd, description:m[3].trim()+' [...]'});
+      items.push({title:m[3].trim(), link, pubDate:pd, _dateOnly:dparts.length===3, _dateOrigin:dparts.length===3?'source-date':'polling', description:m[3].trim()+' [...]'});
     }
   }
   return items;
@@ -132,10 +132,10 @@ function parseNieuwsbriefECHT(json){
     return items.map(it=>{
       const title = it.title || it.subject || 'Nieuwsbrief';
       const link = it.link || it.url || 'https://nieuwommen.leeuw008.nl/';
-      let pubDate = new Date();
-      if(it.pubDate || it.date || it.updated){ const d=new Date(it.pubDate||it.date||it.updated); if(!isNaN(d.getTime())) pubDate=d; }
+      let pubDate = new Date(); let hasRealDate=false;
+      if(it.pubDate || it.date || it.updated){ const d=new Date(it.pubDate||it.date||it.updated); if(!isNaN(d.getTime())) {pubDate=d;hasRealDate=true;} }
       const desc = it.description || it.body || it.excerpt || title;
-      return {title: title.slice(0,120), link, pubDate, articleType:'newsletter', _dateOrigin:(it.pubDate||it.date||it.updated)?'newsletter':'polling', description: desc.length>200 ? desc.slice(0,200).trimEnd()+' […]' : desc, fullText: desc, source:'Nieuwsbrief', id:'Nieuwsbrief'};
+      return {title: title.slice(0,120), link, pubDate, articleType:'newsletter', _dateOrigin:hasRealDate?'newsletter':'polling', description: desc.length>200 ? desc.slice(0,200).trimEnd()+' […]' : desc, fullText: desc, source:'Nieuwsbrief', id:'Nieuwsbrief'};
     }).slice(0,10);
   }catch(e){ console.log('parse nieuwsbrief fail', e.message); return []; }
 }
@@ -147,9 +147,9 @@ function parseRTVOostECHT(html){
     let dateStr=m[1]; let link=m[2]; if(link.startsWith('/')) link='https://www.oost.nl'+link;
     let category=m[3].trim().toUpperCase(); let title=m[4].trim();
     if(['ALLE NIEUWS','ZWOLLE','TWENTE'].includes(title.toUpperCase())) continue;
-    let pd=new Date(dateStr); if(isNaN(pd.getTime())) pd=new Date();
+    let pd=new Date(dateStr); const hasRealDate=!isNaN(pd.getTime()); if(!hasRealDate) pd=new Date();
     let finalTitle = ['NIEUWS','112','ECONOMIE','SPORT'].includes(category) ? category+': '+title : title;
-    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:pd, description:title+' [...]'});
+    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:pd, _dateOrigin:hasRealDate?'publishedAt':'polling', description:title+' [...]'});
   }
   if(items.length===0){
     const re2 = /<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\s\S]*?<a[^>]+href=["'](\/nieuws\/[^"']{10,150})["'][^>]*>[\s\S]*?<h[2-3][^>]*>([^<]{12,200})<\/h3>/gi;
@@ -157,7 +157,7 @@ function parseRTVOostECHT(html){
       let dateStr=m[1]; let link=m[2]; if(link.startsWith('/')) link='https://www.oost.nl'+link;
       let title=m[3].trim(); if(title.toLowerCase().includes('alle nieuws')) continue;
       let pd=new Date(dateStr); if(isNaN(pd.getTime())) continue;
-      if(!items.find(x=>x.link===link)) items.push({title, link, pubDate:pd, description:title+' [...]'});
+      if(!items.find(x=>x.link===link)) items.push({title, link, pubDate:pd, _dateOrigin:'publishedAt', description:title+' [...]'});
     }
   }
   if(items.length>0){ items.sort((a,b)=>b.pubDate-a.pubDate); console.log('[RTV Oost] gevonden', items.length, 'met echte publishedAt'); return items; }
@@ -169,7 +169,7 @@ function parseRTVOostECHT(html){
     let inner=blockMatch[2]; let catMatch=inner.match(/<(?:span|div)[^>]*>\s*(NIEUWS|112|ECONOMIE|SPORT)\s*<\/(?:span|div)>/i); let category=catMatch?catMatch[1].toUpperCase():''; let titleMatch=inner.match(/<h[23][^>]*>([^<]{12,180})<\/h[23]>/i); let title=titleMatch?titleMatch[1].trim():''; if(!title||title.length<12) continue;
     if(['alle nieuws','zwolle','twente','enschede','vechtdal','salland','kop van overijssel'].includes(title.toLowerCase())) continue;
     let finalTitle=category?category+': '+title:title;
-    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:getPoll(link), description:title+' [...]'});
+    if(!items.find(x=>x.link===link)) items.push({title:finalTitle, link, pubDate:getPoll(link), _dateOrigin:'polling', description:title+' [...]'});
   }
   if(dirty) setOostPollCache(pollCache);
   items.sort((a,b)=>b.pubDate-a.pubDate);
@@ -644,7 +644,7 @@ function parseGemeenteOverview(html){
     const desc = extractDescAfter(m.index, clean);
     const block = clean.substring(Math.max(0,m.index-500), m.index+2500);
     let tempDate = extractGemeenteDate(block);
-    results.push({title:title.slice(0,130), link:full, pubDate:tempDate, description:desc});
+    results.push({title:title.slice(0,130), link:full, pubDate:tempDate, _dateOnly:!!tempDate && tempDate.getHours()===0 && tempDate.getMinutes()===0, _dateOrigin:tempDate?'source-date':'unknown', description:desc});
   }
   return results.slice(0,max);
 }
@@ -737,26 +737,26 @@ async function enrichGemeenteWithDetail(arts){
       }
       const realDate = extractGemeenteDate(html);
       if(realDate && (realDate.getHours()!==0 || realDate.getMinutes()!==0)){
-        a.pubDate=realDate;
+        a.pubDate=realDate; a._dateOrigin='detail'; a._dateOnly=false;
         cache[a.link]={iso:realDate.toISOString(), ts:now};
       }else if(realDate){
         const d=new Date(realDate);
         d.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
-        a.pubDate=d;
+        a.pubDate=d; a._dateOrigin='source-date'; a._dateOnly=true;
         cache[a.link]={iso:d.toISOString(), ts:now};
       }else{
         const fallback = a.pubDate && !isNaN(a.pubDate.getTime()) ? new Date(a.pubDate) : new Date();
         if(fallback.getHours()===0 && fallback.getMinutes()===0){
           fallback.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
         }
-        a.pubDate=fallback;
+        a.pubDate=fallback; a._dateOrigin='polling'; a._dateOnly=false;
         cache[a.link]={iso:fallback.toISOString(), ts:now};
       }
     }catch(e){
       if(a.pubDate && a.pubDate.getHours()===0){
         const fb=new Date(a.pubDate);
         fb.setHours(pollingNow.getHours(), pollingNow.getMinutes(), pollingNow.getSeconds());
-        a.pubDate=fb;
+        a.pubDate=fb; a._dateOrigin='source-date'; a._dateOnly=true;
       }
     }
   }));
