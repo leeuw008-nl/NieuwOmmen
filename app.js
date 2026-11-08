@@ -224,17 +224,8 @@ function parseRTVVechtdalFull(html){
 }
 
 
-const GEMEENTE_PLAATSEN = [
-  'Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld',
-  'Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug',
-  'Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld',
-  'Varsen','Vinkenbuurt','Zeesse','Stegeren','Beerzerpoort','Ommerschans'
-];
-const GEMEENTE_ZOEK = GEMEENTE_PLAATSEN.map(p=>p.toLowerCase());
-
 function isGemeenteArtikel(art){
-  const txt = (art.title + ' ' + (art.description||'')).toLowerCase();
-  return GEMEENTE_ZOEK.some(pl => txt.includes(pl));
+  return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(art);
 }
 
 let state = {}; let allArticles = []; let loadedSources = new Set();
@@ -991,10 +982,11 @@ function renderArticles(){
   let filtered = allArticles.filter(a=>{
     const s=state[a.id];
     if(!s || !s.aan) return false;
+    // Fallbackmeldingen blijven als bronstatus zichtbaar; inhoudsitems moeten de gedeelde validatie passeren.
+    if(!a.isFallback && !globalThis.NieuwOmmenArticleFilter.isValidArticle(a)) return false;
     if(s.vandaag){
       if(a.isFallback) return false;
-      if(!a.pubDate || isNaN(a.pubDate.getTime())) return false;
-      if(!isSameDay(a.pubDate, today)) return false;
+      if(!globalThis.NieuwOmmenArticleFilter.isToday(a, today)) return false;
     }
     if(s.scope==='gemeente'){
       if(!isGemeenteArtikel(a)) return false;
