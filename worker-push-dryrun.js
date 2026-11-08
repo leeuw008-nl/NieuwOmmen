@@ -56,6 +56,30 @@ if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso
 return out;
 }catch(e){ return []; }
 }
+const GEMEENTE_ZOEK=["Ommen","Lemele","Vilsteren","Beerze","Beerzerveld","Witharen","Archem","Arriën","Arriërveld","Besthmen","Dalmsholte","Eerde","Emsland","Giethmen","Hoogengraven","Junne","Nieuwebrug","Ommerbosch","Ommerkanaal","Ommerschans","Ommerveld","Rotbrink","Stegeren","Stegerveld","Varsen","Vinkenbuurt","Zeesse","Beerzerpoort"].map(x=>x.toLowerCase());
+function isGemeenteArtikel(article){
+ const txt=((article?.title||"")+" "+(article?.description||"")).toLowerCase();
+ return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
+}
+function isRecentPushArticle(article,now=new Date()){
+ if(!article||!article.pubDate)return false;
+ const d=new Date(article.pubDate);if(Number.isNaN(d.getTime()))return false;
+ if(article._dateOnly){
+  const fmt=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Amsterdam",year:"numeric",month:"2-digit",day:"2-digit"});
+  return fmt.format(d)===fmt.format(now);
+ }
+ const ageMs=now.getTime()-d.getTime();
+ return ageMs>=-60*60*1000&&ageMs<=6*60*60*1000;
+}
+function simulateFilters(articles,now=new Date()){
+ const perArticle=articles.map(a=>{
+  const recent=isRecentPushArticle(a,now);
+  return {source:a.source,title:a.title,pubDate:a.pubDate||null,dateOnly:!!a._dateOnly,recent,gemeenteMatch:isGemeenteArtikel(a),result:!a.pubDate?"rejected_missing_date":recent?"date_eligible":"rejected_date"};
+ });
+ const bySource={};
+ for(const a of perArticle){const s=bySource[a.source]||(bySource[a.source]={total:0,dateEligible:0,rejectedDate:0,missingDate:0,gemeenteMatch:0});s.total++;if(a.recent)s.dateEligible++;else if(!a.pubDate)s.missingDate++;else s.rejectedDate++;if(a.gemeenteMatch)s.gemeenteMatch++;}
+ return {checkedAt:now.toISOString(),rule:"Exacte isRecentPushArticle()-logica uit worker-v280.js; tijdvenster -1 uur tot +6 uur; _dateOnly alleen huidige datum Europe/Amsterdam.",dateEligible:perArticle.filter(x=>x.recent).length,rejectedDate:perArticle.filter(x=>!x.recent&&!!x.pubDate).length,missingDate:perArticle.filter(x=>!x.pubDate).length,gemeenteKeywordMatches:perArticle.filter(x=>x.gemeenteMatch).length,bySource,articles:perArticle};
+}
 function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|fbclid|gclid|mc_)/i.test(k))u.searchParams.delete(k);u.hostname=u.hostname.toLowerCase();return u.toString().replace(/\/$/,"");}catch{return link.trim();}}
 async function collect(s){
  const started=Date.now();
@@ -95,6 +119,6 @@ export default {async fetch(request){
  const results=await Promise.all(SOURCES.map(collect));
  const seen=new Map(),duplicates=[];
  for(const result of results)for(const a of result.articles){const key=canonical(a.link);if(seen.has(key))duplicates.push({canonicalUrl:key,firstSource:seen.get(key),duplicateSource:a.source,title:a.title});else seen.set(key,a.source);}
- const articles=results.flatMap(x=>x.articles);
- return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,articleDetails:articles.map(a=>({source:a.source,title:a.title,url:a.link,pubDate:a.pubDate||null})),results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
+ const articles=results.flatMap(x=>x.articles);\n const filterSimulation=simulateFilters(articles);
+ return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,filterSimulation,articleDetails:articles.map(a=>({source:a.source,title:a.title,url:a.link,pubDate:a.pubDate||null})),results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 }};
