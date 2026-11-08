@@ -224,17 +224,8 @@ function parseRTVVechtdalFull(html){
 }
 
 
-const GEMEENTE_PLAATSEN = [
-  'Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld',
-  'Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug',
-  'Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld',
-  'Varsen','Vinkenbuurt','Zeesse','Stegeren','Beerzerpoort','Ommerschans'
-];
-const GEMEENTE_ZOEK = GEMEENTE_PLAATSEN.map(p=>p.toLowerCase());
-
 function isGemeenteArtikel(art){
-  const txt = (art.title + ' ' + (art.description||'')).toLowerCase();
-  return GEMEENTE_ZOEK.some(pl => txt.includes(pl));
+  return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(art);
 }
 
 let state = {}; let allArticles = []; let loadedSources = new Set();
