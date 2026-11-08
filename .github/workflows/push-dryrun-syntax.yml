@@ -1,0 +1,27 @@
+name: Validate isolated push dry-run
+on:
+  push:
+    branches:
+      - test/push-rebuild-2026-11-08
+    paths:
+      - worker-push-dryrun.js
+      - .github/workflows/push-dryrun-syntax.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax-and-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/push-rebuild-2026-11-08
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax
+        run: node --check worker-push-dryrun.js
+      - name: Assert no push or cron implementation
+        run: |
+          ! grep -Eq 'sendPush|scheduled[[:space:]]*\(' worker-push-dryrun.js
+          ! grep -Eq 'env\.[A-Z_]+|\.put\(|\.delete\(' worker-push-dryrun.js
