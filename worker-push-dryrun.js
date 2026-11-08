@@ -10,11 +10,11 @@ const SOURCES = [
 {id:"RTV Oost",url:"https://www.oost.nl/nieuws/vechtdal",type:"oost"},
 {id:"RTV Vechtdal",url:"https://rtvvechtdal.nl/",type:"vechtdal"},
 {id:"Vechtdal Centraal",url:"https://www.vechtdalcentraal.nl/feed/",type:"rss"},
-{id:"Nieuwsbrief",url:"https://nieuwommen.leeuw008.nl/newsletter/feed",type:"newsletter"}
+{id:"Nieuwsbrief",url:"https://nieuwommen.leeuw008.nl/",type:"newsletter"}
 ];
 function clean(s){return (s||"").replace(/<!\[CDATA\[|\]\]>/g,"").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();}
 function parseDate(xml){const m=xml.match(/<(?:pubDate|published|updated|dc:date|date)[^>]*>([^<]+)<\//i);if(!m)return null;const d=new Date(clean(m[1]));return Number.isNaN(d.getTime())?null:d.toISOString();}
-function parseRss(xml,source,max=8){
+function parseRss(xml,source,max=5){
  const blocks=[...xml.matchAll(/<(item|entry)[^>]*>([\s\S]*?)<\/\1>/gi)].slice(0,max);
  return blocks.map(x=>{const b=x[2];const title=clean((b.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||"");
  let link=(b.match(/<link[^>]*>([\s\S]*?)<\/link>/i)||[])[1]||"";
@@ -24,7 +24,7 @@ function parseRss(xml,source,max=8){
 }
 function parseVechtdal(html,source){
  const out=[];const re=/<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;let m;
- while((m=re.exec(html))&&out.length<8){let link=m[1];if(link.startsWith("/"))link="https://rtvvechtdal.nl"+link;const d=m[2].match(/(\d{2})-(\d{2})-(\d{4})/);out.push({source,title:clean(m[3]),link,pubDate:d?new Date(Date.UTC(+d[3],+d[2]-1,+d[1])).toISOString():null});}
+ while((m=re.exec(html))&&out.length<5){let link=m[1];if(link.startsWith("/"))link="https://rtvvechtdal.nl"+link;const d=m[2].match(/(\d{2})-(\d{2})-(\d{4})/);out.push({source,title:clean(m[3]),link,pubDate:d?new Date(Date.UTC(+d[3],+d[2]-1,+d[1])).toISOString():null});}
  return out;
 }
 function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|fbclid|gclid|mc_)/i.test(k))u.searchParams.delete(k);u.hostname=u.hostname.toLowerCase();return u.toString().replace(/\/$/,"");}catch{return link.trim();}}
@@ -37,7 +37,7 @@ async function collect(s){
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
   else if(s.type==="rss")articles=parseRss(body,s.id);
   else if(s.type==="vechtdal"){articles=parseVechtdal(body,s.id);if(!articles.length)articles=parseRss(body,s.id);}
-  else {const re=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,160})</gi;let m;while((m=re.exec(body))&&articles.length<8)articles.push({source:s.id,title:clean(m[2]),link:"https://www.oost.nl"+m[1],pubDate:null});}
+  else {const re=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,160})</gi;let m;while((m=re.exec(body))&&articles.length<5)articles.push({source:s.id,title:clean(m[2]),link:"https://www.oost.nl"+m[1],pubDate:null});}
   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }catch(e){return {source:s.id,status:"error",error:String(e.message||e),count:0,articles:[],durationMs:Date.now()-started};}
 }
