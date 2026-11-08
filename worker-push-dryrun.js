@@ -96,9 +96,9 @@ async function collect(s){
    let m;const candidates=[];
    while((m=generic.exec(body))!==null){
      const href=m[1].trim();
-     if(!/^\\/nieuws\\/\\d+\\/[^/]+/.test(href))continue;
+      const pathParts=href.split("/"); if(!href.startsWith("/nieuws/")||pathParts.length<4||!/^\d+$/.test(pathParts[2])||!pathParts[3])continue;
      const anchor=m[0];
-     const h3=anchor.match(/<h3[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\\s\\S]*?)<\\/h3>/i);
+      const h3=anchor.match(/<h3[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/h3>/i);
      const title=clean(h3?h3[1]:m[2]).slice(0,120);
      const published=(anchor.match(/publishedAt=["']([^"']+)["']/i)||[])[1]||null;
      if(title)candidates.push({href,title,publishedAt:published});
