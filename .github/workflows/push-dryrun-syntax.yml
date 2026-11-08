@@ -1,16 +1,6 @@
 name: Validate isolated push dry-run
 on:
-  push:
-    branches:
-      - test/push-rebuild-2026-11-08
-    paths:
-      - worker-push-dryrun.js
-      - worker-v280.js
-      - article-filter.js
-      - app.js
-      - index.html
-      - tests/**
-      - .github/workflows/push-dryrun-syntax.yml
+  # Alleen handmatig starten: voorkomt een notificatie bij iedere kleine commit.
   workflow_dispatch:
 permissions:
   contents: read
