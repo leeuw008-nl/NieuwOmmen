@@ -85,3 +85,34 @@ Geen live Worker, cron-trigger, abonnement, KV-data of productie-push gewijzigd.
 - Gemeentelijke trefwoorden: 10 van 41 titels matchten. Dit is niet gelijk aan tien pushberichten. De echte abonnementskeuzes en scopes uit productie-SYNC/SUBS zijn niet uitgelezen en blijven buiten de simulatie.
 - De nieuwe RTV Oost-parser is uitsluitend testcode in `worker-push-dryrun.js`. De productieparser in `worker-v280.js` is ongewijzigd en selecteert nog categorie-/navigatielinks. Een productiecorrectie is dus nog niet uitgevoerd of uitgerold.
 - Veiligheidsasserties geslaagd: pushpogingen 0, pushverzendingen 0, KV-lezingen 0, KV-schrijfacties 0; geen Worker-deployment of cronactivatie.
+
+
+## 11. Eerste inventarisatie app-filter versus pushfilter (8 november 2026)
+Bestanden gecontroleerd op testbranch: `app.js`, `worker-v280.js` en `push.js`. Dit is een statische code-inspectie; er is geen app- of Worker-runtime aangeroepen.
+
+### App-weergave in `app.js`
+- `renderArticles()` bouwt de zichtbare lijst uit `allArticles`.
+- Per bron gelden gebruikersinstellingen `aan`, `vandaag` en `scope`.
+- `vandaag` betekent kalenderdag via `isSameDay()`; dit is niet hetzelfde als een rollend venster van zes uur.
+- `scope==='gemeente'` gebruikt `isGemeenteArtikel()`, dat titel plus description tegen `GEMEENTE_ZOEK` controleert.
+- Er is geen algemene zes-uursactualiteitsfilter in `renderArticles()`. De app kan dus artikelen tonen die ouder zijn dan zes uur zolang de gebruiker niet voor VANDAAG heeft gekozen.
+- De zoekbalk filtert aanvullend op titel, description en bron.
+- Bronkeuze en scope zijn opgeslagen in `nieuwsommen_bronnen_v2`.
+
+### Pushselectie in `worker-v280.js`
+- `isRecentPushArticle()` vereist een geldige publicatiedatum; normaal geldt een rollend venster van maximaal zes uur oud en één uur toekomst. Bij `_dateOnly` geldt alleen de huidige datum in Europe/Amsterdam.
+- `shouldSendToSub()` controleert daarnaast account-/SYNC-status, pushEnabled, bronkeuze en `sourceScopes`.
+- De gemeentecontrole gebruikt eveneens een functie `isGemeenteArtikel()`, maar de implementatie en de `GEMEENTE_ZOEK`-lijst zijn niet byte-identiek aan die in `app.js`.
+- De pushselectie gebruikt dus andere actualiteitsregels dan de standaard app-weergave.
+
+### Extra structureel verschil: artikelverzameling
+- De app heeft eigen parsers in `app.js` en bestanden onder `parsing/`; de Worker heeft eigen `fetchBron()`-/parserlogica in `worker-v280.js`.
+- De bronconfiguraties zijn niet volledig gelijk: bijvoorbeeld de app gebruikt voor Gemeente Ommen `/actueel/`, terwijl de Worker-bronconfiguratie `/feed/` gebruikt; RTV Vechtdal gebruikt in de app een homepage-/HTML-parser en in de Worker een eigen bronparser.
+- Sommige app-parsers kennen een pollingmoment of `new Date()` toe wanneer een bron geen precieze publicatietijd levert. Dat kan een artikel ten onrechte actueel laten lijken. Dit moet per bron worden genormaliseerd en expliciet als echte datum, datum-zonder-tijd of onbekende datum worden gemodelleerd.
+- Eén gedeelde filter kan de verschillen alleen oplossen als beide kanten ook hetzelfde genormaliseerde artikelcontract en dezelfde bron-/parseruitkomsten gebruiken. Alleen een gedeelde functie met twee verschillende artikelverzamelingen is onvoldoende.
+
+### Conclusie en volgende technische stap
+De verschillen zijn bevestigd. Het ontwerp wordt daarom uitgebreid tot één gedeelde artikelpipeline: bron ophalen/parsen naar één canoniek artikelcontract, daarna één gedeelde inhoudelijke filter/classificatie, en pas daarna de aparte app-weergavevoorkeuren respectievelijk push-aflevervoorwaarden. De app en Worker mogen geen eigen kopieën van gemeentelijke trefwoorden, datumregels of artikelgeldigheid houden.
+- Eerst worden alle bronparsers, datumsemantiek en gemeentelijke trefwoorden vergeleken en als fixtures vastgelegd.
+- Daarna wordt de gedeelde module ontworpen en getest in isolatie; pas vervolgens worden app.js en Worker op de testbranch aangesloten.
+- Geen productiecode, productie-KV, abonnementen, cron of pushverzending is bij deze inventarisatie gewijzigd of gebruikt.
