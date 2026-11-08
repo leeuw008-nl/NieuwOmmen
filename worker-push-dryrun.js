@@ -68,7 +68,7 @@ async function collect(s){
   else if(s.type==="rss")articles=parseRSS(body,s.id,5);
   else if(s.type==="rtv-vechtdal"){articles=parseRTVVechtdal(body,s.id);if(!articles.length)articles=parseRSS(body,s.id,5);}
   else {
-   const generic=/<a\\b[^>]*href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi;
+   const generic=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
    let m;const candidates=[];
    while((m=generic.exec(body))!==null){
      const href=m[1].trim();if(!href.includes("/nieuws/"))continue;
