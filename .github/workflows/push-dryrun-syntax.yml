@@ -43,7 +43,7 @@ jobs:
             uniqueCanonicalArticles: report.uniqueCanonicalArticles,
             duplicateCount: report.duplicateCount,
             duplicates: report.duplicates,
-  articleDetails: report.articleDetails
+            articleDetails: report.articleDetails
           }, null, 2));
           if (report.mode !== 'DRY_RUN_ONLY' || report.pushAttempts !== 0 || report.pushSent !== 0 || report.kvReads !== 0 || report.kvWrites !== 0) {
             throw new Error('Dry-run safety invariants failed');
