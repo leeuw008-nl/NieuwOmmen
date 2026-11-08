@@ -63,23 +63,17 @@ function isGemeenteArtikel(article){
  return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(article);
 }
 function isRecentPushArticle(article,now=new Date()){
- if(!article||!article.pubDate)return false;
- const d=new Date(article.pubDate);if(Number.isNaN(d.getTime()))return false;
- if(article._dateOnly){
-  const fmt=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Amsterdam",year:"numeric",month:"2-digit",day:"2-digit"});
-  return fmt.format(d)===fmt.format(now);
- }
- const ageMs=now.getTime()-d.getTime();
- return ageMs>=-60*60*1000&&ageMs<=6*60*60*1000;
+ return globalThis.NieuwOmmenArticleFilter.isRecentForPush(article,now);
 }
 function simulateFilters(articles,now=new Date()){
  const perArticle=articles.map(a=>{
-  const recent=isRecentPushArticle(a,now);
-  return {source:a.source,title:a.title,pubDate:a.pubDate||null,dateOnly:!!a._dateOnly,recent,gemeenteMatch:isGemeenteArtikel(a),result:!a.pubDate?"rejected_missing_date":recent?"date_eligible":"rejected_date"};
+  const decision=globalThis.NieuwOmmenArticleFilter.evaluateArticle(a);
+  const recent=decision.valid && isRecentPushArticle(a,now);
+  return {source:a.source,title:a.title,pubDate:a.pubDate||null,dateOnly:!!a._dateOnly,valid:decision.valid,validityReason:decision.reason,datePrecision:decision.datePrecision||"unknown",dateOrigin:decision.dateOrigin||"unknown",recent,gemeenteMatch:isGemeenteArtikel(a),result:!decision.valid?"rejected_"+decision.reason:recent?"date_eligible":decision.hasReliableDate?"rejected_date":"rejected_missing_or_unreliable_date"};
  });
  const bySource={};
  for(const a of perArticle){const s=bySource[a.source]||(bySource[a.source]={total:0,dateEligible:0,rejectedDate:0,missingDate:0,gemeenteMatch:0});s.total++;if(a.recent)s.dateEligible++;else if(!a.pubDate)s.missingDate++;else s.rejectedDate++;if(a.gemeenteMatch)s.gemeenteMatch++;}
- return {checkedAt:now.toISOString(),rule:"Exacte isRecentPushArticle()-logica uit worker-v280.js; tijdvenster -1 uur tot +6 uur; _dateOnly alleen huidige datum Europe/Amsterdam.",dateEligible:perArticle.filter(x=>x.recent).length,rejectedDate:perArticle.filter(x=>!x.recent&&!!x.pubDate).length,missingDate:perArticle.filter(x=>!x.pubDate).length,gemeenteKeywordMatches:perArticle.filter(x=>x.gemeenteMatch).length,bySource,articles:perArticle};
+ return {checkedAt:now.toISOString(),rule:"Dezelfde article-filter-module als app en Worker: geldigheid eerst; pushvenster -1 uur tot +6 uur; datum-zonder-tijd alleen huidige kalenderdag Europe/Amsterdam.",validArticles:perArticle.filter(x=>x.valid).length,invalidArticles:perArticle.filter(x=>!x.valid).length,dateEligible:perArticle.filter(x=>x.recent).length,rejectedDate:perArticle.filter(x=>x.valid&&!x.recent&&x.datePrecision!=="unknown").length,missingOrUnreliableDate:perArticle.filter(x=>x.valid&&!x.recent&&x.datePrecision==="unknown").length,gemeenteKeywordMatches:perArticle.filter(x=>x.gemeenteMatch).length,bySource,articles:perArticle};
 }
 function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|fbclid|gclid|mc_)/i.test(k))u.searchParams.delete(k);u.hostname=u.hostname.toLowerCase();return u.toString().replace(/\/$/,"");}catch{return link.trim();}}
 async function collect(s){
