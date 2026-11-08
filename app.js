@@ -707,7 +707,7 @@ async function enrichGemeenteWithDetail(arts){
       if(cached && cached.iso){
         const cd=new Date(cached.iso);
         if(!isNaN(cd.getTime()) && (cd.getHours()!==0 || cd.getMinutes()!==0)){
-          a.pubDate=cd;
+          a.pubDate=cd; a._dateOrigin='unknown';
           console.log('[v293] cache tijd gebruikt voor', a.title.slice(0,30), cd.toLocaleString('nl-NL'));
         }
       }
@@ -793,7 +793,7 @@ function parseOostFull_OLD(html){
       if(!uniqMap.has(full)) uniqMap.set(full, text);
     }
   }
-  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), description:'[...]'}));
+  return Array.from(uniqMap.entries()).slice(0,max).map(([link,title])=>({title:title.slice(0,120), link, pubDate:new Date(), _dateOrigin:'polling', description:'[...]'}));
 }
 function parseVechtdalCentraalFallback_OLD(html){
   const max = MAX_PER_BRON['Vechtdal Centraal'];
@@ -807,7 +807,7 @@ function parseVechtdalCentraalFallback_OLD(html){
     if(href.includes('/category/') || href.includes('/tag/') || href.includes('#')) continue;
     if(!map.has(href)) map.set(href, title);
   }
-  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), description:'[...]'}));
+  return Array.from(map.entries()).slice(0,max).map(([link,title])=>({title, link, pubDate:new Date(), _dateOrigin:'polling', description:'[...]'}));
 }
 function parseOostFull(html){
   const echt = parseRTVOostECHT(html);
