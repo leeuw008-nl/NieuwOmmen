@@ -8,24 +8,53 @@ const SOURCES = [
 {id:"OudOmmen",url:"https://weblog.oudommen.nl/feed/",type:"rss"},
 {id:"RondOmmen",url:"https://www.rondommen.nl/feed/",type:"rss"},
 {id:"RTV Oost",url:"https://www.oost.nl/nieuws/vechtdal",type:"oost"},
-{id:"RTV Vechtdal",url:"https://rtvvechtdal.nl/",type:"vechtdal"},
+{id:"RTV Vechtdal",url:"https://rtvvechtdal.nl/",type:"rtv-vechtdal"},
 {id:"Vechtdal Centraal",url:"https://www.vechtdalcentraal.nl/feed/",type:"rss"},
 {id:"Nieuwsbrief",url:null,type:"newsletter"}
 ];
 function clean(s){return (s||"").replace(/<!\[CDATA\[|\]\]>/g,"").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();}
-function parseDate(xml){const patterns=[/<pubDate[^>]*>([^<]+)<\\/i,/<published[^>]*>([^<]+)<\\/i,/<updated[^>]*>([^<]+)<\\/i,/<dc:date[^>]*>([^<]+)<\\/i,/<date[^>]*>([^<]+)<\\/i];for(const p of patterns){const m=xml.match(p);if(m){const d=new Date(clean(m[1]));if(!Number.isNaN(d.getTime()))return d.toISOString();}}return null;}
-function parseRss(xml,source,max=5){
- const blocks=[...xml.matchAll(/<(item|entry)[^>]*>([\s\S]*?)<\/\1>/gi)].slice(0,max);
- return blocks.map(x=>{const b=x[2];const title=clean((b.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||"");
- let link=(b.match(/<link[^>]*>([\s\S]*?)<\/link>/i)||[])[1]||"";
- if(!link.trim()||!link.includes("http"))link=(b.match(/<link[^>]+href=["']([^"']+)/i)||[])[1]||"";
- link=clean(link);return {source,title,link,pubDate:parseDate(b)};
- }).filter(a=>a.title&&/^https?:\/\//i.test(a.link));
+function extractRssDate(itemXml){
+try{
+const raw = (itemXml.match(/<pubDate[^>]*>([^<]+)<\/pubDate>/i)||[])[1]
+|| (itemXml.match(/<published[^>]*>([^<]+)<\/published>/i)||[])[1]
+|| (itemXml.match(/<updated[^>]*>([^<]+)<\/updated>/i)||[])[1]
+|| (itemXml.match(/<dc:date[^>]*>([^<]+)<\/dc:date>/i)||[])[1]
+|| (itemXml.match(/<date[^>]*>([^<]+)<\/date>/i)||[])[1];
+if(raw){ const d = new Date(raw); if(!isNaN(d.getTime())) return d.toISOString(); }
+}catch{}
+return null;
 }
-function parseVechtdal(html,source){
- const out=[];const re=/<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;let m;
- while((m=re.exec(html))&&out.length<5){let link=m[1];if(link.startsWith("/"))link="https://rtvvechtdal.nl"+link;const d=m[2].match(/(\d{2})-(\d{2})-(\d{4})/);out.push({source,title:clean(m[3]),link,pubDate:d?new Date(Date.UTC(+d[3],+d[2]-1,+d[1])).toISOString():null});}
- return out;
+function parseRSS(xml, bronId, max=10){
+const items=[...xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi)].slice(0,max);
+let entries = [];
+if(items.length===0) entries=[...xml.matchAll(/<entry[^>]*>([\s\S]*?)<\/entry>/gi)].slice(0,max);
+const all = items.length? items : entries;
+return all.map(m=>{
+const it=m[1];
+const title=(it.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)||[])[1]||'';
+let link=(it.match(/<link[^>]*>([\s\S]*?)<\/link>/i)||[])[1]||'';
+if(!link || !link.includes('http')){ const hrefMatch = it.match(/<link[^>]+href=["']([^"']+)["']/i); if(hrefMatch) link = hrefMatch[1]; }
+link=link.replace(/<!\[CDATA\[|\]\]>/g,'').trim();
+if(!link.startsWith('http')){ const mm=it.match(/https?:\/\/[^\s<"]+/); if(mm) link=mm[0]; }
+const realDate = extractRssDate(it);
+return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bronId, pubDate: realDate, _realDate: !!realDate};
+}).filter(x=>x.link && x.title);
+}
+function parseRTVVechtdal(html, bronId){
+try{
+const out=[];
+const re = /<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;
+let m;
+while((m=re.exec(html))!==null && out.length<10){
+let href=m[1].trim(), dateStr=m[2].trim(), title=m[3].trim().slice(0,120), link=href;
+if(link.startsWith('/?') || link.startsWith('?')) link='https://rtvvechtdal.nl/'+link.replace(/^\//,'');
+else if(link.startsWith('/')) link='https://rtvvechtdal.nl'+link;
+let iso=null; const dmatch=dateStr.match(/(\d{2})-(\d{2})-(\d{4})/);
+if(dmatch){ const d=new Date(`${dmatch[3]}-${dmatch[2]}-${dmatch[1]}T00:00:00Z`); if(!isNaN(d.getTime())) iso=d.toISOString(); }
+if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso});
+}
+return out;
+}catch(e){ return []; }
 }
 function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|fbclid|gclid|mc_)/i.test(k))u.searchParams.delete(k);u.hostname=u.hostname.toLowerCase();return u.toString().replace(/\/$/,"");}catch{return link.trim();}}
 async function collect(s){
@@ -36,9 +65,9 @@ async function collect(s){
   if(!r.ok)return {source:s.id,status:"http_error",httpStatus:r.status,count:0,articles:[],durationMs:Date.now()-started};
   const body=await r.text();let articles=[];
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
-  else if(s.type==="rss")articles=parseRss(body,s.id);
-  else if(s.type==="vechtdal"){articles=parseVechtdal(body,s.id);if(!articles.length)articles=parseRss(body,s.id);}
-  else {const re=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;let m;while((m=re.exec(body))&&articles.length<5)articles.push({source:s.id,title:clean(m[2]),link:"https://www.oost.nl"+m[1],pubDate:null});}
+  else if(s.type==="rss")articles=parseRSS(body,s.id,5);
+  else if(s.type==="rtv-vechtdal"){articles=parseRTVVechtdal(body,s.id);if(!articles.length)articles=parseRSS(body,s.id,5);}
+  else {const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;let m;while((m=generic.exec(body))!==null&&articles.length<5){const link="https://www.oost.nl"+m[1],title=m[2].trim().slice(0,120);if(title.length>10)articles.push({title,link,source:s.id,pubDate:null});}}
   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }catch(e){return {source:s.id,status:"error",error:String(e.message||e),count:0,articles:[],durationMs:Date.now()-started};}
 }
@@ -49,5 +78,5 @@ export default {async fetch(request){
  const seen=new Map(),duplicates=[];
  for(const result of results)for(const a of result.articles){const key=canonical(a.link);if(seen.has(key))duplicates.push({canonicalUrl:key,firstSource:seen.get(key),duplicateSource:a.source,title:a.title});else seen.set(key,a.source);}
  const articles=results.flatMap(x=>x.articles);
- return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
+ return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,articleDetails:articles.map(a=>({source:a.source,title:a.title,url:a.link,pubDate:a.pubDate||null})),results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 }};
