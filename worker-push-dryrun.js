@@ -10,7 +10,7 @@ const SOURCES = [
 {id:"RTV Oost",url:"https://www.oost.nl/nieuws/vechtdal",type:"oost"},
 {id:"RTV Vechtdal",url:"https://rtvvechtdal.nl/",type:"vechtdal"},
 {id:"Vechtdal Centraal",url:"https://www.vechtdalcentraal.nl/feed/",type:"rss"},
-{id:"Nieuwsbrief",url:"https://nieuwommen.leeuw008.nl/api/newsletter/feed",type:"newsletter"}
+{id:"Nieuwsbrief",url:null,type:"newsletter"}
 ];
 function clean(s){return (s||"").replace(/<!\[CDATA\[|\]\]>/g,"").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();}
 function parseDate(xml){const m=xml.match(/<(?:pubDate|published|updated|dc:date|date)[^>]*>([^<]+)<\//i);if(!m)return null;const d=new Date(clean(m[1]));return Number.isNaN(d.getTime())?null:d.toISOString();}
@@ -30,14 +30,15 @@ function parseVechtdal(html,source){
 function canonical(link){try{const u=new URL(link);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|fbclid|gclid|mc_)/i.test(k))u.searchParams.delete(k);u.hostname=u.hostname.toLowerCase();return u.toString().replace(/\/$/,"");}catch{return link.trim();}}
 async function collect(s){
  const started=Date.now();
+ if(s.type==="newsletter")return {source:s.id,status:"not_tested_production_kv",httpStatus:null,count:0,articles:[],error:"Bewust overgeslagen: de feedroute leest productie-KV; alleen route en responsvorm zijn in worker-v280.js geverifieerd.",durationMs:0};
  try{
-  const r=await fetch(s.url,{headers:{"User-Agent":"NieuwOmmen-DryRun/1.0"},redirect:"follow",signal:AbortSignal.timeout(15000)});
+  const r=await fetch(s.url,{headers:{"User-Agent":"NieuwOmmenBot/1.0"},redirect:"follow",signal:AbortSignal.timeout(15000)});
   if(!r.ok)return {source:s.id,status:"http_error",httpStatus:r.status,count:0,articles:[],durationMs:Date.now()-started};
   const body=await r.text();let articles=[];
   if(s.type==="newsletter"){const j=JSON.parse(body);articles=(j.items||[]).slice(0,8).map(x=>({source:s.id,title:x.title||"",link:x.link||"",pubDate:x.pubDate||null})).filter(x=>x.title&&/^https?:\/\//i.test(x.link));}
   else if(s.type==="rss")articles=parseRss(body,s.id);
   else if(s.type==="vechtdal"){articles=parseVechtdal(body,s.id);if(!articles.length)articles=parseRss(body,s.id);}
-  else {const re=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,160})</gi;let m;while((m=re.exec(body))&&articles.length<5)articles.push({source:s.id,title:clean(m[2]),link:"https://www.oost.nl"+m[1],pubDate:null});}
+  else {const re=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;let m;while((m=re.exec(body))&&articles.length<5)articles.push({source:s.id,title:clean(m[2]),link:"https://www.oost.nl"+m[1],pubDate:null});}
   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }catch(e){return {source:s.id,status:"error",error:String(e.message||e),count:0,articles:[],durationMs:Date.now()-started};}
 }
@@ -48,5 +49,5 @@ export default {async fetch(request){
  const seen=new Map(),duplicates=[];
  for(const result of results)for(const a of result.articles){const key=canonical(a.link);if(seen.has(key))duplicates.push({canonicalUrl:key,firstSource:seen.get(key),duplicateSource:a.source,title:a.title});else seen.set(key,a.source);}
  const articles=results.flatMap(x=>x.articles);
- return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status!=="ok").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
+ return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 }};
