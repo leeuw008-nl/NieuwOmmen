@@ -61,3 +61,26 @@
 - De werkelijke Cloudflare dashboard-bindings en eventuele Durable Object/D1-resources; `wrangler.jsonc` bevat in de repository alleen de Worker-entrypoint en compatibiliteitsdatum.
 - De ingestelde cron-triggers in Cloudflare Dashboard.
 - De PWA-manifest-URL, service-worker-URL en scope op de live site en op het toestel.
+
+
+## Ontwerpbesluit: één gedeelde artikel-filter (8 november 2026)
+Dit is een harde acceptatievoorwaarde voor de herbouw: de app-artikellijst en de pushselectie mogen niet langer ieder hun eigen inhoudelijke relevantie- en actualiteitsregels implementeren.
+
+### Gedeelde beslislogica
+- Bouw één gedeelde, zuivere filter-/selectiemodule die op een genormaliseerd artikelobject werkt. De module bevat de gemeenschappelijke regels voor artikelgeldigheid, bron, gemeentelijke/regio-relevantie, actualiteit en uitsluiting van categorie-/navigatiepagina's.
+- Zowel de app-artikellijst als de pushselectie roepen dezelfde module aan. Geen kopieën van dezelfde regels in frontend en Worker en geen stilzwijgende afwijkende defaults.
+- Leg per artikel vast: toegelaten/geweigerd, de beslisreden, de gebruikte filterversie en de relevante artikelvelden. Zo kunnen verschillen worden verklaard en getest.
+- Maak tests met dezelfde artikel-fixtures voor beide afnemers. Een artikel dat door de gedeelde inhoudelijke filter wordt afgewezen, mag niet in de app-lijst verschijnen en mag geen pushkandidaat worden.
+
+### Persoonlijke voorkeuren en afleverregels blijven aparte lagen
+- De gedeelde filter bepaalt of een artikel inhoudelijk tot Nieuw(s)Ommen behoort en in aanmerking komt voor weergave.
+- De app mag daarna persoonlijke weergavevoorkeuren toepassen, zoals gekozen bronnen of gemeente/regio-scope, mits die voorkeuren expliciet zijn en dezelfde gedeelde beslisregels gebruiken.
+- Push mag daarnaast uitsluitend aflevervoorwaarden toepassen: account actief/toestemming, pushEnabled, gekozen bronnen/scope, geldig abonnement, deduplicatie/idempotency en eventuele afleverbeperkingen. Deze mogen een push tegenhouden, maar mogen de inhoudelijke artikelclassificatie niet anders definiëren.
+- Een gebruiker die push heeft uitgeschakeld, blijft relevante artikelen gewoon in de app zien. Andersom mag een artikel dat buiten de gedeelde inhoudelijke selectie valt nooit via een pushfilter alsnog worden toegelaten.
+
+### Technische plaatsing en acceptatie
+- Onderzoek eerst welke gedeelde code de huidige app en Worker technisch kunnen importeren. Kies één canonieke bronmodule die door beide omgevingen wordt gebruikt; als bundel-/runtimegrenzen dat verhinderen, maak één versieerbare gedeelde module en genereer daaruit beide distributies, niet twee handmatig onderhouden implementaties.
+- Definieer één genormaliseerd artikelcontract en één versie van de filterregels. Voorkom dat verschillen in ontbrekende publicatiedata, tijdzones, bron-ID's of URL-normalisatie verschillende uitkomsten geven.
+- Voeg regressietests toe die dezelfde fixtures door de app-route en de pushselectie voeren en controleren dat de inhoudelijke uitkomst identiek is. Test ook gebruikersvoorkeuren apart, zodat push-uit niet betekent dat artikelen uit de app verdwijnen.
+- Pas deze gedeelde module pas toe nadat de huidige app- en Worker-selecties zijn geïnventariseerd en de verschillen als testgevallen zijn vastgelegd. Verander de bestaande productiecode niet tijdens de huidige geïsoleerde testfase.
+- Livegang is pas acceptabel wanneer aantoonbaar dezelfde filterversie door app en Worker wordt gebruikt en de regressietests voor identieke inhoudelijke beslissingen slagen.
