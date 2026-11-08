@@ -119,6 +119,7 @@ export default {async fetch(request){
  const results=await Promise.all(SOURCES.map(collect));
  const seen=new Map(),duplicates=[];
  for(const result of results)for(const a of result.articles){const key=canonical(a.link);if(seen.has(key))duplicates.push({canonicalUrl:key,firstSource:seen.get(key),duplicateSource:a.source,title:a.title});else seen.set(key,a.source);}
- const articles=results.flatMap(x=>x.articles);\n const filterSimulation=simulateFilters(articles);
+  const articles=results.flatMap(x=>x.articles);
+  const filterSimulation=simulateFilters(articles);
  return new Response(JSON.stringify({mode:"DRY_RUN_ONLY",pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0,scheduledHandler:false,sourceCount:SOURCES.length,successfulSources:results.filter(x=>x.status==="ok").length,failedSources:results.filter(x=>x.status==="http_error"||x.status==="error").length,skippedSources:results.filter(x=>x.status==="not_tested_production_kv").length,articleCount:articles.length,uniqueCanonicalArticles:seen.size,duplicateCount:duplicates.length,duplicates,filterSimulation,articleDetails:articles.map(a=>({source:a.source,title:a.title,url:a.link,pubDate:a.pubDate||null})),results,generatedAt:new Date().toISOString()},null,2),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 }};
