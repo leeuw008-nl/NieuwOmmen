@@ -108,7 +108,7 @@ async function collect(s){
        articles.push({title,link,source:s.id,pubDate:parsedDate,_realDate:!!parsedDate});
      }
    }
-   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,debugCandidates:candidates.slice(0,15),durationMs:Date.now()-started};
+   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }
   return {source:s.id,status:"ok",httpStatus:r.status,count:articles.length,articles,durationMs:Date.now()-started};
  }catch(e){return {source:s.id,status:"error",error:String(e.message||e),count:0,articles:[],durationMs:Date.now()-started};}
