@@ -102,7 +102,7 @@ Bestanden gecontroleerd op testbranch: `app.js`, `worker-v280.js` en `push.js`. 
 ### Pushselectie in `worker-v280.js`
 - `isRecentPushArticle()` vereist een geldige publicatiedatum; normaal geldt een rollend venster van maximaal zes uur oud en één uur toekomst. Bij `_dateOnly` geldt alleen de huidige datum in Europe/Amsterdam.
 - `shouldSendToSub()` controleert daarnaast account-/SYNC-status, pushEnabled, bronkeuze en `sourceScopes`.
-- De gemeentecontrole gebruikt eveneens een functie `isGemeenteArtikel()`, maar de implementatie en de `GEMEENTE_ZOEK`-lijst zijn niet byte-identiek aan die in `app.js`.
+- De gemeentecontrole gebruikt eveneens `isGemeenteArtikel()`. De actuele lijsten bevatten dezelfde plaatsnamen, waaronder Emsland, maar de app-lijst bevat dubbele vermeldingen. De implementaties waren afzonderlijk onderhouden.
 - De pushselectie gebruikt dus andere actualiteitsregels dan de standaard app-weergave.
 
 ### Extra structureel verschil: artikelverzameling
@@ -121,8 +121,8 @@ De verschillen zijn bevestigd. Het ontwerp wordt daarom uitgebreid tot één ged
 ## 12. Verdiepte inventarisatie parsers, datums en gemeenteclassificatie (8 november 2026)
 
 ### 12.1 Gemeenteclassificatie is aantoonbaar niet identiek
-De app in `app.js` gebruikt `GEMEENTE_PLAATSEN` met onder meer `Emsland` en een dubbele vermelding van `Stegeren`. De Worker in `worker-v280.js` gebruikt een kortere lijst zonder `Emsland`. Beide implementaties doen een eenvoudige substring-match op `title + description`.
-Gevolg: dezelfde tekst kan door de app en Worker verschillend worden geclassificeerd. Substring-match kan bovendien toevallige deelwoordmatches opleveren; dit moet in fixtures worden getest voordat een betere token-/plaatsnaamherkenning wordt gekozen.
+De actuele `app.js`-lijst en de actuele lijst in `worker-v280.js` bevatten beide `Emsland`. De Worker-lijst is niet korter op dit punt; de app-lijst bevatte wel dubbele vermeldingen van `Stegeren` en `Ommerschans`. Beide losse implementaties gebruikten dezelfde eenvoudige substring-match op `title + description`. De eerdere inventarisatie die stelde dat Emsland in de Worker ontbrak, was onjuist en is hiermee gecorrigeerd.
+Gevolg: voor Emsland was in deze actuele code geen inhoudelijk classificatieverschil aangetoond. Het onderhoudsrisico bleef wel bestaan doordat twee afzonderlijke lijsten konden gaan afwijken. Substring-match kan toevallige deelwoordmatches opleveren; de eerste centralisatiestap behoudt dit bestaande gedrag bewust om geen onverwachte wijziging in de selectie te introduceren.
 
 ### 12.2 Datumsemantiek per bron (huidige code)
 | Bron / route | App-gedrag | Worker-gedrag | Geconstateerd risico |
@@ -157,8 +157,8 @@ Pollingtijd mag nooit worden opgeslagen als publicatietijd. Als de bron geen pub
 
 ### 12.5 Eerste regressie-fixturematrix
 Deze gevallen moeten identiek door app en push door de gedeelde inhoudelijke filter lopen:
-1. Exact dezelfde titel/description met plaatsnaam Emsland: classificatie mag niet verschillen.
-2. Plaatsnaam als volledig woord versus als deel van een ander woord: geen onbedoelde substringmatch.
+1. Exact dezelfde titel/description met plaatsnaam Emsland: classificatie moet positief zijn in zowel titel als description.
+2. Hoofdlettervarianten en de bestaande substringsemantiek worden expliciet getest; overstap naar woordgrenzen is een afzonderlijk inhoudelijk besluit en maakt geen deel uit van deze centralisatiestap.
 3. Plaatsnaam in titel, alleen in description, en in geen van beide.
 4. Geldige RSS-timestamp binnen 6 uur, exact op 6 uur, ouder dan 6 uur en 1 uur in de toekomst.
 5. Datum-only artikel vandaag, gisteren en rond middernacht Europe/Amsterdam.
@@ -174,21 +174,26 @@ Deze gevallen moeten identiek door app en push door de gedeelde inhoudelijke fil
 ### 12.6 Besluit voor implementatievolgorde
 1. Maak eerst het centrale bronregister en documenteer per bron de gewenste primaire route, toegestane fallback en parser.
 2. Leg vervolgens datumextractie en datumprecisie vast; verwijder impliciete pollingtijd als publicatiedatum.
-3. Maak pure normalisatie- en filterfuncties plus fixtures, zonder app- of Worker-koppeling.
-4. Laat de bestaande app-artikelen en Worker-diagnostiek als invoer door deze testmodule lopen en rapporteer verschillen; nog geen live selectie vervangen.
-5. Pas na groene regressietests wordt de module in de app en test-Worker geïntegreerd.
-6. De gedeelde inhoudelijke filter bepaalt artikelgeldigheid en relevantie; gebruikersvoorkeuren, accountstatus, push-toestemming, deduplicatie en aflevering blijven aparte vervolgstappen.
+3. Eerste implementatiestap: centraliseer de gemeentelijke plaatsnamencontrole in één fysiek bestand en koppel app, Worker en dry-run daaraan.
+4. Test dezelfde module met fixtures; pas daarna worden normalisatie, artikelgeldigheid, bronclassificatie en datumsemantiek als volgende gedeelde onderdelen toegevoegd.
+5. De gedeelde inhoudelijke filter bepaalt uiteindelijk artikelgeldigheid en relevantie; gebruikersvoorkeuren, accountstatus, push-toestemming, deduplicatie en aflevering blijven aparte vervolgstappen.
 Alle stappen blijven op `test/push-rebuild-2026-11-08`. Geen productiecode, KV, abonnementen, cron of pushverzending is gewijzigd of gebruikt.
 
 
-## 13. Technische integratiekeuze en open inhoudelijke beslissing (8 november 2026)
+## 13. Technische integratiekeuze en eerste gedeelde filterimplementatie (8 november 2026)
 ### Browser/Worker-compatibiliteit
 - `index.html` laadt `app.js` met een gewone klassieke `<script>`; dit is geen ES-module.
 - `worker-v280.js` is een ES-module Worker.
 - Er is geen package/build-configuratie in de root die de app momenteel bundelt.
 - Voorkeursontwerp voor één fysieke implementatie: een kleine zelfstandige, browser- en Worker-compatibele shared file zonder DOM- of Cloudflare-afhankelijkheden. De app laadt die vóór `app.js` als klassiek script; de module-Worker laadt exact hetzelfde bestand als side-effect import. De gedeelde API wordt via één gecontroleerde globale namespace beschikbaar gemaakt. Node-tests kunnen dezelfde bronfile rechtstreeks laden.
 - Dit ontwerp voorkomt twee handmatig bijgehouden filterkopieën en vermijdt een brede migratie van de bestaande app naar ES-modules.
-- Dit is nog een ontwerpkeuze; er is nog geen shared module toegevoegd en geen app-/Worker-runtime aangepast.
+- De keuze is uitgevoerd op de testbranch: `article-filter.js` is één browser- en Worker-compatibele bronfile zonder DOM-/Cloudflare-afhankelijkheden. De app laadt deze vóór `app.js` als klassiek script; `worker-v280.js` en de geïsoleerde dry-run laden exact hetzelfde bestand via side-effect import.
+- De API staat onder `globalThis.NieuwOmmenArticleFilter`; de eerste versie is `1.0.0`. De module bevat de centrale plaatsnamenlijst en `isMunicipalityArticle()`.
+- De app, test-Worker en dry-run gebruiken nu deze functie in plaats van hun eigen gemeentelijke trefwoordenlijst. De lijst is ontdubbeld; Emsland is expliciet opgenomen.
+- De bestaande substringsemantiek is bewust behouden om de selectie niet stilzwijgend te veranderen. Hoofdletterongevoeligheid, Emsland in titel/beschrijving, alle plaatsen en de huidige substringuitkomst hebben regressietests.
+- `index.html` laadt `article-filter.js?v=1` vóór `app.js?v=339`. De app-cacheversie is verhoogd.
+- GitHub Actions voert nu syntaxchecks en `node --test tests/article-filter.test.mjs` uit. De geïsoleerde dry-run kopieert de shared file mee naar zijn tijdelijke modulemap.
+- Dit is nadrukkelijk de eerste centralisatiestap: de parsernormalisatie, artikelgeldigheid, categorie-/navigatieclassificatie en datumsemantiek zijn nog niet volledig gedeeld. De app-weergavevoorkeur VANDAAG en de push-aflevergrens van zes uur blijven voorlopig afzonderlijke kanaalregels. Geen productiecode is uitgerold; geen productie-KV gelezen/geschreven en geen push verzonden.
 
-### Open beslissing: gemeentelijke plaatsnamen
-De huidige app bevat `Emsland` in `GEMEENTE_PLAATSEN`; de Worker bevat die term niet. Omdat deze lijst de inhoudelijke grens bepaalt voor de scope 'gemeente Ommen', wordt deze discrepantie niet automatisch opgelost door de lijsten samen te voegen. De definitieve canonieke lijst moet eerst inhoudelijk worden bevestigd. Tot die tijd blijft de bestaande code ongewijzigd.
+### Inhoudelijke bevestiging plaatsnamen
+De gebruiker heeft bevestigd: Emsland hoort bij de plaatsnamen die voor de filter 'Gemeente Ommen' meetellen. De gedeelde lijst bevat Emsland.
