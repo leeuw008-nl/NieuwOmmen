@@ -224,8 +224,9 @@ const out=[]; let m;
 while((m=generic.exec(txt))!==null && out.length<5){ const link='https://www.oost.nl'+m[1], title=m[2].trim().slice(0,120); if(title.length>10) out.push({title,link,source:b.id,pubDate:null}); }
 parsed=out;
 }else parsed=parseRSS(txt,b.id,5);
-if(diagnostic) console.log(`[v279-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; artikelen=${parsed.length}`);
-return parsed;
+const parsedValid=parsed.filter(article=>globalThis.NieuwOmmenArticleFilter.isValidArticle(article));
+if(diagnostic) console.log(`[v279-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; parser=${parsed.length}; geldige artikelen=${parsedValid.length}`);
+return parsedValid;
 }catch(e){
 if(diagnostic) console.log(`[v279-diag] bronfout: ${b.id}; fase=${stage}; fout=${e.message||String(e)}`);
 return [];
@@ -244,20 +245,7 @@ await SEEN.put('seen_links',JSON.stringify([...set].slice(-500))); console.log(`
 // RSS-artikelen met een echte tijd mogen maximaal 6 uur oud zijn.
 // RTV Vechtdal levert alleen een kalenderdatum; die mag alleen op de huidige datum pushen.
 function isRecentPushArticle(article){
-  if(!article || !article.pubDate) return false;
-  const d=new Date(article.pubDate);
-  if(isNaN(d.getTime())) return false;
-  if(article._dateOnly){
-    try{
-      const fmt=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Amsterdam',year:'numeric',month:'2-digit',day:'2-digit'});
-      return fmt.format(d)===fmt.format(new Date());
-    }catch{
-      const now=new Date();
-      return d.getUTCFullYear()===now.getUTCFullYear() && d.getUTCMonth()===now.getUTCMonth() && d.getUTCDate()===now.getUTCDate();
-    }
-  }
-  const ageMs=Date.now()-d.getTime();
-  return ageMs>=-60*60*1000 && ageMs<=6*60*60*1000;
+  return globalThis.NieuwOmmenArticleFilter.isRecentForPush(article, new Date());
 }
 
 async function shouldSendToSub(sub,article,env){
