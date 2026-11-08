@@ -57,3 +57,10 @@ Geen live Worker, cron-trigger, abonnement, KV-data of productie-push gewijzigd.
 - De eerste vijf items van Natuurlijk Ommen, OudOmmen en RondOmmen waren op het meetmoment ouder dan de productiegrens van zes uur. Ze worden door `isRecentPushArticle()` niet als pushkandidaat toegelaten. De twee nieuwste RTV Vechtdal-items hadden de datum van de meetdag; de overige acht hadden een oudere datum. Vechtdal Centraal leverde vijf items met tijdstempels binnen de laatste zes uur.
 - Dit is een inhoudelijke momentopname; feedvolgorde en inhoud veranderen. De dry-run verzendt geen push en leest geen productie-KV. De genoemde datumfilterbeoordeling is een simulatie op basis van de uitgelezen publicatiedata, geen daadwerkelijke cron-uitvoering.
 - Ommen City: HTTP 403 blijft onverklaard. Geen poging gedaan om toegangsbeperkingen te omzeilen. Volgende veilige diagnostiek is alleen het vastleggen van responseheaders en een beperkte foutmelding van dezelfde openbare feedaanvraag.
+
+
+## 8. Ommen City 403 nader vastgesteld (8 november 2026)
+- GitHub Actions run 42484489545 (commit `4c5f92137173aa46c3b78749f234f829c51a2b41`) is geslaagd. De test legde voor de bestaande openbare feedaanvraag `https://ommencity.nl/feed/` de foutrespons beperkt vast.
+- Response: HTTP 403, `server: cloudflare`, `cf-mitigated: challenge`, content-type HTML. De body begint met “Just a moment...”. Dit is dus aantoonbaar een Cloudflare challenge vanuit de GitHub Actions-uitgaande verbinding, niet een gewone ontbrekende RSS-feed.
+- Er is geen challenge opgelost, geen browser-/cookie-/proxy-omweg gebruikt en geen toegangsbeperking omzeild. De bron blijft in de test als niet beschikbaar gemarkeerd. Of de productie-Worker vanaf Cloudflare dezelfde challenge krijgt, is hiermee niet vastgesteld; GitHub Actions en Cloudflare Worker zijn verschillende uitvoeromgevingen.
+- De test blijft veilig: pushpogingen 0, pushverzendingen 0, KV-lezingen 0, KV-schrijfacties 0. Geen Worker of cron is uitgerold of geactiveerd.
