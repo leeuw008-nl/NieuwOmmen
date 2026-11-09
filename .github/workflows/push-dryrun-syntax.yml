@@ -18,7 +18,8 @@ jobs:
         run: |
           node --check worker-push-dryrun.js
           node --check worker-v280.js
-          node --check article-filter.js\n          node --check source-registry.js
+          node --check article-filter.js
+          node --check source-registry.js
           node --check app.js
           node --test tests/article-filter.test.mjs tests/source-registry.test.mjs
       - name: Read-only live feed diagnostics
