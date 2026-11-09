@@ -195,7 +195,7 @@ try{
    const enriched=await enrichGemeenteWithDetail(overview);
    return enriched.map(a=>({...a,source:b.id,id:b.id,isFallback:false}));
   });
- }else if(b.type==='oost){
+ }else if(b.type==='oost'){
   parsed=await tryRoute(b.url,html=>parseOostFull(html).map(a=>({...a,source:b.id,id:b.id,isFallback:false})));
  }else if(b.type==='rtv-vechtdal'){
   parsed=await tryRoute(b.homepage,html=>parseRTVVechtdalFull(html).map(a=>({...a,source:b.id,id:b.id,isFallback:false})));
