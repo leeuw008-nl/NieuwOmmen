@@ -7,8 +7,7 @@ import {
   enrichGemeenteWithDetail,
   parseOostFull,
   parseRTVVechtdalFull,
-  parseVechtdalCentraalFallback,
-  parseNieuwsbriefECHT
+  parseVechtdalCentraalFallback
 } from "./app-source-parsers.js";
 
 const SOURCES = [
