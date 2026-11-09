@@ -70,6 +70,15 @@ Regressietests staan in `tests/source-registry.test.mjs`. De handmatige validati
 
 **Aangesloten op de app (9 november 2026):** `index.html` laadt nu `source-registry.js` vóór `app.js`. De app bouwt `BRONNEN` en `BRON_URLS` voortaan uit het register. De bestaande parserfuncties en de bron-specifieke uitvoeringsvolgorde in `loadOneSource()` zijn bewust behouden; dit voorkomt dat een configuratieaansluiting ongemerkt het ophalen of parsen van artikelen verandert. De bestaande cache-bustingversie van `app.js` is verhoogd naar `v=341`.
 
-De regressietest controleert nu ook dat het register vóór de app wordt geladen en dat de app de bronlijst en URL-configuratie uit het register afleidt. De app gebruikt dus nu de canonieke broninventaris, maar de Worker-dry-run nog niet. Er is nog geen bewijs van volledige app↔Worker-pariteit; de volgende stap is de geïsoleerde dry-run op hetzelfde register aansluiten en de verschillen per parserroute vergelijken.
+De regressietest controleert nu ook dat het register vóór de app wordt geladen en dat de app de bronlijst en URL-configuratie uit het register afleidt. De app én de geïsoleerde push-dry-run gebruiken nu hetzelfde bronregister. De dry-run loopt de geregistreerde `fetchOrder` per bron in volgorde af en slaat de Nieuwsbrief over omdat die route productie-KV zou lezen. Voor Gemeente Ommen is een HTML-overzichtsparser toegevoegd; voor Vechtdal Centraal zijn feed, homepage en rss2json-fallback aangesloten. De RTV Oost-parser in de dry-run is nog vereenvoudigd en is dus nog niet gelijk aan de app-parser. Ook de overige parseruitkomsten moeten nog met fixtures worden vergeleken. Dit is bronroute-pariteit, nog geen volledige parser- of artikelpariteit.
 
 Veiligheidsstatus: uitsluitend commits op `test/push-rebuild-2026-11-08`; geen productiecode, Worker, cron, productie-KV of pushverzending aangeraakt. De appwijziging is alleen op de testbranch vastgelegd; de productie-app is niet gewijzigd.
+
+
+## Vervolgstap 2 — dry-run op bronregister (9 november 2026)
+
+`worker-push-dryrun.js` importeert nu `source-registry.js` en gebruikt uitsluitend `SOURCE_REGISTRY.SOURCES` als broninventaris. Per bron worden de routes uit `fetchOrder` sequentieel geprobeerd; het rapport bevat per poging URL, HTTP-status en artikelaantal. De Nieuwsbrief blijft expliciet overgeslagen om productie-KV buiten de dry-run te houden.
+
+De dry-run bevat nu een aparte HTML-overzichtsparser voor Gemeente Ommen en routeafhankelijke parsing voor RTV Vechtdal en Vechtdal Centraal, inclusief de rss2json-fallback. De RTV Oost-parser is nadrukkelijk nog diagnostisch/vereenvoudigd. Er wordt nog geen volledige parserpariteit geclaimd.
+
+De regressietest controleert dat de dry-run het register importeert, de geregistreerde routevolgorde gebruikt en de veiligheidsgrenzen behoudt. De workflow is handmatig en is nog niet uitgevoerd.
