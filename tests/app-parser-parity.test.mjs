@@ -23,6 +23,7 @@ const parserFunctions = [
   "parseVechtdalCentraalECHT",
   "parseRTVVechtdalECHT",
   "parseRTVOostECHT",
+  "parseNieuwsbriefECHT",
   "parseOostFull_OLD",
   "parseVechtdalCentraalFallback_OLD",
   "parseOostFull",
