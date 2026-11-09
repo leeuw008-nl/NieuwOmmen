@@ -1,31 +1,40 @@
 // app.js v293 - FIX echte tijd 11:27 via allorigins, geen fake 12:47 ipv middernacht teruggeven - LED rechts + telling 10/10 + SYNC RACE FIX + LION BADGE - terug naar vanavond werkend
 // app.js v275 - SYNC RACE FIX + LION BADGE alle bronnen + focus alleen artikel omlijnd
 // Gebaseerd op v226 + toegevoegd: SW kan filters opvragen voor notificatie filtering
-const BRONNEN = [
-  {id:'De Stentor', name:'De Stentor', sub:'regionaal (Ommen)'},
-  {id:'Gemeente Ommen', name:'Gemeente Ommen', sub:'officiële berichten'},
-  {id:'Natuurlijk Ommen', name:'Natuurlijk Ommen', sub:'evenementen & toerisme'},
-  {id:'Ommen City', name:'Ommen City', sub:'lokaal nieuws Ommen'},
-  {id:'OudOmmen', name:'OudOmmen', sub:'artikelen over historie'},
-  {id:'RondOmmen', name:'RondOmmen', sub:'lokaal nieuws'},
-  {id:'RTV Oost', name:'RTV Oost', sub:'regionaal Overijssel'},
-  {id:'RTV Vechtdal', name:'RTV Vechtdal', sub:'lokaal Vechtdal'},
-  {id:'Vechtdal Centraal', name:'Vechtdal Centraal', sub:'112 & dorpsnieuws'},
-  {id:'Nieuwsbrief', name:'NieuwOmmen', sub:'Nieuwsbrief updates & releases'},
-];
-const MAX_PER_BRON = {'De Stentor':25,'RondOmmen':20,'Ommen City':10,'OudOmmen':10,'Vechtdal Centraal':10,'Nieuwsbrief':10,'Natuurlijk Ommen':10,'Gemeente Ommen':10,'RTV Oost':10,'RTV Vechtdal':10};
-const BRON_URLS = {
-  'De Stentor': {url:'https://www.destentor.nl/ommen/rss.xml', homepage:'https://www.destentor.nl/ommen/'},
-  'Gemeente Ommen': {url:'https://www.ommen.nl/actueel/', homepage:'https://www.ommen.nl/actueel/', type:'gemeente'},
-  'Natuurlijk Ommen': {url:'https://www.natuurlijkommen.nl/feed/', homepage:'https://www.natuurlijkommen.nl/'},
-  'Ommen City': {url:'https://ommencity.nl/feed/', homepage:'https://ommencity.nl/'},
-  'OudOmmen': {url:'https://weblog.oudommen.nl/feed/', homepage:'https://weblog.oudommen.nl/'},
-  'RondOmmen': {url:'https://www.rondommen.nl/feed/', homepage:'https://www.rondommen.nl/'},
-  'RTV Oost': {url:'https://www.oost.nl/nieuws/vechtdal', homepage:'https://www.oost.nl/nieuws/vechtdal', type:'oost', fallback:'https://www.oost.nl/nieuws/vechtdal'},
-  'RTV Vechtdal': {url:'https://rtvvechtdal.nl/feed/', homepage:'https://rtvvechtdal.nl/'},
-  'Vechtdal Centraal': {url:'https://www.vechtdalcentraal.nl/feed/', homepage:'https://www.vechtdalcentraal.nl/', fallback:'https://www.vechtdalcentraal.nl/'},
-  'Nieuwsbrief': {url:'https://ommen-push-v2.leeuw008.workers.dev/newsletter/feed', homepage:'https://nieuwommen.leeuw008.nl/', type:'nieuwsbrief'},
+const SOURCE_REGISTRY = globalThis.NieuwOmmenSourceRegistry;
+if (!SOURCE_REGISTRY || !Array.isArray(SOURCE_REGISTRY.SOURCES)) {
+  throw new Error('NieuwOmmenSourceRegistry ontbreekt; laad source-registry.js vóór app.js');
+}
+const BRON_SUBS = {
+  'De Stentor':'regionaal (Ommen)',
+  'Gemeente Ommen':'officiële berichten',
+  'Natuurlijk Ommen':'evenementen & toerisme',
+  'Ommen City':'lokaal nieuws Ommen',
+  'OudOmmen':'artikelen over historie',
+  'RondOmmen':'lokaal nieuws',
+  'RTV Oost':'regionaal Overijssel',
+  'RTV Vechtdal':'lokaal Vechtdal',
+  'Vechtdal Centraal':'112 & dorpsnieuws',
+  'Nieuwsbrief':'Nieuwsbrief updates & releases'
 };
+const BRONNEN = SOURCE_REGISTRY.SOURCES.map(source => ({
+  id: source.id,
+  name: source.name,
+  sub: BRON_SUBS[source.id] || ''
+}));
+const MAX_PER_BRON = {'De Stentor':25,'RondOmmen':20,'Ommen City':10,'OudOmmen':10,'Vechtdal Centraal':10,'Nieuwsbrief':10,'Natuurlijk Ommen':10,'Gemeente Ommen':10,'RTV Oost':10,'RTV Vechtdal':10};
+const BRON_URLS = Object.freeze(Object.fromEntries(SOURCE_REGISTRY.SOURCES.map(source => {
+  const parserType = {
+    'gemeente-html-detail': 'gemeente',
+    'rtv-oost-html': 'oost'
+  }[source.parser];
+  return [source.id, Object.freeze({
+    url: source.url,
+    homepage: source.homepage,
+    ...(parserType ? {type: parserType} : {}),
+    ...(source.fallbacks.length ? {fallback: source.fallbacks[0]} : {})
+  })];
+})));
 // PLAATSEN FILTER - HERSTELD: alle kernen en buurtschappen gemeente Ommen
 
 // ===== v238 DEFINITIEF - ECHTE HTML PARSERS =====
