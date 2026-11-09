@@ -16,7 +16,7 @@
     { id: "RTV Vechtdal", name: "RTV Vechtdal", url: "https://rtvvechtdal.nl/feed/", homepage: "https://rtvvechtdal.nl/", parser: "rtv-vechtdal-html", fetchOrder: ["https://rtvvechtdal.nl/", "https://rtvvechtdal.nl/feed/"], fallbacks: ["https://rtvvechtdal.nl/feed/"] },
     { id: "Vechtdal Centraal", name: "Vechtdal Centraal", url: "https://www.vechtdalcentraal.nl/feed/", homepage: "https://www.vechtdalcentraal.nl/", parser: "vechtdal-centraal-chain", fetchOrder: ["https://www.vechtdalcentraal.nl/feed/", "https://www.vechtdalcentraal.nl/", "https://api.rss2json.com/v1/api.json"], fallbacks: ["https://www.vechtdalcentraal.nl/", "https://api.rss2json.com/v1/api.json"] },
     { id: "Nieuwsbrief", name: "Nieuwsbrief", url: "https://ommen-push-v2.leeuw008.workers.dev/newsletter/feed", homepage: "https://nieuwommen.leeuw008.nl/", parser: "newsletter-kv", fetchOrder: ["https://ommen-push-v2.leeuw008.workers.dev/newsletter/feed"], fallbacks: [], isolatedFixtureRequired: true }
-  ].map(source => Object.freeze({ ...source, fallbacks: Object.freeze(source.fallbacks) })));
+  ].map(source => Object.freeze({ ...source, fetchOrder: Object.freeze(source.fetchOrder), fallbacks: Object.freeze(source.fallbacks) })));
 
   const byId = Object.freeze(Object.fromEntries(SOURCES.map(source => [source.id, source])));
   root.NieuwOmmenSourceRegistry = Object.freeze({
