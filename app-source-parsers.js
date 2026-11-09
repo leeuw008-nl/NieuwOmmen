@@ -2,6 +2,21 @@
 // Alleen de browseropslag is hier een tijdelijke geheugenadapter voor de geïsoleerde dry-run.
 const MAX_PER_BRON = {'De Stentor':25,'RondOmmen':20,'Ommen City':10,'OudOmmen':10,'Vechtdal Centraal':10,'Nieuwsbrief':10,'Natuurlijk Ommen':10,'Gemeente Ommen':10,'RTV Oost':10,'RTV Vechtdal':10};
 const __parserCache = new Map();
+// Worker-compatible transport used only by the unchanged Gemeente detail-enrichment function.
+async function fetchViaWorker(url){
+  const direct = await fetch(url,{headers:{"Accept":"text/html"},redirect:"follow",signal:AbortSignal.timeout(12000)});
+  if(direct.ok){
+    const html=await direct.text();
+    if(html.length>500)return html;
+  }
+  const proxyUrl="https://api.allorigins.win/get?url="+encodeURIComponent(url);
+  const proxy=await fetch(proxyUrl,{signal:AbortSignal.timeout(12000)});
+  if(!proxy.ok)throw new Error("Gemeente detail HTTP "+proxy.status);
+  const data=await proxy.json();
+  if(data.contents&&data.contents.length>200)return data.contents;
+  throw new Error("Gemeente detail response leeg");
+}
+
 const localStorage = {
   getItem(key){ return __parserCache.has(key) ? __parserCache.get(key) : null; },
   setItem(key,value){ __parserCache.set(key,String(value)); },
