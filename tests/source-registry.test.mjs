@@ -53,3 +53,16 @@ test("nieuwsbrief is herkenbaar als KV-afhankelijke route met geïsoleerde fixtu
   assert.equal(newsletter.parser, "newsletter-kv");
   assert.equal(newsletter.isolatedFixtureRequired, true);
 });
+
+test("app laadt het bronregister vóór app.js en gebruikt het als bronconfiguratie", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  const registryScript = html.indexOf('src="source-registry.js?v=1.0.0"');
+  const appScript = html.indexOf('src="app.js?v=341"');
+  assert.ok(registryScript >= 0 && appScript > registryScript, "register moet vóór app.js laden");
+  assert.match(app, /const SOURCE_REGISTRY = globalThis\.NieuwOmmenSourceRegistry/);
+  assert.match(app, /const BRONNEN = SOURCE_REGISTRY\.SOURCES\.map/);
+  assert.match(app, /const BRON_URLS = Object\.freeze\(Object\.fromEntries\(SOURCE_REGISTRY\.SOURCES\.map/);
+  assert.match(app, /'gemeente-html-detail': 'gemeente'/);
+  assert.match(app, /'rtv-oost-html': 'oost'/);
+});
