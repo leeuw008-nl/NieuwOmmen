@@ -19,14 +19,15 @@ jobs:
           node --check worker-push-dryrun.js
           node --check worker-v280.js
           node --check article-filter.js
-          node --check source-registry.js
+          node --check app-source-parsers.js
           node --check app.js
-          node --test tests/article-filter.test.mjs tests/source-registry.test.mjs
+          node --test tests/article-filter.test.mjs tests/app-parser-parity.test.mjs
       - name: Read-only live feed diagnostics
         timeout-minutes: 2
         run: |
           cp worker-push-dryrun.js /tmp/worker-push-dryrun.mjs
           cp article-filter.js /tmp/article-filter.js
+          cp app-source-parsers.js /tmp/app-source-parsers.js
           node --input-type=module <<'NODE'
           import worker from 'file:///tmp/worker-push-dryrun.mjs';
           const response = await worker.fetch(new Request('https://local.invalid/__dry-run'));
