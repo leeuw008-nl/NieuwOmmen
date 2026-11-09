@@ -66,3 +66,15 @@ test("app laadt het bronregister vóór app.js en gebruikt het als bronconfigura
   assert.match(app, /'gemeente-html-detail': 'gemeente'/);
   assert.match(app, /'rtv-oost-html': 'oost'/);
 });
+
+test("geïsoleerde push-dry-run gebruikt het canonieke register en de vastgelegde routevolgorde", () => {
+  const dryRun = readFileSync(new URL("../worker-push-dryrun.js", import.meta.url), "utf8");
+  assert.match(dryRun, /import "\.\/source-registry\.js"/);
+  assert.match(dryRun, /const SOURCES = SOURCE_REGISTRY\.SOURCES/);
+  assert.match(dryRun, /for \(const route of s\.fetchOrder\)/);
+  assert.match(dryRun, /parseGemeenteOverview\(body, s\.id\)/);
+  assert.match(dryRun, /parseVechtdalCentraalHTML\(body, s\.id\)/);
+  assert.match(dryRun, /not_tested_production_kv/);
+  assert.match(dryRun, /pushAttempts:0,pushSent:0,kvReads:0,kvWrites:0/);
+  assert.doesNotMatch(dryRun, /const SOURCES = \[/);
+});
