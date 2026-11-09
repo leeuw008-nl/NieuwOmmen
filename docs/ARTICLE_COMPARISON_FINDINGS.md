@@ -68,6 +68,8 @@ Op de geïsoleerde testbranch is `source-registry.js` toegevoegd als eerste gede
 
 Regressietests staan in `tests/source-registry.test.mjs`. De handmatige validatieworkflow controleert nu ook de syntax van het register en voert de bronregistertests uit.
 
-**Bewust nog niet aangesloten:** `app.js` en `worker-push-dryrun.js` gebruiken hun bestaande configuraties nog. Er is dus nog geen runtimegedrag veranderd en er is nog geen bewijs van app↔Worker-pariteit. De volgende stap is de app-configuratie op dit register aansluiten zonder parsergedrag te wijzigen; daarna kan de dry-run dezelfde bronconfiguratie consumeren en kunnen verschillen per parserroute worden getest.
+**Aangesloten op de app (9 november 2026):** `index.html` laadt nu `source-registry.js` vóór `app.js`. De app bouwt `BRONNEN` en `BRON_URLS` voortaan uit het register. De bestaande parserfuncties en de bron-specifieke uitvoeringsvolgorde in `loadOneSource()` zijn bewust behouden; dit voorkomt dat een configuratieaansluiting ongemerkt het ophalen of parsen van artikelen verandert. De bestaande cache-bustingversie van `app.js` is verhoogd naar `v=341`.
 
-Veiligheidsstatus: uitsluitend commits op `test/push-rebuild-2026-11-08`; geen productiecode, Worker, cron, productie-KV of pushverzending aangeraakt.
+De regressietest controleert nu ook dat het register vóór de app wordt geladen en dat de app de bronlijst en URL-configuratie uit het register afleidt. De app gebruikt dus nu de canonieke broninventaris, maar de Worker-dry-run nog niet. Er is nog geen bewijs van volledige app↔Worker-pariteit; de volgende stap is de geïsoleerde dry-run op hetzelfde register aansluiten en de verschillen per parserroute vergelijken.
+
+Veiligheidsstatus: uitsluitend commits op `test/push-rebuild-2026-11-08`; geen productiecode, Worker, cron, productie-KV of pushverzending aangeraakt. De appwijziging is alleen op de testbranch vastgelegd; de productie-app is niet gewijzigd.
