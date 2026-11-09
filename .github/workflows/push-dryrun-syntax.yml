@@ -56,4 +56,4 @@ jobs:
       - name: Assert no push, cron, or KV binding access
         run: |
           ! grep -Eq 'sendPush|scheduled[[:space:]]*[(]' worker-push-dryrun.js
-          ! grep -Eq 'env\\.[A-Z_]+' worker-push-dryrun.js
+          ! grep -Eq 'env\.[A-Z_]+' worker-push-dryrun.js
