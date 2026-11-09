@@ -55,3 +55,19 @@ De Nieuwsbrief blijft in de eerste vergelijking expliciet uitgesloten zolang daa
 - `article-filter.js`: gedeelde validatie, gemeentematching en datumregels
 - `worker-push-dryrun.js`: huidige geïsoleerde collector en filterdiagnostiek
 - `worker-v280.js`: pushselectie, abonnementsfilters en huidige productie-Workerlogica
+
+
+## Vervolgstap 1 — canoniek bronregister (9 november 2026)
+
+Op de geïsoleerde testbranch is `source-registry.js` toegevoegd als eerste gedeelde inventaris van de tien bekende bronnen. Het register legt per bron vast:
+- stabiele bron-ID en weergavenaam;
+- de bestaande app-URL en homepage;
+- het vereiste parsercontract;
+- de expliciete ophaal-/fallbackvolgorde;
+- de Nieuwsbrief als KV-afhankelijke route die een geïsoleerde fixture vereist.
+
+Regressietests staan in `tests/source-registry.test.mjs`. De handmatige validatieworkflow controleert nu ook de syntax van het register en voert de bronregistertests uit.
+
+**Bewust nog niet aangesloten:** `app.js` en `worker-push-dryrun.js` gebruiken hun bestaande configuraties nog. Er is dus nog geen runtimegedrag veranderd en er is nog geen bewijs van app↔Worker-pariteit. De volgende stap is de app-configuratie op dit register aansluiten zonder parsergedrag te wijzigen; daarna kan de dry-run dezelfde bronconfiguratie consumeren en kunnen verschillen per parserroute worden getest.
+
+Veiligheidsstatus: uitsluitend commits op `test/push-rebuild-2026-11-08`; geen productiecode, Worker, cron, productie-KV of pushverzending aangeraakt.
