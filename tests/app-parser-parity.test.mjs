@@ -65,7 +65,7 @@ test("productie-Worker-kandidaat gebruikt dezelfde originele parsermodule en app
   assert.match(pushWorker, /parseOostFull\(html\)/);
   assert.match(pushWorker, /parseRTVVechtdalFull\(html\)/);
   assert.match(pushWorker, /parseVechtdalCentraalFallback\(body\)/);
-  assert.doesNotMatch(pushWorker, /function\\s+(?:parseRSS|parseRTVOost|parseRTVVechtdal)\\s*\\(/);
+  assert.doesNotMatch(pushWorker, /function\s+(?:parseRSS|parseRTVOost|parseRTVVechtdal)\s*\(/);
 });
 
 test("de collector gebruikt dezelfde bronroutes en fallbackvolgorde als loadOneSource in app.js", () => {
