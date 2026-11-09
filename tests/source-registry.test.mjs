@@ -30,7 +30,9 @@ test("iedere bron heeft een unieke ID, absolute HTTPS-routes en parsercontract",
     assert.ok(["rss", "gemeente-html-detail", "rtv-oost-html", "rtv-vechtdal-html", "vechtdal-centraal-chain", "newsletter-kv"].includes(source.parser), source.id);
     assert.equal(new URL(source.url).protocol, "https:");
     assert.equal(new URL(source.homepage).protocol, "https:");
-    assert.ok(Array.isArray(source.fetchOrder) && source.fetchOrder.length > 0, source.id);\n    for (const route of source.fetchOrder) assert.equal(new URL(route).protocol, "https:");\n    for (const fallback of source.fallbacks) assert.equal(new URL(fallback).protocol, "https:");
+    assert.ok(Array.isArray(source.fetchOrder) && source.fetchOrder.length > 0, source.id);
+    for (const route of source.fetchOrder) assert.equal(new URL(route).protocol, "https:");
+    for (const fallback of source.fallbacks) assert.equal(new URL(fallback).protocol, "https:");
     assert.equal(registry.byId[source.id].id, source.id);
   }
 });
@@ -40,6 +42,7 @@ test("gemeente-, RTV- en Vechtdal-fallbackroutes zijn expliciet vastgelegd", () 
   assert.equal(registry.byId["RTV Oost"].parser, "rtv-oost-html");
   assert.deepEqual(Array.from(registry.byId["RTV Vechtdal"].fetchOrder), ["https://rtvvechtdal.nl/", "https://rtvvechtdal.nl/feed/"]);
   assert.deepEqual(Array.from(registry.byId["Vechtdal Centraal"].fetchOrder), [
+    "https://www.vechtdalcentraal.nl/feed/",
     "https://www.vechtdalcentraal.nl/",
     "https://api.rss2json.com/v1/api.json"
   ]);
