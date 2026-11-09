@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const parserModule = readFileSync(new URL("../app-source-parsers.js", import.meta.url), "utf8");
 const worker = readFileSync(new URL("../worker-push-dryrun.js", import.meta.url), "utf8");
+const pushWorker = readFileSync(new URL("../worker-v280.js", import.meta.url), "utf8");
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 function functionSource(source, name) {
@@ -55,6 +56,16 @@ test("push-dry-run gebruikt uitsluitend de oorspronkelijke app-parsermodule", ()
   assert.match(worker, /scheduledHandler:false/);
   assert.match(worker, /not_tested_production_kv/);
   assert.doesNotMatch(worker, /sendPush|scheduled\s*\(/);
+});
+
+test("productie-Worker-kandidaat gebruikt dezelfde originele parsermodule en app-routes", () => {
+  assert.match(pushWorker, /from "\.\/app-source-parsers\.js"/);
+  assert.match(pushWorker, /parseRSSFull\(xml,b\.id\)/);
+  assert.match(pushWorker, /parseGemeenteOverview\(html\)/);
+  assert.match(pushWorker, /parseOostFull\(html\)/);
+  assert.match(pushWorker, /parseRTVVechtdalFull\(html\)/);
+  assert.match(pushWorker, /parseVechtdalCentraalFallback\(body\)/);
+  assert.doesNotMatch(pushWorker, /function\\s+(?:parseRSS|parseRTVOost|parseRTVVechtdal)\\s*\\(/);
 });
 
 test("de collector gebruikt dezelfde bronroutes en fallbackvolgorde als loadOneSource in app.js", () => {
