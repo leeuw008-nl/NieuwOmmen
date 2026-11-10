@@ -257,7 +257,8 @@ async function shouldSendToSub(sub,article,env){
       if(syncData && syncData.state && typeof syncData.state==='object') appState=syncData.state;
     }catch(e){ console.log('[push-selectie] sync lezen mislukt; abonnementinstellingen als fallback',e.message); }
   }
-  if(appState){
+  const hasAppSourceSettings=!!(appState && BRONNEN.some(b=>appState[b.id] && typeof appState[b.id]==='object' && 'aan' in appState[b.id]));
+  if(appState && hasAppSourceSettings){
     if(appState.__pushEnabled===false || appState.pushEnabled===false || appState.push===false || appState.pushDisabled===true) return false;
     // Dezelfde bronselectie als renderArticles() in app.js.
     const sourceState=appState[sourceKey];
