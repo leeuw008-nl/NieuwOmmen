@@ -39,7 +39,7 @@ export function getSourceArticleLimit(sourceId) {
 export function parseRTVVechtdalHtml(html, now = new Date()) {
   const items = [];
   const pollingMoment = new Date(now);
-  const reFull = /<div class="allmode_date">([^<]+)<\\/div>[\\s\\S]{0,600}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\\/a>[\\s\\S]{0,800}?<div class="allmode_(?:intro|text|introtext)[^>]*>([\\s\\S]*?)<\\/div>/gi;
+  const reFull = /<div class="allmode_date">([^<]+)<\/div>[\s\S]{0,600}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\/a>[\s\S]{0,800}?<div class="allmode_(?:intro|text|introtext)[^>]*>([\s\S]*?)<\/div>/gi;
   const makeDate = value => {
     const parts = value.split("-");
     if (parts.length !== 3) return new Date(pollingMoment);
@@ -53,14 +53,14 @@ export function parseRTVVechtdalHtml(html, now = new Date()) {
   };
   let m;
   while ((m = reFull.exec(String(html))) !== null && items.length < 20) {
-    let intro = m[4].replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim();
+    let intro = m[4].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     if (intro.length > 200) intro = intro.slice(0, 200) + " [...]";
     else if (intro) intro += " [...]";
     else intro = m[3].trim() + " [...]";
     items.push({ title: m[3].trim(), link: makeLink(m[2]), pubDate: makeDate(m[1]), description: intro, source: "RTV Vechtdal" });
   }
   if (items.length) return items;
-  const fallback = /<div class="allmode_date">([^<]+)<\\/div>[\\s\\S]{0,500}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\\/a>/gi;
+  const fallback = /<div class="allmode_date">([^<]+)<\/div>[\s\S]{0,500}?<h[2-3] class="allmode_title"><a href="([^"]+)">([^<]+)<\/a>/gi;
   while ((m = fallback.exec(String(html))) !== null && items.length < 15) {
     items.push({ title: m[3].trim(), link: makeLink(m[2]), pubDate: makeDate(m[1]), description: m[3].trim() + " [...]", source: "RTV Vechtdal" });
   }
