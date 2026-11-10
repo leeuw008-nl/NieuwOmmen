@@ -25,7 +25,7 @@ jobs:
           node --check article-filter.js
           node --check app-source-parsers.js
           node --check app.js
-          node --test tests/article-filter.test.mjs tests/app-parser-parity.test.mjs
+          node --test tests/article-filter.test.mjs tests/app-parser-parity.test.mjs tests/delivery-simulation.test.mjs
       - name: Read-only live feed diagnostics
         timeout-minutes: 2
         run: |
