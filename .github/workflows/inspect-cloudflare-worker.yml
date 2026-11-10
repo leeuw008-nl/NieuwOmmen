@@ -2,6 +2,11 @@ name: Inspect production Worker configuration
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - worker-inspection-trigger.txt
 
 permissions:
   contents: read
@@ -44,7 +49,7 @@ jobs:
           jq '[
             .result.bindings[]?
             | select(.name == "VAPID_PUBLIC_KEY" or .name == "VAPID_SUBJECT")
-            | {name, type, value}
+            | {name, type, value: (.text // .value // null)}
           ]' settings.json
 
           echo "=== Cron triggers ==="
