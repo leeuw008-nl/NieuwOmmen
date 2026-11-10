@@ -24,7 +24,7 @@ export const APP_SOURCE_LIMITS = Object.freeze({
   "OudOmmen": 10,
   "RondOmmen": 20,
   "RTV Oost": 10,
-  "RTV Vechtdal": 10,
+  "RTV Vechtdal": 20,
   "Vechtdal Centraal": 10
 });
 export function getSourceArticleLimit(sourceId) {
