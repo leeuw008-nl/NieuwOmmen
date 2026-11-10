@@ -45,3 +45,12 @@ test("RTV Vechtdal gebruikt dezelfde volledige HTML-structuur als de app", async
   assert.equal(article.pubDate.getHours(), 14);
   assert.equal(article.pubDate.getMinutes(), 20);
 });
+
+test("RTV Oost volgt app-parser met echte publishedAt en gemeenterelevantie", async () => {
+  const { parseRTVOostHtml } = await import("./push-selection.js");
+  const html = '<div publishedAt="2026-11-10T12:15:00Z"><a href="/nieuws/ommen-test-123456"><div class="name-label">112</div><h3>Brandweer rukt uit in Ommen</h3></a></div>';
+  const [article] = parseRTVOostHtml(html, now);
+  assert.equal(article.title, "112: Brandweer rukt uit in Ommen");
+  assert.equal(article.link, "https://www.oost.nl/nieuws/ommen-test-123456");
+  assert.equal(new Date(article.pubDate).toISOString(), "2026-11-10T12:15:00.000Z");
+});
