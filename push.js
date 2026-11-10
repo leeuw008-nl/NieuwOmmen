@@ -39,7 +39,7 @@ function getSourceScopes(){
 }
 function getSourceFilters(){
   try{
-    const v=JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');
+    const v=(typeof window.getAppState==='function') ? window.getAppState() : JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');
     const out={};
     Object.keys(v).forEach(k=>{
       const s=v[k];
