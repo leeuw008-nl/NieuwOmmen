@@ -542,13 +542,11 @@ const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
 if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
 const delivered=await getArticleDeliveredSubs(env,article.link);
-const relevant=[];
-for(const sub of subs){
-  if(!(await shouldSendToSub(sub,article,env))) continue;
-  if(!delivered.has(sub._id)) relevant.push(sub);
-}
-rejectedByFilter+=subs.length-relevant.length-delivered.size;
-console.log(`[v279-diag] pushselectie: bron=${article.source}; nog_te_verzenden=${relevant.length}; al_bezorgd=${delivered.size}`);
+const eligible=[];
+for(const sub of subs){if(await shouldSendToSub(sub,article,env)) eligible.push(sub);}
+const relevant=eligible.filter(sub=>!delivered.has(sub._id));
+rejectedByFilter+=subs.length-eligible.length;
+console.log(`[v279-diag] pushselectie: bron=${article.source}; nog_te_verzenden=${relevant.length}; al_bezorgd=${eligible.length-relevant.length}`);
 const capacity=Math.max(0,MAX_CRON_PUSHES-cronPushes);
 const pending=relevant.slice(0,capacity);
 for(let i=0;i<pending.length;i+=20){
@@ -563,9 +561,10 @@ for(let i=0;i<pending.length;i+=20){
   await saveArticleDeliveredSubs(env,article.link,delivered);
   await new Promise(r=>setTimeout(r,300));
 }
-const unfinished=relevant.length>pending.length || pending.some((sub,i)=>!delivered.has(sub._id));
+const remaining=eligible.filter(sub=>!delivered.has(sub._id)).length;
+const unfinished=remaining>0;
 if(unfinished){
-  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${relevant.length-delivered.size}`);
+  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${remaining}`);
 }else{
   markArticleProcessed(seen,article);
   await clearArticleDeliveredSubs(env,article.link);
