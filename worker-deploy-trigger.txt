@@ -1,1 +1,1 @@
-Trigger guarded deployment of the push Worker version after snapshot validation.
+Retry deployment using the already staged and validated Worker version.
