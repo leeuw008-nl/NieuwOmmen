@@ -146,3 +146,57 @@ test("scheduled Worker: mislukte push blijft open en wordt in volgende cron opni
     globalThis.setTimeout = originalSetTimeout;
   }
 });
+
+
+test("scheduled Worker: verstuurt alleen naar abonnementen die de app-bronselectie toestaat", async () => {
+  const vapid = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const vapidPrivate = await crypto.subtle.exportKey("jwk", vapid.privateKey);
+  const vapidPublic = new Uint8Array(await crypto.subtle.exportKey("raw", vapid.publicKey));
+  const makeSub = async userId => {
+    const ua = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    const uaPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ua.publicKey));
+    return {
+      endpoint: `https://push.example.test/${userId}`,
+      keys: { p256dh: b64url(uaPublic), auth: b64url(crypto.getRandomValues(new Uint8Array(16))) },
+      userId, pushEnabled: true
+    };
+  };
+  const subs = mockKV({
+    "sub-on": await makeSub("user-on"),
+    "sub-off": await makeSub("user-off")
+  });
+  const sync = mockKV({
+    "user-on": { state: { "De Stentor": { aan: true, vandaag: false, scope: "regio" } } },
+    "user-off": { state: { "De Stentor": { aan: false, vandaag: false, scope: "regio" } } }
+  });
+  const seen = mockKV();
+  const env = {
+    SUBS: subs, SYNC: sync, SEEN: seen,
+    VAPID_PRIVATE_KEY: JSON.stringify(vapidPrivate),
+    VAPID_PUBLIC_KEY: b64url(vapidPublic),
+    VAPID_SUBJECT: "mailto:test@example.test"
+  };
+  const rss = `<rss><channel><item><title>Ommen bronselectietest</title><link>https://example.nl/nieuws/ommen-selectietest</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`;
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const pushedEndpoints = [];
+  globalThis.setTimeout = callback => { callback(); return 0; };
+  globalThis.fetch = async url => {
+    const value = String(url);
+    if (value.startsWith("https://push.example.test/")) {
+      pushedEndpoints.push(value);
+      return new Response("", { status: 201 });
+    }
+    if (value.includes("destentor.nl/ommen/rss.xml")) return new Response(rss, { status: 200 });
+    return new Response("<rss><channel></channel></rss>", { status: 200 });
+  };
+  try {
+    await worker.scheduled({ cron: "0 * * * *", scheduledTime: Date.now() }, env, {});
+    assert.deepEqual(pushedEndpoints, ["https://push.example.test/user-on"]);
+    assert.equal((await subs.get("sub-on", "json")).pushCount, 1);
+    assert.equal((await subs.get("sub-off", "json")).pushCount || 0, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
