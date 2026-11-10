@@ -1,0 +1,29 @@
+name: Test production push notification
+
+on:
+  push:
+    branches:
+      - deploy/push-worker-safe-2026-11-10
+    paths:
+      - worker-push-test-trigger.txt
+
+permissions:
+  contents: read
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send one test push through the production Worker
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --get \
+            "https://ommen-push-v2.leeuw008.workers.dev/test-push" \
+            --data-urlencode "source=De Stentor" \
+            --data-urlencode "title=NieuwOmmen pushcontrole" \
+            --data-urlencode "link=https://www.ommen.nl/actueel/" \
+            --data-urlencode "id=test-20261110-production-check" \
+            -o result.json
+          jq -e '.ok == true' result.json >/dev/null
+          echo "Resultaat testmelding:"
+          jq '{ok, sent, total, blocked, failed, source, version}' result.json
