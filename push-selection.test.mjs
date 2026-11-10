@@ -65,3 +65,17 @@ test("Gemeente Ommen herkent datum en echte tijd zoals de app", async () => {
   const meta=extractGemeenteDateHtml('<meta property="article:published_time" content="2026-11-10T11:20:00Z">');
   assert.equal(meta.toISOString(),"2026-11-10T11:20:00.000Z");
 });
+
+test("bezorgstatus voorkomt dubbele push en laat mislukte bezorging opnieuw proberen", async () => {
+  const { getPendingDeliverySubscriptions, areDeliveriesComplete } = await import("./push-selection.js");
+  const eligible=[{_id:"sub-a"},{_id:"sub-b"}];
+  const delivered=new Set(["sub-a"]);
+  assert.deepEqual(getPendingDeliverySubscriptions(eligible,delivered),[{_id:"sub-b"}]);
+  assert.equal(areDeliveriesComplete(eligible,delivered),false);
+  delivered.add("sub-b");
+  assert.deepEqual(getPendingDeliverySubscriptions(eligible,delivered),[]);
+  assert.equal(areDeliveriesComplete(eligible,delivered),true);
+  const failedAttempt=new Set();
+  assert.deepEqual(getPendingDeliverySubscriptions(eligible,failedAttempt),eligible);
+  assert.equal(areDeliveriesComplete(eligible,failedAttempt),false);
+});
