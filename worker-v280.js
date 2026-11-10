@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -227,7 +227,7 @@ while((m=generic.exec(txt))!==null && out.length<5){ const link='https://www.oos
 parsed=out;
 }else parsed=parseRSS(txt,b.id,5);
 if(diagnostic) console.log(`[v279-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; artikelen=${parsed.length}`);
-return parsed.filter(article=>globalThis.NieuwOmmenArticleFilter.isValidArticle(article));
+return parsed.map(article=>withPollingDate(article,new Date())).filter(article=>globalThis.NieuwOmmenArticleFilter.isValidArticle(article));
 }catch(e){
 if(diagnostic) console.log(`[v279-diag] bronfout: ${b.id}; fase=${stage}; fout=${e.message||String(e)}`);
 return [];
