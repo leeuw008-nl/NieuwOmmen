@@ -1,1 +1,1 @@
-One-time trigger for reading non-secret production Worker configuration.
+Inspect active deployment and uploaded versions before safe push Worker deployment.
