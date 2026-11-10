@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  syntax:
+  syntax-and-selection-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,3 +18,6 @@ jobs:
           node --check worker-v280.js
           node --check push.js
           node --check article-filter.js
+          node --check push-selection.js
+      - name: Push selection tests
+        run: node --test push-selection.test.mjs
