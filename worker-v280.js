@@ -239,6 +239,26 @@ return [];
 }
 }
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
+async function getArticleDeliveryKey(link){
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(link||'')));
+  return 'delivery_'+uint8ArrayToBase64Url(new Uint8Array(digest));
+}
+async function getArticleDeliveredSubs(env,link){
+  try{
+    const key=await getArticleDeliveryKey(link);
+    const value=await getKV(env,'SEEN').get(key,'json');
+    return new Set(Array.isArray(value)?value:[]);
+  }catch(e){console.log('[push-delivery] status lezen mislukt: '+(e.message||String(e)));return new Set();}
+}
+async function saveArticleDeliveredSubs(env,link,delivered){
+  try{
+    const key=await getArticleDeliveryKey(link);
+    await getKV(env,'SEEN').put(key,JSON.stringify([...delivered]));
+  }catch(e){console.log('[push-delivery] status opslaan mislukt: '+(e.message||String(e)));}
+}
+async function clearArticleDeliveredSubs(env,link){
+  try{const key=await getArticleDeliveryKey(link);await getKV(env,'SEEN').delete(key);}catch(e){console.log('[push-delivery] status opruimen mislukt: '+(e.message||String(e)));}
+}
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
 async function setSeenLinksIfChanged(env,set){
 try{
@@ -521,18 +541,35 @@ if(cronPushes>=MAX_CRON_PUSHES)break;
 const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
 if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
-const relevant=[];for(const sub of subs){if(cronPushes+relevant.length>=MAX_CRON_PUSHES)break;if(await shouldSendToSub(sub,article,env))relevant.push(sub);}
-rejectedByFilter+=subs.length-relevant.length;
-console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${relevant.length}; gefilterd=${subs.length-relevant.length}`);
-for(let i=0;i<relevant.length;i+=20){
-const batch=relevant.slice(i,Math.min(i+20,MAX_CRON_PUSHES-cronPushes));
-const results=await Promise.all(batch.map(sub=>sendPush(sub,article,env)));
-for(const result of results){if(result.ok)successPushes++;else{failedPushes++;console.log(`[v279-diag] push mislukt: bron=${article.source}; status=${result.status||'geen'}; fout=${result.error||'onbekend'}`);}}
-cronPushes+=batch.length;
-await new Promise(r=>setTimeout(r,300));
+const delivered=await getArticleDeliveredSubs(env,article.link);
+const relevant=[];
+for(const sub of subs){
+  if(!(await shouldSendToSub(sub,article,env))) continue;
+  if(!delivered.has(sub._id)) relevant.push(sub);
 }
-// Artikel is volledig beoordeeld: ook bij nul passende abonnementen niet opnieuw aanbieden.
-markArticleProcessed(seen,article);
+rejectedByFilter+=subs.length-relevant.length-delivered.size;
+console.log(`[v279-diag] pushselectie: bron=${article.source}; nog_te_verzenden=${relevant.length}; al_bezorgd=${delivered.size}`);
+const capacity=Math.max(0,MAX_CRON_PUSHES-cronPushes);
+const pending=relevant.slice(0,capacity);
+for(let i=0;i<pending.length;i+=20){
+  const batch=pending.slice(i,i+20);
+  const results=await Promise.all(batch.map(sub=>sendPush(sub,article,env)));
+  for(let k=0;k<results.length;k++){
+    const result=results[k];
+    if(result.ok){successPushes++;delivered.add(batch[k]._id);}
+    else{failedPushes++;console.log(`[v279-diag] push mislukt: bron=${article.source}; status=${result.status||'geen'}; fout=${result.error||'onbekend'}`);}
+  }
+  cronPushes+=batch.length;
+  await saveArticleDeliveredSubs(env,article.link,delivered);
+  await new Promise(r=>setTimeout(r,300));
+}
+const unfinished=relevant.length>pending.length || pending.some((sub,i)=>!delivered.has(sub._id));
+if(unfinished){
+  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${relevant.length-delivered.size}`);
+}else{
+  markArticleProcessed(seen,article);
+  await clearArticleDeliveredSubs(env,article.link);
+}
 }
 await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
