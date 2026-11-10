@@ -177,3 +177,18 @@ test("cron-integratie: artikel zonder eligible abonnementen vraagt geen pushpogi
   assert.equal(result.remaining,0);
   assert.equal(result.complete,true);
 });
+
+
+test("Vechtdal Centraal HTML volgt eerst de huidige app-parser en daarna de legacy fallback", async () => {
+  const { parseVechtdalCentraalHtml } = await import("./push-selection.js");
+  const now = new Date("2026-11-10T15:30:00");
+  const current = '<h2 class="entry-title"><a href="/nieuws/ommen-test">Ommen krijgt een nieuw dorpsplein</a></h2>';
+  const [a] = parseVechtdalCentraalHtml(current, now);
+  assert.equal(a.link, "https://www.vechtdalcentraal.nl/nieuws/ommen-test");
+  assert.equal(a.title, "Ommen krijgt een nieuw dorpsplein");
+  assert.equal(a.pubDate.getTime(), now.getTime());
+  const legacy = '<a href="/nieuws/ommen-legacy"><h2>Ommen organiseert een historische wandeling</h2></a>';
+  const [b] = parseVechtdalCentraalHtml(legacy, now);
+  assert.equal(b.link, "https://www.vechtdalcentraal.nl/nieuws/ommen-legacy");
+  assert.equal(b.title, "Ommen organiseert een historische wandeling");
+});
