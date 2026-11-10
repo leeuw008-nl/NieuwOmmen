@@ -118,18 +118,18 @@ export function parseRTVOostHtml(html, now = new Date()) {
 
 const NL_MONTHS = Object.freeze({januari:0,februari:1,maart:2,april:3,mei:4,juni:5,juli:6,augustus:7,september:8,oktober:9,november:10,december:11});
 export function extractGemeenteDateHtml(html) {
-  const text=String(html||"").replace(/<[^>]*>/g," ").replace(/\\s+/g," ").trim();
+  const text=String(html||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
   const patterns=[
-    /(\\d{1,2})\\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\\s+(\\d{4})\\s*,?\\s*(?:om|\\-)?\\s*(\\d{1,2})\\s*:\\s*(\\d{2})/i,
-    /(\\d{1,2})\\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\\s+(\\d{4})[^\\d]{0,20}(\\d{1,2})\\s*:\\s*(\\d{2})/i
+    /(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})\s*,?\s*(?:om|\-)?\s*(\d{1,2})\s*:\s*(\d{2})/i,
+    /(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})[^\d]{0,20}(\d{1,2})\s*:\s*(\d{2})/i
   ];
   for(const re of patterns){const m=text.match(re);if(m){const d=new Date(+m[3],NL_MONTHS[m[2].toLowerCase()],+m[1],+m[4],+m[5]);if(!Number.isNaN(d.getTime()))return d;}}
-  const d=text.match(/(\\d{1,2})\\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\\s+(\\d{4})/i);
-  if(d){const re=new RegExp(d[0].replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&")+"[\\s\\S]{0,400}?(\\d{1,2})\\s*:\\s*(\\d{2})","i");const tm=text.match(re);if(tm){const dt=new Date(+d[3],NL_MONTHS[d[2].toLowerCase()],+d[1],+tm[1],+tm[2]);if(!Number.isNaN(dt.getTime()))return dt;}}
+  const d=text.match(/(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})/i);
+  if(d){const re=new RegExp(d[0].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[\s\S]{0,400}?(\d{1,2})\s*:\s*(\d{2})","i");const tm=text.match(re);if(tm){const dt=new Date(+d[3],NL_MONTHS[d[2].toLowerCase()],+d[1],+tm[1],+tm[2]);if(!Number.isNaN(dt.getTime()))return dt;}}
   const metas=[
     /<meta[^>]+property=["']article:published_time["'][^>]+content=["']([^"']+)["']/i,
     /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']article:published_time["']/i,
-    /"datePublished"\\s*:\\s*"([^"]+)"/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
     /<time[^>]+datetime=["']([^"']+)["']/i
   ];
   for(const re of metas){const m=String(html||"").match(re);if(m){const dt=new Date(m[1]);if(!Number.isNaN(dt.getTime()))return dt;}}
@@ -137,16 +137,16 @@ export function extractGemeenteDateHtml(html) {
   return null;
 }
 export function extractGemeenteDescription(html,pos=0) {
-  const clean=String(html||"").replace(/<!--[\\s\\S]*?-->/g," ");
+  const clean=String(html||"").replace(/<!--[\s\S]*?-->/g," ");
   const slice=clean.substring(pos,pos+1500);
-  const re=/<(p|div)[^>]*>([\\s\\S]*?)<\\/\\1>/gi;let m;
-  while((m=re.exec(slice))!==null){let txt=m[2].replace(/<[^>]*>/g," ").replace(/\\s+/g," ").trim();if(txt.length<30||txt.length>400||/^\\d{1,2}\\s+\\w+\\s+\\d{4}/.test(txt)||txt.includes("Facebook")&&txt.includes("Instagram")||/prefetch|wp-admin/i.test(txt)||/^(Lees meer|Meer lezen|Home|Actueel)$/i.test(txt))continue;return (txt.length>180?txt.slice(0,177)+" [...]":txt+" [...]");}
+  const re=/<(p|div)[^>]*>([\s\S]*?)<\/\1>/gi;let m;
+  while((m=re.exec(slice))!==null){let txt=m[2].replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();if(txt.length<30||txt.length>400||/^\d{1,2}\s+\w+\s+\d{4}/.test(txt)||txt.includes("Facebook")&&txt.includes("Instagram")||/prefetch|wp-admin/i.test(txt)||/^(Lees meer|Meer lezen|Home|Actueel)$/i.test(txt))continue;return (txt.length>180?txt.slice(0,177)+" [...]":txt+" [...]");}
   return " [...]";
 }
 export function parseGemeenteOverviewHtml(html,now=new Date()) {
-  const clean=String(html||"").replace(/<!--[\\s\\S]*?-->/g," ");
+  const clean=String(html||"").replace(/<!--[\s\S]*?-->/g," ");
   const out=[],seen=new Set();
-  const re=/<h[23][^>]*>\\s*<a[^>]+href=["']([^"']*\\/actueel\\/[^"'?#]+)["'][^>]*>([\\s\\S]*?)<\\/a>\\s*<\\/h[23]>/gi;
+  const re=/<h[23][^>]*>\s*<a[^>]+href=["']([^"']*\/actueel\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h[23]>/gi;
   let m;
   while((m=re.exec(clean))!==null&&out.length<10){const title=m[2].replace(/<[^>]*>/g,"").trim();if(title.length<8)continue;const link=m[1].startsWith("http")?m[1]:"https://www.ommen.nl"+m[1];if(seen.has(link))continue;seen.add(link);const block=clean.substring(Math.max(0,m.index-500),m.index+2500);const pubDate=extractGemeenteDateHtml(block);out.push({title:title.slice(0,130),link,source:"Gemeente Ommen",pubDate,description:extractGemeenteDescription(clean,m.index),_dateOnly:!!pubDate&&pubDate.getHours()===0&&pubDate.getMinutes()===0&&pubDate.getSeconds()===0});}
   return out;
