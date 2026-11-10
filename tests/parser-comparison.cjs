@@ -34,7 +34,7 @@ ${i === 5 ? '' : '<pubDate>Tue, 10 Nov 2026 09:15:00 +0100</pubDate>'}
 </item>`).join('');
 const fixture = `<?xml version="1.0"?><rss version="2.0"><channel>${items}</channel></rss>`;
 const appOut = appContext.parse(fixture, 'De Stentor');
-const workerOut = workerContext.parse(fixture, 'De Stentor');
+// Cron fetchBron passes max=5; app parser uses MAX_PER_BRON['De Stentor']=25.\nconst workerOut = workerContext.parse(fixture, 'De Stentor', 5);
 const norm = rows => rows.map(x => ({
   title: x.title, link: x.link,
   pubDate: x.pubDate instanceof Date ? x.pubDate.toISOString() : (x.pubDate || null),
