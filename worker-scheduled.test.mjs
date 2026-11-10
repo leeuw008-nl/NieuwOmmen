@@ -200,3 +200,38 @@ test("scheduled Worker: verstuurt alleen naar abonnementen die de app-bronselect
     globalThis.setTimeout = originalSetTimeout;
   }
 });
+
+
+test("scheduled Worker: Vechtdal Centraal gebruikt homepage-parser als de RSS-feed leeg is", async () => {
+  const subs = mockKV();
+  const sync = mockKV();
+  const seen = mockKV();
+  const env = { SUBS: subs, SYNC: sync, SEEN: seen };
+  const html = '<h2 class="entry-title"><a href="/nieuws/ommen-fallback">Ommen opent een nieuw dorpsplein</a></h2>';
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const calls = { feed: 0, homepage: 0 };
+  globalThis.setTimeout = callback => { callback(); return 0; };
+  globalThis.fetch = async url => {
+    const value = String(url);
+    if (value === "https://www.vechtdalcentraal.nl/feed/") {
+      calls.feed++;
+      return new Response("<rss><channel></channel></rss>", { status: 200 });
+    }
+    if (value === "https://www.vechtdalcentraal.nl/") {
+      calls.homepage++;
+      return new Response(html, { status: 200 });
+    }
+    return new Response("<rss><channel></channel></rss>", { status: 200 });
+  };
+  try {
+    await worker.scheduled({ cron: "0 * * * *", scheduledTime: Date.now() }, env, {});
+    assert.equal(calls.feed, 1);
+    assert.equal(calls.homepage, 1, "homepage wordt alleen als fallback opgehaald");
+    const seenLinks = await seen.get("seen_links", "json");
+    assert.ok(seenLinks.includes("https://www.vechtdalcentraal.nl/nieuws/ommen-fallback"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
