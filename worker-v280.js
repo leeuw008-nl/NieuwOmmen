@@ -498,7 +498,6 @@ let sourceNew=0;
 for(const art of arts){
 if(!seen.has(art.link)){
   newArticles.push(art);
-  seen.add(art.link);
   hasNew=true;
   sourceNew++;
 }
@@ -507,17 +506,16 @@ console.log(`[v279-diag] bronresultaat: ${bron.id}; opgehaald=${arts.length}; ni
 await new Promise(r=>setTimeout(r,800));
 }
 if(!hasNew){console.log('[v279-diag] Geen nieuwe artikelen; alle bronresultaten staan hierboven; 0 pushpogingen');return;}
-console.log(`[v279-diag] totaal nieuw=${newArticles.length}; links worden als gezien opgeslagen vóór datum- en pushcontrole`);
-await setSeenLinksIfChanged(env,seen);
+console.log(`[v279-diag] totaal nieuw=${newArticles.length}; links worden pas na datum- en pushcontrole als gezien opgeslagen`);
 if(newArticles.length>0){try{const SEEN=getKV(env,'SEEN');await SEEN.put('last_article',JSON.stringify(newArticles[0]));console.log('[v279-diag] last_article opgeslagen');}catch(e){console.log('[v279-diag] last_article opslaan mislukt: '+e.message);}}
-if(subs.length===0){console.log('[v279-diag] Geen subscriptions; geen pushpogingen');return;}
+if(subs.length===0){for(const article of newArticles) seen.add(article.link);await setSeenLinksIfChanged(env,seen);console.log('[v279-diag] Geen subscriptions; kandidaten administratief afgehandeld, geen pushpogingen');return;}
 newArticles.sort((a,b)=>{if(!a.pubDate&&!b.pubDate)return 0;if(!a.pubDate)return 1;if(!b.pubDate)return -1;return new Date(b.pubDate)-new Date(a.pubDate);});
 let cronPushes=0;let successPushes=0;let failedPushes=0;let rejectedByDate=0;let rejectedByFilter=0;const MAX_CRON_PUSHES=35;
 for(const article of newArticles){
 if(cronPushes>=MAX_CRON_PUSHES)break;
 const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
-if(!recent){rejectedByDate++;continue;}
+if(!recent){rejectedByDate++;seen.add(article.link);continue;}
 const relevant=[];for(const sub of subs){if(cronPushes+relevant.length>=MAX_CRON_PUSHES)break;if(await shouldSendToSub(sub,article,env))relevant.push(sub);}
 rejectedByFilter+=subs.length-relevant.length;
 console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${relevant.length}; gefilterd=${subs.length-relevant.length}`);
@@ -529,6 +527,7 @@ cronPushes+=batch.length;
 await new Promise(r=>setTimeout(r,300));
 }
 }
+await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
 console.log(`[v279-diag] Cron afgerond: nieuw=${newArticles.length}; datum-afgekeurd=${rejectedByDate}; filter-afgekeurd=${rejectedByFilter}; pushpogingen=${cronPushes}; geaccepteerd=${successPushes}; mislukt=${failedPushes}`);
 }catch(e){console.log('[v279-diag] Cron exception: '+(e.message||String(e))+'; '+(e.stack||''));}
