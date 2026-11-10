@@ -1,1 +1,1 @@
-Inspect deployed production Worker modules for comparison.
+Compare active deployed push logic with repository source.
