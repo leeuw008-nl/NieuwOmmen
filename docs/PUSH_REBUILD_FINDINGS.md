@@ -206,3 +206,14 @@ De gebruiker heeft bevestigd: Emsland hoort bij de plaatsnamen die voor de filte
 - De read-only feeddiagnostiek is geslaagd en de veiligheidsasserties bevestigen: `pushAttempts=0`, `pushSent=0`, `kvReads=0`, `kvWrites=0`; de dry-run heeft geen `scheduled()`-handler.
 - Ommen City bleef in deze run HTTP 403 / Cloudflare challenge; de nieuwsbrief bleef bewust overgeslagen omdat die route productie-KV zou lezen.
 - De run valideert de code op commit `1e91d46`; de latere commit `1849c98` heeft alleen de bevindingendocumentatie bijgewerkt. Er is geen deployment of wijziging aan `main` uitgevoerd.
+
+## 15. Read-only hercontrole en afleverdeduplicatie-simulatie (10 november 2026)
+- GitHub Actions-run 44 [42793567899](https://github.com/leeuw008-nl/NieuwOmmen/actions/runs/42793567899), commit `bc80fd92fab5539548cb92e4be205fbd247be153`, is volledig `success`. Syntaxischecks, parser-paritytests, gedeelde-filtertests, live feeddiagnostiek en veiligheidsasserties zijn geslaagd.
+- De read-only momentopname verzamelde 122 artikelen uit acht bereikbare bronnen: De Stentor 25, Gemeente Ommen 10, Natuurlijk Ommen 10, OudOmmen 10, RondOmmen 20, RTV Oost 19, RTV Vechtdal 18 en Vechtdal Centraal 10. Ommen City gaf HTTP 403; Nieuwsbrief is overgeslagen omdat de route productie-KV leest.
+- Er waren 122 unieke canonieke URL's en 0 URL-duplicaten. Dit zegt niets over inhoudelijk gelijke berichten met verschillende artikel-URL's.
+- De gedeelde filter beoordeelde 122 geldige artikelen; 5 voldeden aan het pushdatumvenster, 117 niet. 51 titels/beschrijvingen matchten een gemeentelijke plaatsnaam. Datumgeschiktheid en gemeentelijke match zijn afzonderlijke criteria; de uiteindelijke pushselectie hangt daarnaast af van abonnement, bronkeuze en scope. Productie-SYNC/SUBS is niet gelezen.
+- Veiligheidswaarden: `pushAttempts=0`, `pushSent=0`, `kvReads=0`, `kvWrites=0`. De dry-run bevat geen `scheduled()`-handler en geen `sendPush()`.
+- De volgende teststap voegt uitsluitend een zuivere in-memory afleverledger toe. Deze simuleert de statussen `reserved`, `sent` en `failed` per combinatie canoniek artikel + abonnement. De tests controleren herhaalde runs, tracking-URL-varianten, twee onafhankelijke abonnementen, mislukte pogingen en retry.
+- Dit is nadrukkelijk géén productie-opslag of concurrency-lock. Een in-memory simulatie bewijst niet dat Cloudflare KV atomair kan claimen. Voor daadwerkelijke aflevering blijft een Durable Object, D1-transactie of andere atomische coördinatie vereist. Er wordt niets uitgerold of verzonden.
+- De parserfuncties in `app-source-parsers.js` blijven byte-voor-byte gelijk aan de bijbehorende functies in `app.js`; deze stap wijzigt geen bronparser.
+
