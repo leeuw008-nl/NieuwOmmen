@@ -23,7 +23,7 @@ export const APP_SOURCE_LIMITS = Object.freeze({
   "Ommen City": 10,
   "OudOmmen": 10,
   "RondOmmen": 20,
-  "RTV Oost": 10,
+  "RTV Oost": 25,
   "RTV Vechtdal": 20,
   "Vechtdal Centraal": 10
 });
