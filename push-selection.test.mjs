@@ -31,7 +31,7 @@ test("Worker haalt dezelfde aantallen per bron op als de app", () => {
   assert.equal(getSourceArticleLimit("De Stentor"), 25);
   assert.equal(getSourceArticleLimit("RondOmmen"), 20);
   assert.equal(getSourceArticleLimit("Gemeente Ommen"), 10);
-  assert.equal(getSourceArticleLimit("RTV Oost"), 10);
+  assert.equal(getSourceArticleLimit("RTV Oost"), 25);
   assert.equal(getSourceArticleLimit("RTV Vechtdal"), 20);
 });
 
