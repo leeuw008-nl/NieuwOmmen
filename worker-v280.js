@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -221,20 +221,7 @@ function parseGemeenteOverviewWorker(html, now = new Date()){
 }
 
 function parseRTVVechtdal(html, bronId){
-try{
-const out=[];
-const re = /<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;
-let m;
-while((m=re.exec(html))!==null && out.length<10){
-let href=m[1].trim(), dateStr=m[2].trim(), title=m[3].trim().slice(0,120), link=href;
-if(link.startsWith('/?') || link.startsWith('?')) link='https://rtvvechtdal.nl/'+link.replace(/^\//,'');
-else if(link.startsWith('/')) link='https://rtvvechtdal.nl'+link;
-let iso=null; const dmatch=dateStr.match(/(\d{2})-(\d{2})-(\d{4})/);
-if(dmatch){ const d=new Date(`${dmatch[3]}-${dmatch[2]}-${dmatch[1]}T00:00:00Z`); if(!isNaN(d.getTime())) iso=d.toISOString(); }
-if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso});
-}
-return out;
-}catch(e){ return []; }
+ return parseRTVVechtdalHtml(html,new Date()).map(article=>({...article,source:bronId}));
 }
 async function fetchBron(b, diagnostic=false){
 let stage='start';
