@@ -561,7 +561,6 @@ if(delivery.complete){
   console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${delivery.remaining}`);
 }
 }
-}
 await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
 console.log(`[v279-diag] Cron afgerond: nieuw=${newArticles.length}; datum-afgekeurd=${rejectedByDate}; filter-afgekeurd=${rejectedByFilter}; pushpogingen=${cronPushes}; geaccepteerd=${successPushes}; mislukt=${failedPushes}`);
