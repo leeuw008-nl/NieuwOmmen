@@ -15,7 +15,7 @@ const BRONNEN = [
 {id:'OudOmmen', name:'OudOmmen', url:'https://weblog.oudommen.nl/feed/', type:'rss'},
 {id:'RondOmmen', name:'RondOmmen', url:'https://www.rondommen.nl/feed/', type:'rss'},
 {id:'RTV Oost', name:'RTV Oost', url:'https://www.oost.nl/nieuws/vechtdal', type:'oost'},
-{id:'RTV Vechtdal', name:'RTV Vechtdal', url:'https://rtvvechtdal.nl/', type:'rtv-vechtdal'},
+{id:'RTV Vechtdal', name:'RTV Vechtdal', url:'https://rtvvechtdal.nl/feed/', type:'rtv-vechtdal'},
 {id:'Vechtdal Centraal', name:'Vechtdal Centraal', url:'https://www.vechtdalcentraal.nl/feed/', type:'rss'},
 {id:'Nieuwsbrief', name:'Nieuwsbrief', url:'https://nieuwommen.leeuw008.nl/', type:'nieuwsbrief'},
 ];
