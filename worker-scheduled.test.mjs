@@ -52,7 +52,7 @@ test("scheduled Worker: haalt artikel op, selecteert abonnement, verstuurt en re
   const rss = `<rss><channel><item><title>Ommen testbericht voor cron</title><link>https://example.nl/nieuws/ommen-testbericht</link><pubDate>${now.toUTCString()}</pubDate></item></channel></rss>`;
   const originalFetch = globalThis.fetch;
   const originalSetTimeout = globalThis.setTimeout;
-  const calls = { sources: 0, fallbackFeeds: 0, pushes: 0 };
+  const calls = { sources: 0, fallbackFeeds: 0, vcHomepage: 0, rss2json: 0, pushes: 0 };
   globalThis.setTimeout = callback => { callback(); return 0; };
   globalThis.fetch = async (url, options = {}) => {
     if (String(url).startsWith("https://push.example.test/")) {
@@ -61,6 +61,8 @@ test("scheduled Worker: haalt artikel op, selecteert abonnement, verstuurt en re
     }
     calls.sources++;
     if (String(url).includes("rtvvechtdal.nl/feed/")) calls.fallbackFeeds++;
+    if (String(url) === "https://www.vechtdalcentraal.nl/") calls.vcHomepage++;
+    if (String(url).startsWith("https://api.rss2json.com/")) { calls.rss2json++; return new Response(JSON.stringify({status:"ok",items:[]}), {status:200,headers:{"Content-Type":"application/json"}}); }
     if (String(url).includes("destentor.nl/ommen/rss.xml")) {
       return new Response(rss, { status: 200 });
     }
@@ -74,8 +76,10 @@ test("scheduled Worker: haalt artikel op, selecteert abonnement, verstuurt en re
     globalThis.setTimeout = originalSetTimeout;
   }
 
-  assert.equal(calls.sources, 10, "negen broncontroles plus één RTV Vechtdal-feedfallback");
+  assert.equal(calls.sources, 12, "negen broncontroles plus RTV Vechtdal-feedfallback en twee Vechtdal Centraal-fallbacks");
   assert.equal(calls.fallbackFeeds, 1, "RTV Vechtdal gebruikt de bestaande feedfallback als de homepage geen items bevat");
+  assert.equal(calls.vcHomepage, 1, "Vechtdal Centraal probeert de homepage als de RSS-feed leeg is");
+  assert.equal(calls.rss2json, 1, "Vechtdal Centraal probeert rss2json als laatste fallback");
   assert.equal(calls.pushes, 1, "exact één geschikte push wordt naar de pushservice gestuurd");
   const savedSub = await subs.get("stable-sub-id", "json");
   assert.equal(savedSub.pushCount, 1, "pushadministratie wordt na HTTP-succes bijgewerkt");
