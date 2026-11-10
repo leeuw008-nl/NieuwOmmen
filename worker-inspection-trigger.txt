@@ -1,1 +1,1 @@
-Inspect all production Worker settings before deployment.
+Inspect current deployed Worker code and version.
