@@ -526,6 +526,8 @@ for(const result of results){if(result.ok)successPushes++;else{failedPushes++;co
 cronPushes+=batch.length;
 await new Promise(r=>setTimeout(r,300));
 }
+// Artikel is volledig beoordeeld: ook bij nul passende abonnementen niet opnieuw aanbieden.
+seen.add(article.link);
 }
 await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
