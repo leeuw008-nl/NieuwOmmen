@@ -85,35 +85,38 @@ import { processArticleDeliveries } from "./push-cron.js";
 test("cron-integratie: mislukte push wordt later hervat zonder dubbele push", async () => {
   const article={link:"https://example.nl/a",source:"De Stentor",title:"Test"};
   const subs=[{_id:"sub-a"},{_id:"sub-b"},{_id:"sub-c"}];
-  const delivered=new Set();
+  // Simuleer Cloudflare KV: elke cronrun laadt en bewaart een JSON-lijst.
+  const mockKV=new Map();
+  const loadDelivered=()=>new Set(JSON.parse(mockKV.get(article.link)||"[]"));
+  const saveDelivered=async(link,ids)=>mockKV.set(link,JSON.stringify([...ids]));
+  let delivered=loadDelivered();
   const attempts=[];
   let failB=true;
-  const saveCalls=[];
   const first=await processArticleDeliveries({
     article,subscriptions:subs,env:{},
     shouldSendToSub:async()=>true,
     sendPush:async sub=>{attempts.push(sub._id);if(sub._id==="sub-b"&&failB)return {ok:false};return {ok:true};},
-    delivered,capacity:2,
-    saveDelivered:async(link,ids)=>saveCalls.push([...ids])
+    delivered,capacity:2,saveDelivered
   });
   assert.equal(first.attempts,2);
   assert.equal(first.accepted,1);
   assert.equal(first.failed,1);
   assert.equal(first.complete,false);
-  assert.deepEqual([...delivered],["sub-a"]);
+  assert.deepEqual([...loadDelivered()],["sub-a"]);
   failB=false;
+  // Nieuwe cronrun: herstel status uitsluitend vanuit de KV-simulatie.
+  delivered=loadDelivered();
   const second=await processArticleDeliveries({
     article,subscriptions:subs,env:{},
     shouldSendToSub:async()=>true,
     sendPush:async sub=>{attempts.push(sub._id);return {ok:true};},
-    delivered,capacity:2,
-    saveDelivered:async(link,ids)=>saveCalls.push([...ids])
+    delivered,capacity:2,saveDelivered
   });
   assert.equal(second.complete,true);
   assert.equal(second.accepted,2);
   assert.deepEqual(attempts,["sub-a","sub-b","sub-b","sub-c"]);
-  assert.deepEqual([...delivered],["sub-a","sub-b","sub-c"]);
-  assert.equal(saveCalls.length,2);
+  assert.deepEqual([...loadDelivered()],["sub-a","sub-b","sub-c"]);
+  assert.equal(mockKV.size,1);
 });
 
 test("cron-integratie: filters bepalen eligible abonnementen en geen push buiten selectie", async () => {
