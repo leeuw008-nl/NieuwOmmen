@@ -246,7 +246,8 @@ stage='read';
 const txt=await r.text();
 stage='parse';
 let parsed=[];
-if(b.type==='gemeente') parsed=parseGemeenteOverviewWorker(txt,new Date());\nelse if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
+if(b.type==='gemeente') parsed=parseGemeenteOverviewWorker(txt,new Date());
+else if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
 else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
 else if(b.type==='oost'){
 const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;
