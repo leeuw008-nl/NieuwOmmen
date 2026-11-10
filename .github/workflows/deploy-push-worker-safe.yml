@@ -36,10 +36,20 @@ jobs:
 
           ACTIVE_VERSION=$(jq -r '.result.deployments[0].versions[0].version_id' production-backup/deployments.json)
           LATEST_VERSION=$(jq -r '.result.items[0].id' production-backup/versions.json)
-          if [ -z "${ACTIVE_VERSION}" ] || [ "${ACTIVE_VERSION}" != "${LATEST_VERSION}" ]; then
-            echo "STOP: active deployment is not the latest uploaded version; secret inheritance is unsafe."
-            echo "Active: ${ACTIVE_VERSION}; latest: ${LATEST_VERSION}"
+          STAGED_VERSION_ID=""
+          if [ -z "${ACTIVE_VERSION}" ]; then
+            echo "STOP: no active production version found."
             exit 1
+          fi
+          if [ "${ACTIVE_VERSION}" != "${LATEST_VERSION}" ]; then
+            echo "A newer version is already uploaded; checking whether it is our validated staged version."
+            curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "${BASE}/versions/${LATEST_VERSION}" -o production-backup/staged-version.json
+            jq -e '.result.annotations["workers/tag"] == "nieuwommen-push-selection-2026-11-10"' production-backup/staged-version.json >/dev/null
+            jq -e '.result.resources.bindings | any(.name == "VAPID_PRIVATE_KEY") and any(.name == "RESEND_API_KEY")' production-backup/staged-version.json >/dev/null
+            STAGED_VERSION_ID="${LATEST_VERSION}"
+            echo "Staged version validated: ${STAGED_VERSION_ID}"
           fi
 
           jq -e '.result.schedules | length == 1 and .[0].cron == "*/30 * * * *"' production-backup/schedules.json >/dev/null
@@ -61,6 +71,7 @@ jobs:
           echo "Secrets: names verified; values never read or printed."
           echo "KV namespaces and public VAPID values verified."
           echo "OLD_VERSION_ID=${ACTIVE_VERSION}" >> "$GITHUB_ENV"
+          echo "STAGED_VERSION_ID=${STAGED_VERSION_ID}" >> "$GITHUB_ENV"
 
       - name: Archive current production version before deployment
         uses: actions/upload-artifact@v4
@@ -141,20 +152,25 @@ jobs:
           }
           JSON
 
-          echo "Uploading a non-live version with strict secret inheritance..."
-          curl --fail-with-body --silent --show-error -X POST "${BASE}/versions?bindings_inherit=strict" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -F "metadata=@metadata.json;type=application/json" \
-            -F "worker-v280.js=@worker-v280.js;type=application/javascript+module" \
-            -F "article-filter.js=@article-filter.js;type=application/javascript+module" \
-            -F "push-cron.js=@push-cron.js;type=application/javascript+module" \
-            -F "push-selection.js=@push-selection.js;type=application/javascript+module" \
-            -o version-upload.json
+          if [ -n "${STAGED_VERSION_ID:-}" ]; then
+            NEW_VERSION_ID="${STAGED_VERSION_ID}"
+            echo "Using previously uploaded staged version: ${NEW_VERSION_ID}"
+          else
+            echo "Uploading a non-live version with strict secret inheritance..."
+            curl --fail-with-body --silent --show-error -X POST "${BASE}/versions?bindings_inherit=strict" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -F "metadata=@metadata.json;type=application/json" \
+              -F "worker-v280.js=@worker-v280.js;type=application/javascript+module" \
+              -F "article-filter.js=@article-filter.js;type=application/javascript+module" \
+              -F "push-cron.js=@push-cron.js;type=application/javascript+module" \
+              -F "push-selection.js=@push-selection.js;type=application/javascript+module" \
+              -o version-upload.json
 
-          jq -e '.success == true' version-upload.json >/dev/null
-          NEW_VERSION_ID=$(jq -r '.result.id' version-upload.json)
-          test -n "$NEW_VERSION_ID"
-          echo "Uploaded version: ${NEW_VERSION_ID}"
+            jq -e '.success == true' version-upload.json >/dev/null
+            NEW_VERSION_ID=$(jq -r '.result.id' version-upload.json)
+            test -n "$NEW_VERSION_ID"
+            echo "Uploaded version: ${NEW_VERSION_ID}"
+          fi
 
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
@@ -184,13 +200,18 @@ jobs:
           jq -e '.result.resources.script_runtime.compatibility_date == "2026-08-01"' new-version.json >/dev/null
 
           echo "New version bindings verified. Deploying 100% traffic..."
-          curl --fail-with-body --silent --show-error -X POST "${BASE}/deployments" \
+          HTTP_STATUS=$(curl --silent --show-error -w "%{http_code}" -X POST "${BASE}/deployments" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" \
             --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$NEW_VERSION_ID\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Deploy shared current-app push selection and retry-safe delivery\",\"workers/triggered_by\":\"github-actions\"}}" \
-            -o deployment.json
-          DEPLOYED=1
+            -o deployment.json)
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Cloudflare deployment API returned HTTP $HTTP_STATUS:"
+            cat deployment.json
+            exit 1
+          fi
           jq -e '.success == true' deployment.json >/dev/null
+          DEPLOYED=1
 
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
