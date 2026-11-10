@@ -1,6 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
+import { matchesSourceSelection } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -187,7 +188,7 @@ if(!link || !link.includes('http')){ const hrefMatch = it.match(/<link[^>]+href=
 link=link.replace(/<!\[CDATA\[|\]\]>/g,'').trim();
 if(!link.startsWith('http')){ const mm=it.match(/https?:\/\/[^\s<"]+/); if(mm) link=mm[0]; }
 const realDate = extractRssDate(it);
-return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bronId, pubDate: realDate, _realDate: !!realDate};
+return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bronId, pubDate: realDate || new Date().toISOString(), ...(realDate ? {_realDate:true} : {})};
 }).filter(x=>x.link && x.title);
 }
 function parseRTVVechtdal(html, bronId){
@@ -276,18 +277,13 @@ async function shouldSendToSub(sub,article,env){
     if(appState.__pushEnabled===false || appState.pushEnabled===false || appState.push===false || appState.pushDisabled===true) return false;
     // Exact dezelfde bronselectie als renderArticles() in app.js.
     const sourceState=appState[sourceKey];
-    if(!sourceState || sourceState.aan!==true) return false;
-    if(sourceState.vandaag===true && !globalThis.NieuwOmmenArticleFilter.isToday(article,new Date())) return false;
-    if(sourceState.scope==='gemeente' && !isGemeenteArtikel(article)) return false;
-    return true;
+    return matchesSourceSelection(sourceState,article,new Date());
   }
   // Anonieme abonnementen en accounts zonder gesynchroniseerde broninstellingen.
   const filters=sub.sourceFilters && typeof sub.sourceFilters==='object' ? sub.sourceFilters : null;
   if(filters && Object.prototype.hasOwnProperty.call(filters,sourceKey)){
     const sourceState=filters[sourceKey];
-    if(!sourceState || sourceState.aan!==true) return false;
-    if(sourceState.vandaag===true && !globalThis.NieuwOmmenArticleFilter.isToday(article,new Date())) return false;
-    if(sourceState.scope==='gemeente' && !isGemeenteArtikel(article)) return false;
+    if(!matchesSourceSelection(sourceState,article,new Date())) return false;
   }else{
     if(Array.isArray(sub.sources) && !sub.sources.includes(article.source)) return false;
     const selectedScope=sub.sourceScopes && typeof sub.sourceScopes==='object' ? sub.sourceScopes[article.source] : null;
