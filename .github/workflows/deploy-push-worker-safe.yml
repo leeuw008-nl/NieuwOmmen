@@ -166,7 +166,21 @@ jobs:
           jq -e '.result.resources.bindings | any(.name == "PUSH_KV" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' new-version.json >/dev/null
           jq -e '.result.resources.bindings | any(.name == "SUBS" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' new-version.json >/dev/null
           jq -e '.result.resources.bindings | any(.name == "VAPID_PUBLIC_KEY" and .text == "BBnCDkkzIXwUYFrF8ct-OXtRQ6-HaqF74grNVDLe4pw1SwG8_JyMYIHItRY6smyqPpdt81U1EZF33loTsepqnYo")' new-version.json >/dev/null
-          jq -e '.result.resources.bindings | any(.name == "VAPID_SUBJECT" and .text == "mailto:leeuw008@gmail.com")' new-version.json >/dev/null
+          jq -e '
+            [.result.resources.bindings[].name] | sort ==
+            ["CRON","NEWSLETTER","PUSH_KV","RESEND_API_KEY","SEEN","SESSIONS","SUBS","SYNC","USERS","VAPID_PRIVATE_KEY","VAPID_PUBLIC_KEY","VAPID_SUBJECT"]
+          ' new-version.json >/dev/null
+          jq -e '
+            .result.resources.bindings as $b |
+            ($b | any(.name == "USERS" and .namespace_id == "8cae8a43b81045feb480a6624e51d18c")) and
+            ($b | any(.name == "SESSIONS" and .namespace_id == "e9cd78ce622149ce859f17f42e1df0e4")) and
+            ($b | any(.name == "SYNC" and .namespace_id == "1631b47863f04c54830f03b120db0a9c")) and
+            ($b | any(.name == "SEEN" and .namespace_id == "55853f6c05974a47b1041219a8ce1831")) and
+            ($b | any(.name == "NEWSLETTER" and .namespace_id == "3d42fe8843f24f10bbd0e8a8a9b7ccbb")) and
+            ($b | any(.name == "CRON" and .namespace_id == "cae6f7a2c49a458797f6f92836fe8450")) and
+            ($b | any(.name == "SUBS" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")) and
+            ($b | any(.name == "PUSH_KV" and .namespace_id == "85e0901760f0430e94a391dac1da50f1"))
+          ' new-version.json >/dev/null
           jq -e '.result.resources.script_runtime.compatibility_date == "2026-08-01"' new-version.json >/dev/null
 
           echo "New version bindings verified. Deploying 100% traffic..."
@@ -187,6 +201,10 @@ jobs:
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             "${BASE}/schedules" -o after-schedules.json
           jq -e '.result.schedules | length == 1 and .[0].cron == "*/30 * * * *"' after-schedules.json >/dev/null
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/settings" -o after-settings.json
+          jq -e '.result.compatibility_date == "2026-08-01" and .result.usage_model == "standard" and .result.observability.enabled == true and .result.observability.logs.enabled == true' after-settings.json >/dev/null
 
           echo "DEPLOYMENT SUCCEEDED"
           echo "Previous version (rollback): ${OLD_VERSION_ID}"
