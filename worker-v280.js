@@ -1,20 +1,23 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
+import "./article-filter.js";
+import { processArticleDeliveries } from "./push-cron.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, parseVechtdalCentraalHtml, extractGemeenteDateHtml } from "./push-selection.js";
+
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
- const txt=((article?.title||'')+' '+(article?.description||'')).toLowerCase();
- return GEMEENTE_ZOEK.some(pl=>txt.includes(pl));
+ return globalThis.NieuwOmmenArticleFilter.isMunicipalityArticle(article);
 }
 const BRONNEN = [
 {id:'De Stentor', name:'De Stentor', url:'https://www.destentor.nl/ommen/rss.xml', type:'rss'},
-{id:'Gemeente Ommen', name:'Gemeente Ommen', url:'https://www.ommen.nl/feed/', type:'rss'},
+{id:'Gemeente Ommen', name:'Gemeente Ommen', url:'https://www.ommen.nl/actueel/', type:'gemeente'},
 {id:'Natuurlijk Ommen', name:'Natuurlijk Ommen', url:'https://www.natuurlijkommen.nl/feed/', type:'rss'},
 {id:'Ommen City', name:'Ommen City', url:'https://ommencity.nl/feed/', type:'rss'},
 {id:'OudOmmen', name:'OudOmmen', url:'https://weblog.oudommen.nl/feed/', type:'rss'},
 {id:'RondOmmen', name:'RondOmmen', url:'https://www.rondommen.nl/feed/', type:'rss'},
 {id:'RTV Oost', name:'RTV Oost', url:'https://www.oost.nl/nieuws/vechtdal', type:'oost'},
-{id:'RTV Vechtdal', name:'RTV Vechtdal', url:'https://rtvvechtdal.nl/', type:'rtv-vechtdal'},
-{id:'Vechtdal Centraal', name:'Vechtdal Centraal', url:'https://www.vechtdalcentraal.nl/feed/', type:'rss'},
+{id:'RTV Vechtdal', name:'RTV Vechtdal', url:'https://rtvvechtdal.nl/', feed:'https://rtvvechtdal.nl/feed/', type:'rtv-vechtdal'},
+{id:'Vechtdal Centraal', name:'Vechtdal Centraal', url:'https://www.vechtdalcentraal.nl/feed/', homepage:'https://www.vechtdalcentraal.nl/', type:'vechtdal-centraal'},
 {id:'Nieuwsbrief', name:'Nieuwsbrief', url:'https://nieuwommen.leeuw008.nl/', type:'nieuwsbrief'},
 ];
 const ADMIN_EMAILS = ['leeuw008@gmail.com', 'tj.deleeuw@gmail.com'];
@@ -186,24 +189,14 @@ if(!link || !link.includes('http')){ const hrefMatch = it.match(/<link[^>]+href=
 link=link.replace(/<!\[CDATA\[|\]\]>/g,'').trim();
 if(!link.startsWith('http')){ const mm=it.match(/https?:\/\/[^\s<"]+/); if(mm) link=mm[0]; }
 const realDate = extractRssDate(it);
-return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bronId, pubDate: realDate, _realDate: !!realDate};
+return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bronId, pubDate: realDate || new Date().toISOString(), ...(realDate ? {_realDate:true} : {})};
 }).filter(x=>x.link && x.title);
 }
+
+function parseGemeenteOverviewWorker(html, now = new Date()){ return parseGemeenteOverviewHtml(html,now); }
+
 function parseRTVVechtdal(html, bronId){
-try{
-const out=[];
-const re = /<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;
-let m;
-while((m=re.exec(html))!==null && out.length<10){
-let href=m[1].trim(), dateStr=m[2].trim(), title=m[3].trim().slice(0,120), link=href;
-if(link.startsWith('/?') || link.startsWith('?')) link='https://rtvvechtdal.nl/'+link.replace(/^\//,'');
-else if(link.startsWith('/')) link='https://rtvvechtdal.nl'+link;
-let iso=null; const dmatch=dateStr.match(/(\d{2})-(\d{2})-(\d{4})/);
-if(dmatch){ const d=new Date(`${dmatch[3]}-${dmatch[2]}-${dmatch[1]}T00:00:00Z`); if(!isNaN(d.getTime())) iso=d.toISOString(); }
-if(title && link) out.push({title,link,source:bronId,pubDate:iso,_dateOnly:!!iso});
-}
-return out;
-}catch(e){ return []; }
+ return parseRTVVechtdalHtml(html,new Date()).map(article=>({...article,source:bronId}));
 }
 async function fetchBron(b, diagnostic=false){
 let stage='start';
@@ -216,22 +209,81 @@ stage='read';
 const txt=await r.text();
 stage='parse';
 let parsed=[];
-if(b.type==='rss') parsed=parseRSS(txt,b.id,5);
-else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0) parsed=parseRSS(txt,b.id,5); }
+if(b.type==='gemeente') {
+  parsed=parseGemeenteOverviewWorker(txt,new Date());
+  // Net als de app: haal detailpagina's op als de overzichtspagina geen betrouwbare tijd toont.
+  await Promise.allSettled(parsed.filter(a=>!a.pubDate || a._dateOnly).slice(0,10).map(async article=>{
+    try {
+      const detail=await fetch(article.link,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});
+      if(detail.ok){
+        const detailHtml=await detail.text();
+        const date=extractGemeenteDateHtml(detailHtml);
+        if(date) article.pubDate=date;
+      }
+    } catch(e) { console.log('[gemeente-detail] '+(e.message||String(e))); }
+    if(!article.pubDate || article._dateOnly && article.pubDate.getHours()===0 && article.pubDate.getMinutes()===0) {
+      const fallback=new Date(); fallback.setHours(new Date().getHours(),new Date().getMinutes(),new Date().getSeconds()); article.pubDate=fallback;
+    }
+    delete article._dateOnly;
+  }));
+}
+else if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
+else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id).slice(0,getSourceArticleLimit(b.id)); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
+else if(b.type==='vechtdal-centraal'){
+  if(/<rss[\\s>]|<feed[\\s>]|<item[\\s>]/i.test(txt)) parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
+  else parsed=parseVechtdalCentraalHtml(txt,new Date());
+  if(parsed.length===0 && b.homepage){
+    const home=await fetch(b.homepage,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});
+    if(home.ok) parsed=parseVechtdalCentraalHtml(await home.text(),new Date());
+  }
+  if(parsed.length===0){
+    try{
+      const rss2jsonUrl='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(b.url)+'&t='+Date.now();
+      const response=await fetch(rss2jsonUrl,{headers:{'User-Agent':'NieuwOmmenBot/1.0'}});
+      if(response.ok){
+        const data=await response.json();
+        if(data.status==='ok' && Array.isArray(data.items)) parsed=data.items.slice(0,10).map(item=>({
+          title:String(item.title||'').replace(/<[^>]*>/g,'').trim(),
+          link:item.link,
+          pubDate:item.pubDate?new Date(item.pubDate):new Date(),
+          description:String(item.description||'').replace(/<[^>]*>/g,' ').slice(0,180)+' [...]',
+          source:b.id
+        })).filter(item=>item.title&&item.link);
+      }
+    }catch(e){console.log('[vechtdal-centraal-rss2json] '+(e.message||String(e)));}
+  }
+}
 else if(b.type==='oost'){
-const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;
-const out=[]; let m;
-while((m=generic.exec(txt))!==null && out.length<5){ const link='https://www.oost.nl'+m[1], title=m[2].trim().slice(0,120); if(title.length>10) out.push({title,link,source:b.id,pubDate:null}); }
-parsed=out;
-}else parsed=parseRSS(txt,b.id,5);
+parsed=parseRTVOostHtml(txt,new Date()).slice(0,getSourceArticleLimit(b.id));
+}else parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
 if(diagnostic) console.log(`[v279-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; artikelen=${parsed.length}`);
-return parsed;
+return parsed.map(article=>withPollingDate(article,new Date())).filter(article=>globalThis.NieuwOmmenArticleFilter.isValidArticle(article));
 }catch(e){
 if(diagnostic) console.log(`[v279-diag] bronfout: ${b.id}; fase=${stage}; fout=${e.message||String(e)}`);
 return [];
 }
 }
 async function getAllSubs(env){ try{ const SUBS=getKV(env,'SUBS'); const list=await SUBS.list(); const subs=[]; for(const k of list.keys){ const v=await SUBS.get(k.name,'json'); if(v) subs.push({...v,_id:k.name}); } return subs; }catch{ return []; } }
+async function getArticleDeliveryKey(link){
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(link||'')));
+  return 'delivery_'+uint8ArrayToBase64Url(new Uint8Array(digest));
+}
+async function getArticleDeliveredSubs(env,link){
+  try{
+    const key=await getArticleDeliveryKey(link);
+    const value=await getKV(env,'SEEN').get(key,'json');
+    return new Set(Array.isArray(value)?value:[]);
+  }catch(e){console.log('[push-delivery] status lezen mislukt: '+(e.message||String(e)));return new Set();}
+}
+async function saveArticleDeliveredSubs(env,link,delivered){
+  try{
+    const key=await getArticleDeliveryKey(link);
+    await getKV(env,'SEEN').put(key,JSON.stringify([...delivered]));
+  }catch(e){console.log('[push-delivery] status opslaan mislukt: '+(e.message||String(e)));}
+}
+async function clearArticleDeliveredSubs(env,link){
+  try{const key=await getArticleDeliveryKey(link);await getKV(env,'SEEN').delete(key);}catch(e){console.log('[push-delivery] status opruimen mislukt: '+(e.message||String(e)));}
+}
 async function getSeenLinks(env){ try{ const SEEN=getKV(env,'SEEN'); const j=await SEEN.get('seen_links','json'); return new Set(j||[]); }catch{ return new Set(); } }
 async function setSeenLinksIfChanged(env,set){
 try{
@@ -261,25 +313,33 @@ function isRecentPushArticle(article){
 }
 
 async function shouldSendToSub(sub,article,env){
-try{
-if(sub.userId){
-const SYNC=getKV(env,'SYNC'); const syncData=await SYNC.get(sub.userId,'json');
-if(syncData && syncData.state){
-const state=syncData.state;
-if(state.__pushEnabled===false) return false; if(state.pushEnabled===false) return false; if(state.push===false) return false; if(state.pushDisabled===true) return false;
-const bronKeys=BRONNEN.map(b=>b.id); let aanCount=0, hasSettings=false;
-for(const key of bronKeys){ const v=state[key]; if(v && typeof v==='object' && 'aan' in v){hasSettings=true;if(v.aan===true)aanCount++;} }
-if(hasSettings && aanCount===0) return false;
-const bronState=state[article.source];
-if(bronState && typeof bronState==='object' && 'aan' in bronState){if(bronState.aan===false)return false;} else {if(hasSettings)return false;}
-}
-}
-}catch(e){}
-if(sub.sources && Array.isArray(sub.sources)){ if(sub.sources.length===0)return false; if(!sub.sources.includes(article.source))return false; }
-const selectedScope=sub.sourceScopes && typeof sub.sourceScopes==='object' ? sub.sourceScopes[article.source] : null;
-if(selectedScope==='gemeente' && !isGemeenteArtikel(article)) return false;
-if(sub.pushEnabled===false)return false;
-return true;
+  if(!sub || !article || sub.pushEnabled===false) return false;
+  const sourceKey=article.id||article.source;
+  let appState=null;
+  if(sub.userId){
+    try{
+      const syncData=await getKV(env,'SYNC').get(sub.userId,'json');
+      if(syncData && syncData.state && typeof syncData.state==='object') appState=syncData.state;
+    }catch(e){ console.log('[push-selectie] sync lezen mislukt; abonnementinstellingen als fallback',e.message); }
+  }
+  const hasAppSourceSettings=!!(appState && BRONNEN.some(b=>appState[b.id] && typeof appState[b.id]==='object' && 'aan' in appState[b.id]));
+  if(appState && hasAppSourceSettings){
+    if(appState.__pushEnabled===false || appState.pushEnabled===false || appState.push===false || appState.pushDisabled===true) return false;
+    // Exact dezelfde bronselectie als renderArticles() in app.js.
+    const sourceState=appState[sourceKey];
+    return matchesSourceSelection(sourceState,article,new Date());
+  }
+  // Anonieme abonnementen en accounts zonder gesynchroniseerde broninstellingen.
+  const filters=sub.sourceFilters && typeof sub.sourceFilters==='object' ? sub.sourceFilters : null;
+  if(filters && Object.prototype.hasOwnProperty.call(filters,sourceKey)){
+    const sourceState=filters[sourceKey];
+    if(!matchesSourceSelection(sourceState,article,new Date())) return false;
+  }else{
+    if(Array.isArray(sub.sources) && !sub.sources.includes(article.source)) return false;
+    const selectedScope=sub.sourceScopes && typeof sub.sourceScopes==='object' ? sub.sourceScopes[article.source] : null;
+    if(selectedScope==='gemeente' && !isGemeenteArtikel(article)) return false;
+  }
+  return true;
 }
 
 export default {
@@ -344,22 +404,23 @@ if(path==='/subscribe' && request.method==='POST'){
 try{
 let bodyText;try{bodyText=await request.text();}catch(e){return json({error:'Kon body niet lezen: '+e.message},400);}
 let body;try{body=JSON.parse(bodyText);}catch(e){return json({error:'Invalid JSON: '+e.message},400);}
-const {endpoint,keys,sources,sourceScopes,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
+const {endpoint,keys,sources,sourceScopes,sourceFilters,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
 let sess=null;try{sess=await getUserFromRequest(request,env);}catch(e){}
 let id;try{id=safeId(endpoint);}catch(e){return json({error:'safeId fail: '+e.message},500);}
 const SUBS=getKV(env,'SUBS');let existing=null;try{existing=await SUBS.get(id,'json');}catch(e){existing=null;}
 const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
 let finalSources=existing?.sources||[];if(Array.isArray(sources))finalSources=sources;
 let finalSourceScopes=existing?.sourceScopes||{};if(sourceScopes && typeof sourceScopes==='object')finalSourceScopes=sourceScopes;
+let finalSourceFilters=existing?.sourceFilters||{};if(sourceFilters && typeof sourceFilters==='object')finalSourceFilters=sourceFilters;
 // Bewaar bestaande sleutels als het verzoek geen volledig sleutelpaar bevat.
 const incomingKeysValid=!!(keys&&typeof keys.p256dh==='string'&&keys.p256dh.length>0&&typeof keys.auth==='string'&&keys.auth.length>0);
 const effectiveKeys=incomingKeysValid?keys:(existing?.keys||{});
 if(existing){
-const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes);
+const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes); const sameSourceFilters=stableStringify(existing.sourceFilters||{})===stableStringify(finalSourceFilters);
 const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null);
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
 const sameKeys=stableStringify(existing.keys||{})===stableStringify(effectiveKeys||{});
-if(sameSources&&sameSourceScopes&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280',skipped:true});}
+if(sameSources&&sameSourceScopes&&sameSourceFilters&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,version:'v280',skipped:true});}
 }
 let preservedDescription=existing?.description||'';
 if(!preservedDescription && sess?.userId){
@@ -371,8 +432,8 @@ if(!preservedDescription && sess?.userId){
   }catch{}
 }
 const now=Date.now();
-const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
-await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280'});
+const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
+await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,version:'v280'});
 }catch(e){return json({error:'Subscribe crash: '+e.message,stack:e.stack},500);}
 }
 if(path==='/unsubscribe' && request.method==='POST'){try{const {endpoint}=await request.json();if(!endpoint)return json({error:'no endpoint'},400);await getKV(env,'SUBS').delete(safeId(endpoint));return json({ok:true});}catch(e){return json({error:'unsubscribe fail: '+e.message},500);}}
@@ -487,7 +548,6 @@ let sourceNew=0;
 for(const art of arts){
 if(!seen.has(art.link)){
   newArticles.push(art);
-  seen.add(art.link);
   hasNew=true;
   sourceNew++;
 }
@@ -496,28 +556,36 @@ console.log(`[v279-diag] bronresultaat: ${bron.id}; opgehaald=${arts.length}; ni
 await new Promise(r=>setTimeout(r,800));
 }
 if(!hasNew){console.log('[v279-diag] Geen nieuwe artikelen; alle bronresultaten staan hierboven; 0 pushpogingen');return;}
-console.log(`[v279-diag] totaal nieuw=${newArticles.length}; links worden als gezien opgeslagen vóór datum- en pushcontrole`);
-await setSeenLinksIfChanged(env,seen);
+console.log(`[v279-diag] totaal nieuw=${newArticles.length}; links worden pas na datum- en pushcontrole als gezien opgeslagen`);
 if(newArticles.length>0){try{const SEEN=getKV(env,'SEEN');await SEEN.put('last_article',JSON.stringify(newArticles[0]));console.log('[v279-diag] last_article opgeslagen');}catch(e){console.log('[v279-diag] last_article opslaan mislukt: '+e.message);}}
-if(subs.length===0){console.log('[v279-diag] Geen subscriptions; geen pushpogingen');return;}
+if(subs.length===0){for(const article of newArticles) markArticleProcessed(seen,article);await setSeenLinksIfChanged(env,seen);console.log('[v279-diag] Geen subscriptions; kandidaten administratief afgehandeld, geen pushpogingen');return;}
 newArticles.sort((a,b)=>{if(!a.pubDate&&!b.pubDate)return 0;if(!a.pubDate)return 1;if(!b.pubDate)return -1;return new Date(b.pubDate)-new Date(a.pubDate);});
 let cronPushes=0;let successPushes=0;let failedPushes=0;let rejectedByDate=0;let rejectedByFilter=0;const MAX_CRON_PUSHES=35;
 for(const article of newArticles){
 if(cronPushes>=MAX_CRON_PUSHES)break;
 const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
-if(!recent){rejectedByDate++;continue;}
-const relevant=[];for(const sub of subs){if(cronPushes+relevant.length>=MAX_CRON_PUSHES)break;if(await shouldSendToSub(sub,article,env))relevant.push(sub);}
-rejectedByFilter+=subs.length-relevant.length;
-console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${relevant.length}; gefilterd=${subs.length-relevant.length}`);
-for(let i=0;i<relevant.length;i+=20){
-const batch=relevant.slice(i,Math.min(i+20,MAX_CRON_PUSHES-cronPushes));
-const results=await Promise.all(batch.map(sub=>sendPush(sub,article,env)));
-for(const result of results){if(result.ok)successPushes++;else{failedPushes++;console.log(`[v279-diag] push mislukt: bron=${article.source}; status=${result.status||'geen'}; fout=${result.error||'onbekend'}`);}}
-cronPushes+=batch.length;
-await new Promise(r=>setTimeout(r,300));
+if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
+const delivered=await getArticleDeliveredSubs(env,article.link);
+const delivery=await processArticleDeliveries({
+  article, subscriptions:subs, env, shouldSendToSub, sendPush, delivered,
+  capacity:MAX_CRON_PUSHES-cronPushes,
+  saveDelivered:(link,ids)=>saveArticleDeliveredSubs(env,link,ids),
+  pause:()=>new Promise(r=>setTimeout(r,300))
+});
+rejectedByFilter+=subs.length-delivery.eligible;
+cronPushes+=delivery.attempts;
+successPushes+=delivery.accepted;
+failedPushes+=delivery.failed;
+console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${delivery.eligible}; nog_te_verzenden=${delivery.pendingBefore}; bezorgd=${delivery.accepted}; mislukt=${delivery.failed}; resterend=${delivery.remaining}`);
+if(delivery.complete){
+  markArticleProcessed(seen,article);
+  await clearArticleDeliveredSubs(env,article.link);
+}else{
+  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${delivery.remaining}`);
 }
 }
+await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
 console.log(`[v279-diag] Cron afgerond: nieuw=${newArticles.length}; datum-afgekeurd=${rejectedByDate}; filter-afgekeurd=${rejectedByFilter}; pushpogingen=${cronPushes}; geaccepteerd=${successPushes}; mislukt=${failedPushes}`);
 }catch(e){console.log('[v279-diag] Cron exception: '+(e.message||String(e))+'; '+(e.stack||''));}

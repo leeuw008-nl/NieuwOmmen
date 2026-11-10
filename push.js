@@ -37,6 +37,19 @@ function getSourceScopes(){
     return out;
   }catch(e){ return {}; }
 }
+function getSourceFilters(){
+  try{
+    const v=(typeof window.getAppState==='function') ? window.getAppState() : JSON.parse(localStorage.getItem('nieuwsommen_bronnen_v2')||'{}');
+    const out={};
+    Object.keys(v).forEach(k=>{
+      const s=v[k];
+      if(s && typeof s==='object' && 'aan' in s){
+        out[k]={aan:s.aan===true,vandaag:s.vandaag===true,scope:s.scope==='regio'?'regio':(s.scope==='gemeente'?'gemeente':null)};
+      }
+    });
+    return out;
+  }catch(e){ return {}; }
+}
 
 function getAuthToken(){
   return localStorage.getItem('ommen_auth_token') || localStorage.getItem('ommen_token') || '';
@@ -66,7 +79,7 @@ async function updateSourcesOnServer(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true, token: token||undefined})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(),sourceFilters:getSourceFilters(), pushEnabled:true, token: token||undefined})
     });
     console.log('[push v270] Sources geupdate op server:', getSources(), 'met user?', !!token);
   }catch(e){ console.log('[push v270] update sources fail', e.message); }
@@ -84,7 +97,7 @@ async function linkAnonymousSubsToUser(){
     await fetch(WORKER_URL+'/subscribe',{
       method:'POST',
       headers: authHeaders(),
-      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:getSubscriptionKeys(sub),sources:getSources(),sourceScopes:getSourceScopes(),sourceFilters:getSourceFilters(), pushEnabled:true})
     });
     console.log('[push v270] linkAnonymous - klaar, check admin Abonnementen voor email');
   }catch(e){ console.log('[push v270] linkAnonymous fail', e.message); }
@@ -140,7 +153,7 @@ async function onBellClick(e){
       const p256dh=btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       const auth=btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       console.log('[push v270] POST /subscribe met bronnen', getSources(), 'en token?', !!getAuthToken());
-      const r=await fetch(WORKER_URL+'/subscribe',{method:'POST',headers: authHeaders(), body:JSON.stringify({endpoint:sub.endpoint,keys:{p256dh,auth},sources:getSources(),sourceScopes:getSourceScopes(), pushEnabled:true})});
+      const r=await fetch(WORKER_URL+'/subscribe',{method:'POST',headers: authHeaders(), body:JSON.stringify({endpoint:sub.endpoint,keys:{p256dh,auth},sources:getSources(),sourceScopes:getSourceScopes(),sourceFilters:getSourceFilters(), pushEnabled:true})});
       console.log('[push v270] response',r.status); const t=await r.text(); console.log('[push v270] body', t);
       if(!r.ok) throw new Error(t);
       b.textContent='🔔'; b.classList.add('enabled','active');
