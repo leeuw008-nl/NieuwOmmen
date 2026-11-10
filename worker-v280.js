@@ -248,25 +248,38 @@ function isRecentPushArticle(article){
 }
 
 async function shouldSendToSub(sub,article,env){
-try{
-if(sub.userId){
-const SYNC=getKV(env,'SYNC'); const syncData=await SYNC.get(sub.userId,'json');
-if(syncData && syncData.state){
-const state=syncData.state;
-if(state.__pushEnabled===false) return false; if(state.pushEnabled===false) return false; if(state.push===false) return false; if(state.pushDisabled===true) return false;
-const bronKeys=BRONNEN.map(b=>b.id); let aanCount=0, hasSettings=false;
-for(const key of bronKeys){ const v=state[key]; if(v && typeof v==='object' && 'aan' in v){hasSettings=true;if(v.aan===true)aanCount++;} }
-if(hasSettings && aanCount===0) return false;
-const bronState=state[article.source];
-if(bronState && typeof bronState==='object' && 'aan' in bronState){if(bronState.aan===false)return false;} else {if(hasSettings)return false;}
-}
-}
-}catch(e){}
-if(sub.sources && Array.isArray(sub.sources)){ if(sub.sources.length===0)return false; if(!sub.sources.includes(article.source))return false; }
-const selectedScope=sub.sourceScopes && typeof sub.sourceScopes==='object' ? sub.sourceScopes[article.source] : null;
-if(selectedScope==='gemeente' && !isGemeenteArtikel(article)) return false;
-if(sub.pushEnabled===false)return false;
-return true;
+  if(!sub || !article || sub.pushEnabled===false) return false;
+  const sourceKey=article.id||article.source;
+  let appState=null;
+  if(sub.userId){
+    try{
+      const syncData=await getKV(env,'SYNC').get(sub.userId,'json');
+      if(syncData && syncData.state && typeof syncData.state==='object') appState=syncData.state;
+    }catch(e){ console.log('[push-selectie] sync lezen mislukt; abonnementinstellingen als fallback',e.message); }
+  }
+  if(appState){
+    if(appState.__pushEnabled===false || appState.pushEnabled===false || appState.push===false || appState.pushDisabled===true) return false;
+    // Dezelfde bronselectie als renderArticles() in app.js.
+    const sourceState=appState[sourceKey];
+    if(!sourceState || sourceState.aan!==true) return false;
+    if(sourceState.vandaag===true && !globalThis.NieuwOmmenArticleFilter.isToday(article,new Date())) return false;
+    if(sourceState.scope==='gemeente' && !isGemeenteArtikel(article)) return false;
+    return true;
+  }
+  // Anonieme abonnementen krijgen dezelfde instellingen via push.js mee.
+  const filters=sub.sourceFilters && typeof sub.sourceFilters==='object' ? sub.sourceFilters : null;
+  if(filters && Object.prototype.hasOwnProperty.call(filters,sourceKey)){
+    const sourceState=filters[sourceKey];
+    if(!sourceState || sourceState.aan!==true) return false;
+    if(sourceState.vandaag===true && !globalThis.NieuwOmmenArticleFilter.isToday(article,new Date())) return false;
+    if(sourceState.scope==='gemeente' && !isGemeenteArtikel(article)) return false;
+  }else{
+    // Compatibiliteit met bestaande abonnementen die de uitgebreide instellingen nog niet meesturen.
+    if(Array.isArray(sub.sources) && !sub.sources.includes(article.source)) return false;
+    const selectedScope=sub.sourceScopes && typeof sub.sourceScopes==='object' ? sub.sourceScopes[article.source] : null;
+    if(selectedScope==='gemeente' && !isGemeenteArtikel(article)) return false;
+  }
+  return true;
 }
 
 export default {
@@ -331,22 +344,23 @@ if(path==='/subscribe' && request.method==='POST'){
 try{
 let bodyText;try{bodyText=await request.text();}catch(e){return json({error:'Kon body niet lezen: '+e.message},400);}
 let body;try{body=JSON.parse(bodyText);}catch(e){return json({error:'Invalid JSON: '+e.message},400);}
-const {endpoint,keys,sources,sourceScopes,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
+const {endpoint,keys,sources,sourceScopes,sourceFilters,description}=body;if(!endpoint || typeof endpoint!=='string' || endpoint.length<10)return json({error:'no endpoint'},400);
 let sess=null;try{sess=await getUserFromRequest(request,env);}catch(e){}
 let id;try{id=safeId(endpoint);}catch(e){return json({error:'safeId fail: '+e.message},500);}
 const SUBS=getKV(env,'SUBS');let existing=null;try{existing=await SUBS.get(id,'json');}catch(e){existing=null;}
 const ip=getClientIP(request);const ua=request.headers.get('User-Agent')||'';
 let finalSources=existing?.sources||[];if(Array.isArray(sources))finalSources=sources;
 let finalSourceScopes=existing?.sourceScopes||{};if(sourceScopes && typeof sourceScopes==='object')finalSourceScopes=sourceScopes;
+let finalSourceFilters=existing?.sourceFilters||{};if(sourceFilters && typeof sourceFilters==='object')finalSourceFilters=sourceFilters;
 // Bewaar bestaande sleutels als het verzoek geen volledig sleutelpaar bevat.
 const incomingKeysValid=!!(keys&&typeof keys.p256dh==='string'&&keys.p256dh.length>0&&typeof keys.auth==='string'&&keys.auth.length>0);
 const effectiveKeys=incomingKeysValid?keys:(existing?.keys||{});
 if(existing){
-const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes);
+const sameSources=stableStringify(existing.sources||[])===stableStringify(finalSources); const sameSourceScopes=stableStringify(existing.sourceScopes||{})===stableStringify(finalSourceScopes); const sameSourceFilters=stableStringify(existing.sourceFilters||{})===stableStringify(finalSourceFilters);
 const sameUser=(existing.userId||null)===(sess?sess.userId:existing.userId||null);
 const samePush=(existing.pushEnabled!==false)===(body.pushEnabled!==false);
 const sameKeys=stableStringify(existing.keys||{})===stableStringify(effectiveKeys||{});
-if(sameSources&&sameSourceScopes&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280',skipped:true});}
+if(sameSources&&sameSourceScopes&&sameSourceFilters&&sameUser&&samePush&&sameKeys){console.log('[v277] subscribe skip - unchanged',id.slice(0,10));return json({ok:true,id,linkedUser:sess?sess.userId:existing.userId||null,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,version:'v280',skipped:true});}
 }
 let preservedDescription=existing?.description||'';
 if(!preservedDescription && sess?.userId){
@@ -358,8 +372,8 @@ if(!preservedDescription && sess?.userId){
   }catch{}
 }
 const now=Date.now();
-const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
-await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,version:'v280'});
+const newSub={endpoint,keys:effectiveKeys,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,userId:sess?sess.userId:existing?.userId||null,email:sess?sess.email:existing?.email||null,description:description||preservedDescription||'',ip,userAgent:ua.slice(0,200),pushEnabled:body.pushEnabled!==false,created:existing?.created||now,updated:now,lastSeen:now,lastPush:existing?.lastPush||null,lastPushSource:existing?.lastPushSource||null,lastPushTitle:existing?.lastPushTitle||null,pushCount:existing?.pushCount||0};
+await SUBS.put(id,JSON.stringify(newSub));return json({ok:true,id,linkedUser:sess?sess.userId:null,sources:finalSources,sourceScopes:finalSourceScopes,sourceFilters:finalSourceFilters,version:'v280'});
 }catch(e){return json({error:'Subscribe crash: '+e.message,stack:e.stack},500);}
 }
 if(path==='/unsubscribe' && request.method==='POST'){try{const {endpoint}=await request.json();if(!endpoint)return json({error:'no endpoint'},400);await getKV(env,'SUBS').delete(safeId(endpoint));return json({ok:true});}catch(e){return json({error:'unsubscribe fail: '+e.message},500);}}
