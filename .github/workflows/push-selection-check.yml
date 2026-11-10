@@ -19,5 +19,6 @@ jobs:
           node --check push.js
           node --check article-filter.js
           node --check push-selection.js
+          node --check push-cron.js
       - name: Push selection tests
         run: node --test push-selection.test.mjs
