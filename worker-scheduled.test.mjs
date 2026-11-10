@@ -84,3 +84,65 @@ test("scheduled Worker: haalt artikel op, selecteert abonnement, verstuurt en re
   assert.ok(seenLinks.includes("https://example.nl/nieuws/ommen-testbericht"));
   assert.equal([...seen.data.keys()].some(key => key.startsWith("delivery_")), false, "voltooide bezorgstatus wordt opgeruimd");
 });
+
+
+test("scheduled Worker: mislukte push blijft open en wordt in volgende cron opnieuw geprobeerd", async () => {
+  const vapid = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const vapidPrivate = await crypto.subtle.exportKey("jwk", vapid.privateKey);
+  const vapidPublic = new Uint8Array(await crypto.subtle.exportKey("raw", vapid.publicKey));
+  const ua = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const uaPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ua.publicKey));
+  const auth = crypto.getRandomValues(new Uint8Array(16));
+  const subs = mockKV({
+    "stable-sub-id": {
+      endpoint: "https://push.example.test/retry",
+      keys: { p256dh: b64url(uaPublic), auth: b64url(auth) },
+      userId: "user-1", pushEnabled: true
+    }
+  });
+  const sync = mockKV({
+    "user-1": { state: { "De Stentor": { aan: true, vandaag: false, scope: "regio" } } }
+  });
+  const seen = mockKV();
+  const env = {
+    SUBS: subs, SYNC: sync, SEEN: seen,
+    VAPID_PRIVATE_KEY: JSON.stringify(vapidPrivate),
+    VAPID_PUBLIC_KEY: b64url(vapidPublic),
+    VAPID_SUBJECT: "mailto:test@example.test"
+  };
+  const rss = `<rss><channel><item><title>Ommen retrytest</title><link>https://example.nl/nieuws/ommen-retrytest</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`;
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const attempts = [];
+  globalThis.setTimeout = callback => { callback(); return 0; };
+  globalThis.fetch = async url => {
+    if (String(url).startsWith("https://push.example.test/")) {
+      attempts.push(attempts.length + 1);
+      return new Response("", { status: attempts.length === 1 ? 503 : 201 });
+    }
+    if (String(url).includes("destentor.nl/ommen/rss.xml")) return new Response(rss, { status: 200 });
+    return new Response("<rss><channel></channel></rss>", { status: 200 });
+  };
+  try {
+    await worker.scheduled({ cron: "0 * * * *", scheduledTime: Date.now() }, env, {});
+    const firstSeen = await seen.get("seen_links", "json");
+    assert.equal(firstSeen?.includes("https://example.nl/nieuws/ommen-retrytest") || false, false,
+      "na HTTP 503 mag artikel niet als gezien worden gemarkeerd");
+    const deliveryKeysAfterFailure = [...seen.data.keys()].filter(key => key.startsWith("delivery_"));
+    assert.equal(deliveryKeysAfterFailure.length, 1, "bezorgstatus blijft beschikbaar voor retry");
+    assert.deepEqual(await seen.get(deliveryKeysAfterFailure[0], "json"), [],
+      "mislukte endpoint wordt niet als bezorgd opgeslagen");
+
+    await worker.scheduled({ cron: "0 * * * *", scheduledTime: Date.now() + 3600000 }, env, {});
+    assert.equal(attempts.length, 2, "tweede cron probeert hetzelfde endpoint opnieuw");
+    const savedSub = await subs.get("stable-sub-id", "json");
+    assert.equal(savedSub.pushCount, 1, "alleen de geslaagde tweede poging telt mee");
+    const finalSeen = await seen.get("seen_links", "json");
+    assert.ok(finalSeen.includes("https://example.nl/nieuws/ommen-retrytest"));
+    assert.equal([...seen.data.keys()].some(key => key.startsWith("delivery_")), false,
+      "na succesvolle retry wordt tijdelijke bezorgstatus opgeruimd");
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
