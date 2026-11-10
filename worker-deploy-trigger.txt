@@ -1,1 +1,1 @@
-Retry deployment using the already staged and validated Worker version.
+Retry staged Worker deployment with supported deployment metadata.
