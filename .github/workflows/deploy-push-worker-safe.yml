@@ -203,7 +203,7 @@ jobs:
           HTTP_STATUS=$(curl --silent --show-error -w "%{http_code}" -X POST "${BASE}/deployments" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$NEW_VERSION_ID\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Deploy shared current-app push selection and retry-safe delivery\",\"workers/triggered_by\":\"github-actions\"}}" \
+            --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$NEW_VERSION_ID\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Deploy shared current-app push selection and retry-safe delivery\"}}" \
             -o deployment.json)
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "Cloudflare deployment API returned HTTP $HTTP_STATUS:"
