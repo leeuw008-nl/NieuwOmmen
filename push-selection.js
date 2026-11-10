@@ -151,3 +151,10 @@ export function parseGemeenteOverviewHtml(html,now=new Date()) {
   while((m=re.exec(clean))!==null&&out.length<10){const title=m[2].replace(/<[^>]*>/g,"").trim();if(title.length<8)continue;const link=m[1].startsWith("http")?m[1]:"https://www.ommen.nl"+m[1];if(seen.has(link))continue;seen.add(link);const block=clean.substring(Math.max(0,m.index-500),m.index+2500);const pubDate=extractGemeenteDateHtml(block);out.push({title:title.slice(0,130),link,source:"Gemeente Ommen",pubDate,description:extractGemeenteDescription(clean,m.index),_dateOnly:!!pubDate&&pubDate.getHours()===0&&pubDate.getMinutes()===0&&pubDate.getSeconds()===0});}
   return out;
 }
+
+export function getPendingDeliverySubscriptions(eligible, delivered) {
+  return (Array.isArray(eligible)?eligible:[]).filter(sub=>sub && !delivered?.has(sub._id));
+}
+export function areDeliveriesComplete(eligible, delivered) {
+  return getPendingDeliverySubscriptions(eligible,delivered).length===0;
+}
