@@ -194,9 +194,9 @@ return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bro
 
 function parseGemeenteOverviewWorker(html, now = new Date()){
   const max=getSourceArticleLimit('Gemeente Ommen');
-  const clean=html.replace(/<!--[\\s\\S]*?-->/g,' ');
+  const clean=html.replace(/<!--[\s\S]*?-->/g,' ');
   const results=[], seen=new Set();
-  const titleRe=/<h[23][^>]*>\\s*<a[^>]+href=["']([^"']*\\/actueel\\/[^"'?#]+)["'][^>]*>([\\s\\S]*?)<\\/a>\\s*<\\/h[23]>/gi;
+  const titleRe=/<h[23][^>]*>\s*<a[^>]+href=["']([^"']*\/actueel\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h[23]>/gi;
   let m;
   while((m=titleRe.exec(clean))!==null && results.length<max){
     const title=m[2].replace(/<[^>]*>/g,'').trim();
@@ -205,8 +205,8 @@ function parseGemeenteOverviewWorker(html, now = new Date()){
     if(seen.has(link)) continue;
     seen.add(link);
     const block=clean.substring(Math.max(0,m.index-500),m.index+2500);
-    const text=block.replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ');
-    const dateMatch=text.match(/(\\d{1,2})\\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\\s+(\\d{4})(?:[^\\d]{0,20}(\\d{1,2})\\s*:\\s*(\\d{2}))?/i);
+    const text=block.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+    const dateMatch=text.match(/(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})(?:[^\d]{0,20}(\d{1,2})\s*:\s*(\d{2}))?/i);
     let pubDate=null;
     if(dateMatch){
       const months={januari:0,februari:1,maart:2,april:3,mei:4,juni:5,juli:6,augustus:7,september:8,oktober:9,november:10,december:11};
