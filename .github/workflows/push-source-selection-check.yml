@@ -1,0 +1,23 @@
+name: Validate push source-selection parity
+on:
+  push:
+    branches:
+      - fix/push-source-selection-parity-2026-11-10
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check worker-v280.js
+          node --check push.js
+          node --check article-filter.js
+      - name: Existing regression tests
+        run: |
+          node --test tests/article-filter.test.mjs tests/app-parser-parity.test.mjs tests/delivery-simulation.test.mjs
