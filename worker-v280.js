@@ -1,6 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
+import { processArticleDeliveries } from "./push-cron.js";
 import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml, getPendingDeliverySubscriptions, areDeliveriesComplete } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
@@ -542,24 +543,23 @@ const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
 if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
 const delivered=await getArticleDeliveredSubs(env,article.link);
-const eligible=[];
-for(const sub of subs){if(await shouldSendToSub(sub,article,env)) eligible.push(sub);}
-const relevant=getPendingDeliverySubscriptions(eligible,delivered);
-rejectedByFilter+=subs.length-eligible.length;
-console.log(`[v279-diag] pushselectie: bron=${article.source}; nog_te_verzenden=${relevant.length}; al_bezorgd=${eligible.length-relevant.length}`);
-const capacity=Math.max(0,MAX_CRON_PUSHES-cronPushes);
-const pending=relevant.slice(0,capacity);
-for(let i=0;i<pending.length;i+=20){
-  const batch=pending.slice(i,i+20);
-  const results=await Promise.all(batch.map(sub=>sendPush(sub,article,env)));
-  for(let k=0;k<results.length;k++){
-    const result=results[k];
-    if(result.ok){successPushes++;delivered.add(batch[k]._id);}
-    else{failedPushes++;console.log(`[v279-diag] push mislukt: bron=${article.source}; status=${result.status||'geen'}; fout=${result.error||'onbekend'}`);}
-  }
-  cronPushes+=batch.length;
-  await saveArticleDeliveredSubs(env,article.link,delivered);
-  await new Promise(r=>setTimeout(r,300));
+const delivery=await processArticleDeliveries({
+  article, subscriptions:subs, env, shouldSendToSub, sendPush, delivered,
+  capacity:MAX_CRON_PUSHES-cronPushes,
+  saveDelivered:(link,ids)=>saveArticleDeliveredSubs(env,link,ids),
+  pause:()=>new Promise(r=>setTimeout(r,300))
+});
+rejectedByFilter+=subs.length-delivery.eligible;
+cronPushes+=delivery.attempts;
+successPushes+=delivery.accepted;
+failedPushes+=delivery.failed;
+console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${delivery.eligible}; nog_te_verzenden=${delivery.pendingBefore}; bezorgd=${delivery.accepted}; mislukt=${delivery.failed}; resterend=${delivery.remaining}`);
+if(delivery.complete){
+  markArticleProcessed(seen,article);
+  await clearArticleDeliveredSubs(env,article.link);
+}else{
+  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${delivery.remaining}`);
+}
 }
 const remaining=getPendingDeliverySubscriptions(eligible,delivered).length;
 const unfinished=!areDeliveriesComplete(eligible,delivered);
