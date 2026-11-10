@@ -1,1 +1,1 @@
-Inspect current deployed Worker code and version.
+Inspect deployed production Worker modules for comparison.
