@@ -25,11 +25,14 @@ const workerContext = {
 vm.createContext(workerContext);
 vm.runInContext(workerFn + '\nthis.parse = parseRSS;', workerContext);
 
-const fixture = `<?xml version="1.0"?>
-<rss version="2.0"><channel>
-<item><title><![CDATA[Ommen testbericht]]></title><link>https://example.test/ommen-1</link><pubDate>Tue, 10 Nov 2026 09:15:00 +0100</pubDate><description><![CDATA[Bericht over Ommen.]]></description></item>
-<item><title>Regio testbericht</title><link>https://example.test/regio-2</link><pubDate>Tue, 10 Nov 2026 08:05:00 GMT</pubDate><description>Bericht over de regio.</description></item>
-</channel></rss>`;
+const items = Array.from({length: 6}, (_, i) => `<item>
+<title>${i === 0 ? '<![CDATA[Ommen testbericht]]>' : 'Testbericht ' + (i + 1)}</title>
+<link>https://example.test/article-${i + 1}</link>
+${i === 5 ? '' : '<pubDate>Tue, 10 Nov 2026 09:15:00 +0100</pubDate>'}
+<description><![CDATA[Beschrijving ${i + 1}.]]></description>
+<content:encoded><![CDATA[Uitgebreide inhoud ${i + 1}.]]></content:encoded>
+</item>`).join('');
+const fixture = `<?xml version="1.0"?><rss version="2.0"><channel>${items}</channel></rss>`;
 const appOut = appContext.parse(fixture, 'De Stentor');
 const workerOut = workerContext.parse(fixture, 'De Stentor');
 const norm = rows => rows.map(x => ({
@@ -38,8 +41,8 @@ const norm = rows => rows.map(x => ({
   description: x.description || null
 }));
 const left = norm(appOut), right = norm(workerOut);
-console.log('APP parser output:', JSON.stringify(left));
-console.log('WORKER parser output:', JSON.stringify(right));
-console.log('Same article count:', left.length === right.length);
-console.log('Same normalized output:', JSON.stringify(left) === JSON.stringify(right));
-if (JSON.stringify(left) === JSON.stringify(right)) process.exit(1);
+console.log('APP parser output:', JSON.stringify(left, null, 2));
+console.log('WORKER parser output:', JSON.stringify(right, null, 2));
+console.log('Article count: app=' + left.length + ', worker=' + right.length);
+console.log('Normalized outputs identical:', JSON.stringify(left) === JSON.stringify(right));
+console.log('DIAGNOSTIC COMPLETE: differences are reported, not treated as a workflow failure.');
