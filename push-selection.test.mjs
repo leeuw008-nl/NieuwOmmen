@@ -79,3 +79,54 @@ test("bezorgstatus voorkomt dubbele push en laat mislukte bezorging opnieuw prob
   assert.deepEqual(getPendingDeliverySubscriptions(eligible,failedAttempt),eligible);
   assert.equal(areDeliveriesComplete(eligible,failedAttempt),false);
 });
+
+import { processArticleDeliveries } from "./push-cron.js";
+
+test("cron-integratie: mislukte push wordt later hervat zonder dubbele push", async () => {
+  const article={link:"https://example.nl/a",source:"De Stentor",title:"Test"};
+  const subs=[{_id:"sub-a"},{_id:"sub-b"},{_id:"sub-c"}];
+  const delivered=new Set();
+  const attempts=[];
+  let failB=true;
+  const saveCalls=[];
+  const first=await processArticleDeliveries({
+    article,subscriptions:subs,env:{},
+    shouldSendToSub:async()=>true,
+    sendPush:async sub=>{attempts.push(sub._id);if(sub._id==="sub-b"&&failB)return {ok:false};return {ok:true};},
+    delivered,capacity:2,
+    saveDelivered:async(link,ids)=>saveCalls.push([...ids])
+  });
+  assert.equal(first.attempts,2);
+  assert.equal(first.accepted,1);
+  assert.equal(first.failed,1);
+  assert.equal(first.complete,false);
+  assert.deepEqual([...delivered],["sub-a"]);
+  failB=false;
+  const second=await processArticleDeliveries({
+    article,subscriptions:subs,env:{},
+    shouldSendToSub:async()=>true,
+    sendPush:async sub=>{attempts.push(sub._id);return {ok:true};},
+    delivered,capacity:2,
+    saveDelivered:async(link,ids)=>saveCalls.push([...ids])
+  });
+  assert.equal(second.complete,true);
+  assert.equal(second.accepted,2);
+  assert.deepEqual(attempts,["sub-a","sub-b","sub-b","sub-c"]);
+  assert.deepEqual([...delivered],["sub-a","sub-b","sub-c"]);
+  assert.equal(saveCalls.length,2);
+});
+
+test("cron-integratie: filters bepalen eligible abonnementen en geen push buiten selectie", async () => {
+  const article={link:"https://example.nl/b"};
+  const subs=[{_id:"on"},{_id:"off"}];
+  const sent=[];
+  const result=await processArticleDeliveries({
+    article,subscriptions:subs,env:{},
+    shouldSendToSub:async sub=>sub._id==="on",
+    sendPush:async sub=>{sent.push(sub._id);return {ok:true};},
+    delivered:new Set(),capacity:35
+  });
+  assert.deepEqual(sent,["on"]);
+  assert.equal(result.eligible,1);
+  assert.equal(result.complete,true);
+});
