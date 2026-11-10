@@ -21,4 +21,4 @@ jobs:
           node --check push-selection.js
           node --check push-cron.js
       - name: Push selection tests
-        run: node --test push-selection.test.mjs
+        run: node --test push-selection.test.mjs worker-scheduled.test.mjs
