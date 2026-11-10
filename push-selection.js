@@ -10,3 +10,8 @@ export function withPollingDate(article, now = new Date()) {
   if (!article || article.pubDate) return article;
   return { ...article, pubDate: now.toISOString() };
 }
+
+export function markArticleProcessed(seen, article) {
+  if (seen && article && typeof article.link === "string" && article.link) seen.add(article.link);
+  return seen;
+}
