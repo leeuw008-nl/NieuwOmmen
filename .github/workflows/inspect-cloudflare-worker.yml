@@ -98,9 +98,13 @@ jobs:
           raw = Path("active-content.bin").read_bytes()
           if content_type.lower().startswith("multipart/"):
               message = BytesParser(policy=default).parsebytes(("MIME-Version: 1.0\nContent-Type: "+content_type+"\n\n").encode()+raw)
+              import hashlib
               for part in message.iter_parts():
                   payload = part.get_payload(decode=True) or b""
-                  print({"filename": part.get_filename(), "content_type": part.get_content_type(), "bytes": len(payload)})
+                  print({"filename": part.get_filename(), "content_type": part.get_content_type(), "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()})
+                  source = payload.decode("utf-8", "replace")
+                  for marker in ["Worker v280", "Worker v284", "processArticleDeliveries", "matchesSourceSelection", "MAX_CRON_PUSHES", "isRecentPushArticle", "VAPID_PUBLIC_FALLBACK", "pushselectie:"]:
+                      print("marker", marker, marker in source)
           else:
               print("response_bytes", len(raw), "prefix", raw[:160].decode("utf-8","replace"))
           PY
