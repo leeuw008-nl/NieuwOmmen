@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -238,10 +238,7 @@ if(b.type==='gemeente') parsed=parseGemeenteOverviewWorker(txt,new Date());
 else if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
 else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
 else if(b.type==='oost'){
-const generic=/<a[^>]+href=["'](\/nieuws\/[^"']+)["'][^>]*>([^<]{15,120})</gi;
-const out=[]; let m;
-while((m=generic.exec(txt))!==null && out.length<getSourceArticleLimit(b.id)){ const link='https://www.oost.nl'+m[1], title=m[2].trim().slice(0,120); if(title.length>10) out.push({title,link,source:b.id,pubDate:null}); }
-parsed=out;
+parsed=parseRTVOostHtml(txt,new Date()).slice(0,getSourceArticleLimit(b.id));
 }else parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
 if(diagnostic) console.log(`[v279-diag] bron OK: ${b.id}; HTTP=${r.status}; bytes=${txt.length}; artikelen=${parsed.length}`);
 return parsed.map(article=>withPollingDate(article,new Date())).filter(article=>globalThis.NieuwOmmenArticleFilter.isValidArticle(article));
