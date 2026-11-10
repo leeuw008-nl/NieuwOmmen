@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -192,33 +192,7 @@ return {title:title.replace(/<[^>]*>/g,'').trim().slice(0,120), link, source:bro
 }).filter(x=>x.link && x.title);
 }
 
-function parseGemeenteOverviewWorker(html, now = new Date()){
-  const max=getSourceArticleLimit('Gemeente Ommen');
-  const clean=html.replace(/<!--[\s\S]*?-->/g,' ');
-  const results=[], seen=new Set();
-  const titleRe=/<h[23][^>]*>\s*<a[^>]+href=["']([^"']*\/actueel\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>\s*<\/h[23]>/gi;
-  let m;
-  while((m=titleRe.exec(clean))!==null && results.length<max){
-    const title=m[2].replace(/<[^>]*>/g,'').trim();
-    if(title.length<8) continue;
-    const link=m[1].startsWith('http')?m[1]:'https://www.ommen.nl'+m[1];
-    if(seen.has(link)) continue;
-    seen.add(link);
-    const block=clean.substring(Math.max(0,m.index-500),m.index+2500);
-    const text=block.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
-    const dateMatch=text.match(/(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(\d{4})(?:[^\d]{0,20}(\d{1,2})\s*:\s*(\d{2}))?/i);
-    let pubDate=null;
-    if(dateMatch){
-      const months={januari:0,februari:1,maart:2,april:3,mei:4,juni:5,juli:6,augustus:7,september:8,oktober:9,november:10,december:11};
-      const day=Number(dateMatch[1]), month=months[dateMatch[2].toLowerCase()], year=Number(dateMatch[3]);
-      const hh=dateMatch[4]===undefined?now.getHours():Number(dateMatch[4]);
-      const mm=dateMatch[5]===undefined?now.getMinutes():Number(dateMatch[5]);
-      pubDate=new Date(year,month,day,hh,mm,dateMatch[4]===undefined?now.getSeconds():0);
-    }
-    results.push({title:title.slice(0,130),link,source:'Gemeente Ommen',pubDate:pubDate||now,description:title+' [...]'});
-  }
-  return results;
-}
+function parseGemeenteOverviewWorker(html, now = new Date()){ return parseGemeenteOverviewHtml(html,now); }
 
 function parseRTVVechtdal(html, bronId){
  return parseRTVVechtdalHtml(html,new Date()).map(article=>({...article,source:bronId}));
@@ -234,7 +208,24 @@ stage='read';
 const txt=await r.text();
 stage='parse';
 let parsed=[];
-if(b.type==='gemeente') parsed=parseGemeenteOverviewWorker(txt,new Date());
+if(b.type==='gemeente') {
+  parsed=parseGemeenteOverviewWorker(txt,new Date());
+  // Net als de app: haal detailpagina's op als de overzichtspagina geen betrouwbare tijd toont.
+  await Promise.allSettled(parsed.filter(a=>!a.pubDate || a._dateOnly).slice(0,10).map(async article=>{
+    try {
+      const detail=await fetch(article.link,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}});
+      if(detail.ok){
+        const detailHtml=await detail.text();
+        const date=extractGemeenteDateHtml(detailHtml);
+        if(date) article.pubDate=date;
+      }
+    } catch(e) { console.log('[gemeente-detail] '+(e.message||String(e))); }
+    if(!article.pubDate || article._dateOnly && article.pubDate.getHours()===0 && article.pubDate.getMinutes()===0) {
+      const fallback=new Date(); fallback.setHours(new Date().getHours(),new Date().getMinutes(),new Date().getSeconds()); article.pubDate=fallback;
+    }
+    delete article._dateOnly;
+  }));
+}
 else if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
 else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
 else if(b.type==='oost'){
