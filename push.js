@@ -44,7 +44,7 @@ function getSourceFilters(){
     Object.keys(v).forEach(k=>{
       const s=v[k];
       if(s && typeof s==='object' && 'aan' in s){
-        out[k]={aan:s.aan===true,vandaag:s.vandaag===true,scope:s.scope==='regio'?'regio':'gemeente'};
+        out[k]={aan:s.aan===true,vandaag:s.vandaag===true,scope:s.scope==='regio'?'regio':(s.scope==='gemeente'?'gemeente':null)};
       }
     });
     return out;
