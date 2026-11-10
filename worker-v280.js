@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml, getPendingDeliverySubscriptions, areDeliveriesComplete } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -544,7 +544,7 @@ if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
 const delivered=await getArticleDeliveredSubs(env,article.link);
 const eligible=[];
 for(const sub of subs){if(await shouldSendToSub(sub,article,env)) eligible.push(sub);}
-const relevant=eligible.filter(sub=>!delivered.has(sub._id));
+const relevant=getPendingDeliverySubscriptions(eligible,delivered);
 rejectedByFilter+=subs.length-eligible.length;
 console.log(`[v279-diag] pushselectie: bron=${article.source}; nog_te_verzenden=${relevant.length}; al_bezorgd=${eligible.length-relevant.length}`);
 const capacity=Math.max(0,MAX_CRON_PUSHES-cronPushes);
@@ -561,8 +561,8 @@ for(let i=0;i<pending.length;i+=20){
   await saveArticleDeliveredSubs(env,article.link,delivered);
   await new Promise(r=>setTimeout(r,300));
 }
-const remaining=eligible.filter(sub=>!delivered.has(sub._id)).length;
-const unfinished=remaining>0;
+const remaining=getPendingDeliverySubscriptions(eligible,delivered).length;
+const unfinished=!areDeliveriesComplete(eligible,delivered);
 if(unfinished){
   console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${remaining}`);
 }else{
