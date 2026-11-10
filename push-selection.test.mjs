@@ -54,3 +54,14 @@ test("RTV Oost volgt app-parser met echte publishedAt en gemeenterelevantie", as
   assert.equal(article.link, "https://www.oost.nl/nieuws/ommen-test-123456");
   assert.equal(new Date(article.pubDate).toISOString(), "2026-11-10T12:15:00.000Z");
 });
+
+test("Gemeente Ommen herkent datum en echte tijd zoals de app", async () => {
+  const { parseGemeenteOverviewHtml, extractGemeenteDateHtml } = await import("./push-selection.js");
+  const html='<h2><a href="/actueel/test">Ommen maakt plannen bekend</a></h2><p>10 november 2026, 12:35</p><p>Dit is een beschrijving van het bericht voor inwoners van Ommen.</p>';
+  const [article]=parseGemeenteOverviewHtml(html,now);
+  assert.equal(article.link,"https://www.ommen.nl/actueel/test");
+  assert.equal(article.pubDate.getHours(),12);
+  assert.equal(article.pubDate.getMinutes(),35);
+  const meta=extractGemeenteDateHtml('<meta property="article:published_time" content="2026-11-10T11:20:00Z">');
+  assert.equal(meta.toISOString(),"2026-11-10T11:20:00.000Z");
+});
