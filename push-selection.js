@@ -158,3 +158,58 @@ export function getPendingDeliverySubscriptions(eligible, delivered) {
 export function areDeliveriesComplete(eligible, delivered) {
   return getPendingDeliverySubscriptions(eligible,delivered).length===0;
 }
+
+
+/** Mirrors parseVechtdalCentraalFallback() in app.js: current parser first,
+ * then its legacy fallback. The current HTML parser can return up to 25 items;
+ * the legacy fallback is intentionally limited to the app's RSS limit of 10.
+ */
+export function parseVechtdalCentraalHtml(html, now = new Date()) {
+  const items = [];
+  const seen = new Set();
+  const sourceHtml = String(html || "");
+  let match;
+  const primary = /<h[2-3] class="entry-title[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/gi;
+  while ((match = primary.exec(sourceHtml)) !== null && items.length < 25) {
+    let link = match[1];
+    if (link.startsWith("/")) link = "https://www.vechtdalcentraal.nl" + link;
+    if (seen.has(link)) continue;
+    seen.add(link);
+    const title = match[2].replace(/&#8217;/g, "'").replace(/&amp;/g, "&").trim();
+    if (title.length > 4) items.push({ title, link, pubDate: new Date(now), description: title + " [...]", source: "Vechtdal Centraal" });
+  }
+  if (items.length) return items;
+
+  const patterns = [
+    /<h2[^>]*>\s*<a href="([^"]+)"[^>]*>([^<]{8,200})<\/a>\s*<\/h2>/gi,
+    /<article[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]{0,300}?)<\/a>[\s\S]*?<h[23]/gi,
+    /<a[^>]+href="(https:\/\/www\.vechtdalcentraal\.nl\/[^"']{5,150})"[^>]*class="[^"]*entry-title[^"]*"[^>]*>([^<]+)</gi,
+    /<a href="(\/[^"']{5,150})"[^>]*>[^<]*<h[2-3][^>]*>([^<]{8,200})<\/h3>/gi
+  ];
+  for (const pattern of patterns) {
+    let item;
+    while ((item = pattern.exec(sourceHtml)) !== null && items.length < 25) {
+      let link = item[1];
+      const title = item[2].replace(/<[^>]*>/g, "").replace(/&#8217;/g, "'").replace(/&amp;/g, "&").trim();
+      if (link.startsWith("/")) link = "https://www.vechtdalcentraal.nl" + link;
+      if (!link.includes("vechtdalcentraal.nl") || seen.has(link) || title.length <= 8) continue;
+      seen.add(link);
+      items.push({ title, link, pubDate: new Date(now), description: title + " [...]", source: "Vechtdal Centraal" });
+    }
+    if (items.length > 5) break;
+  }
+  if (items.length) return items;
+
+  const legacy = /<a[^>]+href=["']([^"']*\/[^"']+)["'][^>]*>\s*<h[23][^>]*>([^<]{8,120})<\/h[23]>/gi;
+  const legacyItems = new Map();
+  while ((match = legacy.exec(sourceHtml)) !== null && legacyItems.size < 10) {
+    let link = match[1];
+    const title = match[2].trim();
+    if (link.startsWith("/")) link = "https://www.vechtdalcentraal.nl" + link;
+    if (!link.includes("vechtdalcentraal.nl") || /\/(category|tag)\//.test(link) || link.includes("#")) continue;
+    if (!legacyItems.has(link)) legacyItems.set(link, title);
+  }
+  return Array.from(legacyItems, ([link, title]) => ({
+    title, link, pubDate: new Date(now), description: "[...]", source: "Vechtdal Centraal"
+  }));
+}
