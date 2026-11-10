@@ -67,4 +67,7 @@ jobs:
           echo "=== Current deployment and recent versions ==="
           jq -e '.success == true' versions.json >/dev/null
           jq -e '.success == true' deployments.json >/dev/null
-          jq '{deployments: [.result.deployments[]? | {id, created_on, versions}], recent_versions: [.result.versions[]? | {id, number, metadata: {created_on: .metadata.created_on, modified_on: .metadata.modified_on}}]}' deployments.json versions.json 2>/dev/null || true
+          echo "Deployments:"
+          jq '.result.deployments[]? | {id, created_on, versions}' deployments.json
+          echo "Recent uploaded versions:"
+          jq 'if (.result | type) == "array" then [.result[] | {id, number, metadata}] else .result end' versions.json
