@@ -15,3 +15,18 @@ export function markArticleProcessed(seen, article) {
   if (seen && article && typeof article.link === "string" && article.link) seen.add(article.link);
   return seen;
 }
+
+export const APP_SOURCE_LIMITS = Object.freeze({
+  "De Stentor": 25,
+  "Gemeente Ommen": 10,
+  "Natuurlijk Ommen": 10,
+  "Ommen City": 10,
+  "OudOmmen": 10,
+  "RondOmmen": 20,
+  "RTV Oost": 10,
+  "RTV Vechtdal": 10,
+  "Vechtdal Centraal": 10
+});
+export function getSourceArticleLimit(sourceId) {
+  return APP_SOURCE_LIMITS[sourceId] || 10;
+}
