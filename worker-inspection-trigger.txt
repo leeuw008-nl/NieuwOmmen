@@ -1,1 +1,1 @@
-Inspect active deployment and uploaded versions before safe push Worker deployment.
+Inspect all production Worker settings before deployment.
