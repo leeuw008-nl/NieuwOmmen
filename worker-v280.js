@@ -2,7 +2,7 @@
 
 import "./article-filter.js";
 import { processArticleDeliveries } from "./push-cron.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml, getPendingDeliverySubscriptions, areDeliveriesComplete } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit, parseRTVVechtdalHtml, parseRTVOostHtml, parseGemeenteOverviewHtml, extractGemeenteDateHtml } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -560,14 +560,6 @@ if(delivery.complete){
 }else{
   console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${delivery.remaining}`);
 }
-}
-const remaining=getPendingDeliverySubscriptions(eligible,delivered).length;
-const unfinished=!areDeliveriesComplete(eligible,delivered);
-if(unfinished){
-  console.log(`[push-delivery] artikel blijft open voor retry: bron=${article.source}; resterend=${remaining}`);
-}else{
-  markArticleProcessed(seen,article);
-  await clearArticleDeliveredSubs(env,article.link);
 }
 }
 await setSeenLinksIfChanged(env,seen);
