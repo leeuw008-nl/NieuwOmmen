@@ -1,0 +1,198 @@
+name: Deploy push Worker safely
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - deploy/push-worker-safe-2026-11-10
+    paths:
+      - worker-deploy-trigger.txt
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Snapshot and validate current production configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ommen-push-v2"
+          mkdir -p production-backup
+
+          for endpoint in settings schedules versions deployments; do
+            curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              "${BASE}/${endpoint}" -o "production-backup/${endpoint}.json"
+            jq -e '.success == true' "production-backup/${endpoint}.json" >/dev/null
+          done
+
+          ACTIVE_VERSION=$(jq -r '.result.deployments[0].versions[0].version_id' production-backup/deployments.json)
+          LATEST_VERSION=$(jq -r '.result.items[0].id' production-backup/versions.json)
+          if [ -z "${ACTIVE_VERSION}" ] || [ "${ACTIVE_VERSION}" != "${LATEST_VERSION}" ]; then
+            echo "STOP: active deployment is not the latest uploaded version; secret inheritance is unsafe."
+            echo "Active: ${ACTIVE_VERSION}; latest: ${LATEST_VERSION}"
+            exit 1
+          fi
+
+          jq -e '.result.schedules | length == 1 and .[0].cron == "*/30 * * * *"' production-backup/schedules.json >/dev/null
+          jq -e '.result.compatibility_date == "2026-08-01"' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "VAPID_PRIVATE_KEY" and .type == "secret_text")' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "RESEND_API_KEY" and .type == "secret_text")' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "PUSH_KV" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "SUBS" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "VAPID_PUBLIC_KEY" and .text == "BBnCDkkzIXwUYFrF8ct-OXtRQ6-HaqF74grNVDLe4pw1SwG8_JyMYIHItRY6smyqPpdt81U1EZF33loTsepqnYo")' production-backup/settings.json >/dev/null
+          jq -e '.result.bindings | any(.name == "VAPID_SUBJECT" and .text == "mailto:leeuw008@gmail.com")' production-backup/settings.json >/dev/null
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/content/v2" -D production-backup/content.headers -o production-backup/active-content.bin
+
+          echo "Production snapshot validated."
+          echo "Rollback version: ${ACTIVE_VERSION}"
+          echo "Cron schedule: */30 * * * *"
+          echo "Secrets: names verified; values never read or printed."
+          echo "KV namespaces and public VAPID values verified."
+          echo "${ACTIVE_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Archive current production version before deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: nieuwommen-worker-production-backup
+          path: production-backup/
+          retention-days: 90
+
+      - name: Upload, validate and deploy the new Worker version
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ommen-push-v2"
+          OLD_VERSION_ID=$(cat "$GITHUB_ENV" 2>/dev/null | grep '^ab265f00-b5b8-4f47-be7e-8bf0ceb05492$' || true)
+          OLD_VERSION_ID="ab265f00-b5b8-4f47-be7e-8bf0ceb05492"
+          NEW_VERSION_ID=""
+          DEPLOYED=0
+
+          rollback_on_failure() {
+            status=$?
+            trap - EXIT
+            if [ "$status" -ne 0 ] && [ "$DEPLOYED" -eq 1 ]; then
+              echo "Validation failed after deployment; restoring previous production version."
+              curl --fail-with-body --silent --show-error -X POST "${BASE}/deployments" \
+                -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+                -H "Content-Type: application/json" \
+                --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$OLD_VERSION_ID\",\"percentage\":100}]}" || true
+            fi
+            exit "$status"
+          }
+          trap rollback_on_failure EXIT
+
+          cat > metadata.json <<'JSON'
+          {
+            "main_module": "worker-v280.js",
+            "compatibility_date": "2026-08-01",
+            "compatibility_flags": [],
+            "usage_model": "standard",
+            "logpush": false,
+            "tags": [],
+            "tail_consumers": [],
+            "observability": {
+              "enabled": true,
+              "head_sampling_rate": 1,
+              "redact_query_string": false,
+              "logs": {
+                "enabled": true,
+                "head_sampling_rate": 1,
+                "persist": true,
+                "invocation_logs": true
+              },
+              "traces": {
+                "enabled": false,
+                "persist": true,
+                "head_sampling_rate": 1
+              }
+            },
+            "annotations": {
+              "workers/message": "Deploy shared current-app push selection and retry-safe delivery",
+              "workers/tag": "nieuwommen-push-selection-2026-11-10"
+            },
+            "bindings": [
+              {"type":"kv_namespace","name":"USERS","namespace_id":"8cae8a43b81045feb480a6624e51d18c"},
+              {"type":"kv_namespace","name":"SESSIONS","namespace_id":"e9cd78ce622149ce859f17f42e1df0e4"},
+              {"type":"kv_namespace","name":"SYNC","namespace_id":"1631b47863f04c54830f03b120db0a9c"},
+              {"type":"kv_namespace","name":"SUBS","namespace_id":"85e0901760f0430e94a391dac1da50f1"},
+              {"type":"kv_namespace","name":"SEEN","namespace_id":"55853f6c05974a47b1041219a8ce1831"},
+              {"type":"kv_namespace","name":"NEWSLETTER","namespace_id":"3d42fe8843f24f10bbd0e8a8a9b7ccbb"},
+              {"type":"kv_namespace","name":"PUSH_KV","namespace_id":"85e0901760f0430e94a391dac1da50f1"},
+              {"type":"kv_namespace","name":"CRON","namespace_id":"cae6f7a2c49a458797f6f92836fe8450"},
+              {"type":"inherit","name":"RESEND_API_KEY","version_id":"latest"},
+              {"type":"inherit","name":"VAPID_PRIVATE_KEY","version_id":"latest"},
+              {"type":"plain_text","name":"VAPID_PUBLIC_KEY","text":"BBnCDkkzIXwUYFrF8ct-OXtRQ6-HaqF74grNVDLe4pw1SwG8_JyMYIHItRY6smyqPpdt81U1EZF33loTsepqnYo"},
+              {"type":"plain_text","name":"VAPID_SUBJECT","text":"mailto:leeuw008@gmail.com"}
+            ]
+          }
+          JSON
+
+          echo "Uploading a non-live version with strict secret inheritance..."
+          curl --fail-with-body --silent --show-error -X POST "${BASE}/versions?bindings_inherit=strict" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -F "metadata=@metadata.json;type=application/json" \
+            -F "worker-v280.js=@worker-v280.js;type=application/javascript+module" \
+            -F "article-filter.js=@article-filter.js;type=application/javascript+module" \
+            -F "push-cron.js=@push-cron.js;type=application/javascript+module" \
+            -F "push-selection.js=@push-selection.js;type=application/javascript+module" \
+            -o version-upload.json
+
+          jq -e '.success == true' version-upload.json >/dev/null
+          NEW_VERSION_ID=$(jq -r '.result.id' version-upload.json)
+          test -n "$NEW_VERSION_ID"
+          echo "Uploaded version: ${NEW_VERSION_ID}"
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/versions/${NEW_VERSION_ID}" -o new-version.json
+          jq -e '.success == true' new-version.json >/dev/null
+
+          jq -e '.result.resources.bindings | any(.name == "VAPID_PRIVATE_KEY")' new-version.json >/dev/null
+          jq -e '.result.resources.bindings | any(.name == "RESEND_API_KEY")' new-version.json >/dev/null
+          jq -e '.result.resources.bindings | any(.name == "PUSH_KV" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' new-version.json >/dev/null
+          jq -e '.result.resources.bindings | any(.name == "SUBS" and .namespace_id == "85e0901760f0430e94a391dac1da50f1")' new-version.json >/dev/null
+          jq -e '.result.resources.bindings | any(.name == "VAPID_PUBLIC_KEY" and .text == "BBnCDkkzIXwUYFrF8ct-OXtRQ6-HaqF74grNVDLe4pw1SwG8_JyMYIHItRY6smyqPpdt81U1EZF33loTsepqnYo")' new-version.json >/dev/null
+          jq -e '.result.resources.bindings | any(.name == "VAPID_SUBJECT" and .text == "mailto:leeuw008@gmail.com")' new-version.json >/dev/null
+          jq -e '.result.resources.script_runtime.compatibility_date == "2026-08-01"' new-version.json >/dev/null
+
+          echo "New version bindings verified. Deploying 100% traffic..."
+          curl --fail-with-body --silent --show-error -X POST "${BASE}/deployments" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$NEW_VERSION_ID\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Deploy shared current-app push selection and retry-safe delivery\",\"workers/triggered_by\":\"github-actions\"}}" \
+            -o deployment.json
+          jq -e '.success == true' deployment.json >/dev/null
+          DEPLOYED=1
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/deployments" -o after-deployments.json
+          jq -e --arg v "$NEW_VERSION_ID" '.result.deployments[0].versions | any(.version_id == $v and .percentage == 100)' after-deployments.json >/dev/null
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/schedules" -o after-schedules.json
+          jq -e '.result.schedules | length == 1 and .[0].cron == "*/30 * * * *"' after-schedules.json >/dev/null
+
+          echo "DEPLOYMENT SUCCEEDED"
+          echo "Previous version (rollback): ${OLD_VERSION_ID}"
+          echo "Active version: ${NEW_VERSION_ID}"
+          echo "Cron trigger unchanged: */30 * * * *"
+          echo "Existing secret values were inherited; none were read or printed."
+          DEPLOYED=0
+          trap - EXIT
