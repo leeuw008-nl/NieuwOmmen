@@ -1,0 +1,20 @@
+name: Validate current-app push selection fix
+on:
+  push:
+    branches:
+      - fix/push-selection-current-app-2026-11-10
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check worker-v280.js
+          node --check push.js
+          node --check article-filter.js
