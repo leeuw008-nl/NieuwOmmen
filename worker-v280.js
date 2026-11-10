@@ -1,7 +1,7 @@
 // Worker v280 - herstel ontbrekende Web Push-sleutels bij subscribe
 
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed } from "./push-selection.js";
 
 const GEMEENTE_ZOEK=['Ommen','Lemele','Vilsteren','Beerze','Beerzerveld','Witharen','Archem','Arriën','Arriërveld','Besthmen','Dalmsholte','Eerde','Emsland','Giethmen','Hoogengraven','Junne','Nieuwebrug','Ommerbosch','Ommerkanaal','Ommerschans','Ommerveld','Rotbrink','Stegeren','Stegerveld','Varsen','Vinkenbuurt','Zeesse','Beerzerpoort'].map(x=>x.toLowerCase());
 function isGemeenteArtikel(article){
@@ -508,14 +508,14 @@ await new Promise(r=>setTimeout(r,800));
 if(!hasNew){console.log('[v279-diag] Geen nieuwe artikelen; alle bronresultaten staan hierboven; 0 pushpogingen');return;}
 console.log(`[v279-diag] totaal nieuw=${newArticles.length}; links worden pas na datum- en pushcontrole als gezien opgeslagen`);
 if(newArticles.length>0){try{const SEEN=getKV(env,'SEEN');await SEEN.put('last_article',JSON.stringify(newArticles[0]));console.log('[v279-diag] last_article opgeslagen');}catch(e){console.log('[v279-diag] last_article opslaan mislukt: '+e.message);}}
-if(subs.length===0){for(const article of newArticles) seen.add(article.link);await setSeenLinksIfChanged(env,seen);console.log('[v279-diag] Geen subscriptions; kandidaten administratief afgehandeld, geen pushpogingen');return;}
+if(subs.length===0){for(const article of newArticles) markArticleProcessed(seen,article);await setSeenLinksIfChanged(env,seen);console.log('[v279-diag] Geen subscriptions; kandidaten administratief afgehandeld, geen pushpogingen');return;}
 newArticles.sort((a,b)=>{if(!a.pubDate&&!b.pubDate)return 0;if(!a.pubDate)return 1;if(!b.pubDate)return -1;return new Date(b.pubDate)-new Date(a.pubDate);});
 let cronPushes=0;let successPushes=0;let failedPushes=0;let rejectedByDate=0;let rejectedByFilter=0;const MAX_CRON_PUSHES=35;
 for(const article of newArticles){
 if(cronPushes>=MAX_CRON_PUSHES)break;
 const recent=isRecentPushArticle(article);
 console.log(`[v279-diag] artikelcontrole: bron=${article.source}; datum=${article.pubDate||'ontbreekt'}; recent=${recent}; titel=${(article.title||'').slice(0,100)}`);
-if(!recent){rejectedByDate++;seen.add(article.link);continue;}
+if(!recent){rejectedByDate++;markArticleProcessed(seen,article);continue;}
 const relevant=[];for(const sub of subs){if(cronPushes+relevant.length>=MAX_CRON_PUSHES)break;if(await shouldSendToSub(sub,article,env))relevant.push(sub);}
 rejectedByFilter+=subs.length-relevant.length;
 console.log(`[v279-diag] pushselectie: bron=${article.source}; geschikt=${relevant.length}; gefilterd=${subs.length-relevant.length}`);
@@ -527,7 +527,7 @@ cronPushes+=batch.length;
 await new Promise(r=>setTimeout(r,300));
 }
 // Artikel is volledig beoordeeld: ook bij nul passende abonnementen niet opnieuw aanbieden.
-seen.add(article.link);
+markArticleProcessed(seen,article);
 }
 await setSeenLinksIfChanged(env,seen);
 if(cronPushes>=MAX_CRON_PUSHES&&subs.length>MAX_CRON_PUSHES)console.log('[v279-diag] Free-plan safety cap 35 bereikt');
