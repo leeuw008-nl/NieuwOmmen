@@ -1,0 +1,45 @@
+name: Inspect production Worker configuration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read existing Worker settings and cron triggers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ommen-push-v2"
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/settings" -o settings.json
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/schedules" -o schedules.json
+
+          echo "=== Worker settings (secret values intentionally excluded) ==="
+          jq -e '.success == true' settings.json >/dev/null
+          jq '{
+            bindings: [.result.bindings[]? | {
+              name,
+              type,
+              namespace_id: (.namespace_id // null),
+              class_name: (.class_name // null)
+            }],
+            compatibility_date: .result.compatibility_date,
+            compatibility_flags: .result.compatibility_flags,
+            usage_model: .result.usage_model
+          }' settings.json
+
+          echo "=== Cron triggers ==="
+          jq -e '.success == true' schedules.json >/dev/null
+          jq '.result.schedules' schedules.json
