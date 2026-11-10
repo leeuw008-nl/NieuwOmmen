@@ -227,7 +227,7 @@ if(b.type==='gemeente') {
   }));
 }
 else if(b.type==='rss') parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
-else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
+else if(b.type==='rtv-vechtdal'){ parsed=parseRTVVechtdal(txt,b.id).slice(0,getSourceArticleLimit(b.id)); if(parsed.length===0 && b.feed){ const fr=await fetch(b.feed,{headers:{'User-Agent':'NieuwOmmenBot/1.0'},cf:{cacheTtl:600}}); if(fr.ok) parsed=parseRSS(await fr.text(),b.id,getSourceArticleLimit(b.id)); } }
 else if(b.type==='oost'){
 parsed=parseRTVOostHtml(txt,new Date()).slice(0,getSourceArticleLimit(b.id));
 }else parsed=parseRSS(txt,b.id,getSourceArticleLimit(b.id));
