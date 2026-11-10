@@ -60,7 +60,7 @@ jobs:
           echo "Cron schedule: */30 * * * *"
           echo "Secrets: names verified; values never read or printed."
           echo "KV namespaces and public VAPID values verified."
-          echo "${ACTIVE_VERSION}" >> "$GITHUB_ENV"
+          echo "OLD_VERSION_ID=${ACTIVE_VERSION}" >> "$GITHUB_ENV"
 
       - name: Archive current production version before deployment
         uses: actions/upload-artifact@v4
@@ -77,8 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/ommen-push-v2"
-          OLD_VERSION_ID=$(cat "$GITHUB_ENV" 2>/dev/null | grep '^ab265f00-b5b8-4f47-be7e-8bf0ceb05492$' || true)
-          OLD_VERSION_ID="ab265f00-b5b8-4f47-be7e-8bf0ceb05492"
+          : "${OLD_VERSION_ID:?Previous production version was not captured}"
           NEW_VERSION_ID=""
           DEPLOYED=0
 
@@ -176,8 +175,8 @@ jobs:
             -H "Content-Type: application/json" \
             --data "{\"strategy\":\"percentage\",\"versions\":[{\"version_id\":\"$NEW_VERSION_ID\",\"percentage\":100}],\"annotations\":{\"workers/message\":\"Deploy shared current-app push selection and retry-safe delivery\",\"workers/triggered_by\":\"github-actions\"}}" \
             -o deployment.json
-          jq -e '.success == true' deployment.json >/dev/null
           DEPLOYED=1
+          jq -e '.success == true' deployment.json >/dev/null
 
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
