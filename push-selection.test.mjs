@@ -133,3 +133,47 @@ test("cron-integratie: filters bepalen eligible abonnementen en geen push buiten
   assert.equal(result.eligible,1);
   assert.equal(result.complete,true);
 });
+
+
+test("cron-integratie: harde limiet van 35 pogingen laat resterende abonnementen open", async () => {
+  const article={link:"https://example.nl/c"};
+  const subs=Array.from({length:40},(_,i)=>({_id:`sub-${i+1}`}));
+  const sent=[];
+  const first=await processArticleDeliveries({
+    article,subscriptions:subs,env:{},
+    shouldSendToSub:async()=>true,
+    sendPush:async sub=>{sent.push(sub._id);return {ok:true};},
+    delivered:new Set(),capacity:35
+  });
+  assert.equal(first.attempts,35);
+  assert.equal(first.accepted,35);
+  assert.equal(first.remaining,5);
+  assert.equal(first.complete,false);
+  assert.equal(sent.length,35);
+
+  const second=await processArticleDeliveries({
+    article,subscriptions:subs,env:{},
+    shouldSendToSub:async()=>true,
+    sendPush:async sub=>{sent.push(sub._id);return {ok:true};},
+    delivered:first.delivered,capacity:35
+  });
+  assert.equal(second.attempts,5);
+  assert.equal(second.remaining,0);
+  assert.equal(second.complete,true);
+  assert.equal(sent.length,40);
+});
+
+test("cron-integratie: artikel zonder eligible abonnementen vraagt geen pushpogingen", async () => {
+  const result=await processArticleDeliveries({
+    article:{link:"https://example.nl/d"},
+    subscriptions:[{_id:"sub-a"},{_id:"sub-b"}],
+    env:{},
+    shouldSendToSub:async()=>false,
+    sendPush:async()=>{assert.fail("sendPush mag niet worden aangeroepen");},
+    delivered:new Set(),capacity:35
+  });
+  assert.equal(result.eligible,0);
+  assert.equal(result.attempts,0);
+  assert.equal(result.remaining,0);
+  assert.equal(result.complete,true);
+});
