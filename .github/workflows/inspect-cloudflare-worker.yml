@@ -31,6 +31,14 @@ jobs:
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             "${BASE}/schedules" -o schedules.json
 
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/versions?per_page=5" -o versions.json
+
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            "${BASE}/deployments" -o deployments.json
+
           echo "=== Worker bindings (secret values excluded) ==="
           jq -e '.success == true' settings.json >/dev/null
           jq '{
@@ -55,3 +63,8 @@ jobs:
           echo "=== Cron triggers ==="
           jq -e '.success == true' schedules.json >/dev/null
           jq '.result.schedules' schedules.json
+
+          echo "=== Current deployment and recent versions ==="
+          jq -e '.success == true' versions.json >/dev/null
+          jq -e '.success == true' deployments.json >/dev/null
+          jq '{deployments: [.result.deployments[]? | {id, created_on, versions}], recent_versions: [.result.versions[]? | {id, number, metadata: {created_on: .metadata.created_on, modified_on: .metadata.modified_on}}]}' deployments.json versions.json 2>/dev/null || true
