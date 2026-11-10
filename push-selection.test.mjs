@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import "./article-filter.js";
-import { matchesSourceSelection, withPollingDate, markArticleProcessed } from "./push-selection.js";
+import { matchesSourceSelection, withPollingDate, markArticleProcessed, getSourceArticleLimit } from "./push-selection.js";
 const filter = globalThis.NieuwOmmenArticleFilter;
 const now = new Date("2026-11-10T10:00:00+01:00");
 const todayOmmen = { title: "Ommen krijgt nieuwe plannen", description: "", link: "https://example.nl/nieuws/ommen-plannen", pubDate: "2026-11-10T09:00:00+01:00" };
@@ -25,4 +25,11 @@ test("verwerkt artikel wordt als gezien geregistreerd om herhaalde push te voork
   const seen = new Set();
   markArticleProcessed(seen, todayOmmen);
   assert.equal(seen.has(todayOmmen.link), true);
+});
+
+test("Worker haalt dezelfde aantallen per bron op als de app", () => {
+  assert.equal(getSourceArticleLimit("De Stentor"), 25);
+  assert.equal(getSourceArticleLimit("RondOmmen"), 20);
+  assert.equal(getSourceArticleLimit("Gemeente Ommen"), 10);
+  assert.equal(getSourceArticleLimit("RTV Oost"), 10);
 });
