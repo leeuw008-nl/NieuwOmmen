@@ -219,7 +219,8 @@ function parseGemeenteOverviewWorker(html, now = new Date()){
   }
   return results;
 }
-\nfunction parseRTVVechtdal(html, bronId){
+
+function parseRTVVechtdal(html, bronId){
 try{
 const out=[];
 const re = /<div class="allmode_item[^>]*>\s*<a href="([^"]+)"[^>]*>.*?allmode_date">([^<]+)<\/div>.*?alt="([^"]+)"/gis;
