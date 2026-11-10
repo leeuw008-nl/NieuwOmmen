@@ -33,3 +33,14 @@ test("Worker haalt dezelfde aantallen per bron op als de app", () => {
   assert.equal(getSourceArticleLimit("Gemeente Ommen"), 10);
   assert.equal(getSourceArticleLimit("RTV Oost"), 10);
 });
+
+test("RTV Vechtdal gebruikt dezelfde volledige HTML-structuur als de app", async () => {
+  const { parseRTVVechtdalHtml } = await import("./push-selection.js");
+  const html = '<div class="allmode_date">10-11-2026</div><h2 class="allmode_title"><a href="/nieuws/test">Testbericht</a></h2><div class="allmode_intro">Beschrijving</div>';
+  const now = new Date("2026-11-10T14:20:30");
+  const [article] = parseRTVVechtdalHtml(html, now);
+  assert.equal(article.title, "Testbericht");
+  assert.equal(article.link, "https://www.rtvvechtdal.nl/nieuws/test");
+  assert.equal(article.pubDate.getHours(), 14);
+  assert.equal(article.pubDate.getMinutes(), 20);
+});
