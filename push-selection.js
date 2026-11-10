@@ -66,3 +66,51 @@ export function parseRTVVechtdalHtml(html, now = new Date()) {
   }
   return items;
 }
+
+/** Mirrors parseRTVOostECHT() in app.js, including its real-date and polling fallback paths. */
+export function parseRTVOostHtml(html, now = new Date()) {
+  const items = [];
+  let m;
+  const reReal = /<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\\s\\S]*?<a[^>]+href=["'](\\/nieuws\\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>[\\s\\S]*?<div[^>]*class="[^"]*name-label[^"]*"[^>]*>([^<]{2,20})<\\/div>[\\s\\S]*?<h[2-3][^>]*>([^<]{12,200})<\\/h3>/gi;
+  const fullLink = link => link.startsWith("/") ? "https://www.oost.nl" + link : link;
+  const add = (link, title, date) => {
+    if (!items.some(x => x.link === link)) items.push({ title, link, pubDate: date, description: title + " [...]", source: "RTV Oost" });
+  };
+  while ((m = reReal.exec(String(html))) !== null && items.length < 25) {
+    const link = fullLink(m[2]);
+    const category = m[3].trim().toUpperCase();
+    const title = m[4].trim();
+    if (["ALLE NIEUWS", "ZWOLLE", "TWENTE"].includes(title.toUpperCase())) continue;
+    let date = new Date(m[1]);
+    if (Number.isNaN(date.getTime())) date = new Date(now);
+    const finalTitle = ["NIEUWS", "112", "ECONOMIE", "SPORT"].includes(category) ? category + ": " + title : title;
+    add(link, finalTitle, date);
+  }
+  if (items.length === 0) {
+    const re2 = /<div[^>]*publishedAt=["']([^"']+)["'][^>]*>[\\s\\S]*?<a[^>]+href=["'](\\/nieuws\\/[^"']{10,150})["'][^>]*>[\\s\\S]*?<h[2-3][^>]*>([^<]{12,200})<\\/h3>/gi;
+    while ((m = re2.exec(String(html))) !== null && items.length < 25) {
+      const link = fullLink(m[2]);
+      const title = m[3].trim();
+      if (title.toLowerCase().includes("alle nieuws")) continue;
+      const date = new Date(m[1]);
+      if (Number.isNaN(date.getTime())) continue;
+      add(link, title, date);
+    }
+  }
+  if (items.length === 0) {
+    const reBlock = /<a[^>]+href=["'](\\/nieuws\\/(?!zwolle|twente|enschede|vechtdal|salland|kop-van-overijssel)[^"']{10,150})["'][^>]*>([\\s\\S]*?)<\\/a>/gi;
+    while ((m = reBlock.exec(String(html))) !== null && items.length < 20) {
+      const link = fullLink(m[1]);
+      const inner = m[2];
+      const catMatch = inner.match(/<(?:span|div)[^>]*>\\s*(NIEUWS|112|ECONOMIE|SPORT)\\s*<\\/(?:span|div)>/i);
+      const category = catMatch ? catMatch[1].toUpperCase() : "";
+      const titleMatch = inner.match(/<h[23][^>]*>([^<]{12,180})<\\/h[23]>/i);
+      const title = titleMatch ? titleMatch[1].trim() : "";
+      if (!title || title.length < 12 || ["alle nieuws", "zwolle", "twente", "enschede", "vechtdal", "salland", "kop van overijssel"].includes(title.toLowerCase())) continue;
+      const finalTitle = category ? category + ": " + title : title;
+      add(link, finalTitle, new Date(now));
+    }
+  }
+  items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  return items;
+}
